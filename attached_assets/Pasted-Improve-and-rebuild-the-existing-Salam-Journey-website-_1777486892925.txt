@@ -1,0 +1,213 @@
+Improve and rebuild the existing Salam Journey website with a significantly elevated UI/UX, the correct brand color palette, an interactive booking calendar, and full Arabic/English bilingual support.
+
+---
+
+## 🎨 EXACT Brand Color Palette (from logo)
+
+```css
+:root {
+  --sage:        #7FA99B;   /* primary — main sage green */
+  --sage-dark:   #5A8A80;   /* hover states, borders, headings */
+  --sage-light:  #A8C5BE;   /* backgrounds, subtle fills */
+  --sage-muted:  #D4E5E1;   /* cards, section backgrounds */
+  --blush:       #F2C4B0;   /* accent — baby hand pink */
+  --blush-light: #FAE0D6;   /* soft blush backgrounds */
+  --cream:       #FAF5E8;   /* page background */
+  --cream-dark:  #F0E8D4;   /* alternate section bg */
+  --text-dark:   #2D4A45;   /* deep teal for headings */
+  --text-body:   #4A6B65;   /* body text */
+  --text-muted:  #7A9E98;   /* captions, placeholders */
+  --white:       #FFFFFF;
+}
+```
+
+**Aesthetic direction**: Organic, warm, feminine, trustworthy. Like a gentle garden — soft sage greens with warm blush accents on cream backgrounds. Rounded shapes, leaf-like decorative elements, soft shadows. NO harsh edges, NO cold colors.
+
+---
+
+## 🖋 Typography
+
+Load from Google Fonts:
+- Arabic display: **"Tajawal"** (weights 700, 800)
+- Arabic body: **"Cairo"** (weights 400, 500)  
+- English display: **"Playfair Display"** (italic, for English mode)
+- English body: **"DM Sans"**
+
+Switch font family based on active language.
+
+---
+
+## 🌐 Bilingual System (Arabic / English Toggle)
+
+- Sticky language switcher button in navbar: `AR | EN`
+- When Arabic: `dir="rtl"`, use Arabic fonts, all text in Arabic
+- When English: `dir="ltr"`, use English fonts, all text in English
+- Store preference in `localStorage`
+- Smoothly transition between languages (fade)
+- Every single text element must have both `data-ar="..."` and `data-en="..."` attributes and swap via JS
+
+**Key translations to include:**
+| Arabic | English |
+|--------|---------|
+| رحلة سلام | Salam Journey |
+| دورات تدريبية | Courses |
+| جلسات خاصة | Sessions |
+| منتجات رقمية | Digital Products |
+| من نحن | About Us |
+| احجزي جلستك | Book Your Session |
+| انضمي إلى برامجنا | Join Our Programs |
+
+---
+
+## 🎨 UI/UX Elevation Requirements
+
+### General Design Rules:
+- **Glassmorphism cards**: `background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); border: 1px solid rgba(127,169,155,0.2);`
+- **Organic shapes**: Use SVG blob/wave dividers between sections instead of straight lines
+- **Micro-animations**: 
+  - Cards lift on hover (`transform: translateY(-6px); box-shadow: 0 20px 40px rgba(90,138,128,0.15)`)
+  - Staggered fade-in on scroll using IntersectionObserver
+  - Smooth page-load entrance animations (stagger 100ms per element)
+- **Decorative elements**: Subtle leaf SVG patterns, soft dot grids in section backgrounds
+- **Buttons**: Pill-shaped (`border-radius: 50px`), with gentle pulse animation on primary CTAs
+- **Section spacing**: Generous — min 100px vertical padding per section
+- **Mobile-first**: Everything must look beautiful on 375px screens
+
+### Navbar:
+- Frosted glass effect: `backdrop-filter: blur(20px); background: rgba(250,245,232,0.85)`
+- Logo: show the circular Salam Journey logo image
+- Links with underline-slide hover animation
+- Language toggle: pill toggle switch (AR / EN)
+- Mobile: smooth hamburger menu that slides in from side
+
+---
+
+## 📄 Pages & Sections
+
+### 1. Hero Section
+- Full-viewport height
+- Background: cream with a large soft sage blob shape (CSS/SVG, no images needed)
+- Headline (AR): `رحلة سلام ،، معك خلال رحلتك التربوية والوعي بذاتك`
+- Headline (EN): `Salam Journey — With You Through Parenthood & Self-Awareness`
+- Subheadline (AR): `نساعد الأمهات من خلال المحتوى التربوي والدورات والجلسات الخاصة لتصبح أم متمكنة تحقق السلام مع نفسها وأطفالها`
+- Subheadline (EN): `Empowering mothers through parenting content, courses & coaching sessions to find peace within themselves and with their children`
+- Two CTA buttons: Primary `انضمي إلى برامجنا / Join Programs` | Secondary outlined `احجزي جلسة / Book Session`
+- Floating badge: `+٢٠٠٠ أم | Since 2016`
+- Gentle floating animation on decorative elements
+
+### 2. Trust Bar
+- Horizontal scrolling on mobile, 4 columns on desktop
+- Icons + numbers: `+2000 أم` | `منذ 2016` | `مسجلة في بريطانيا` | `دورات متخصصة`
+- Sage background strip with cream text
+
+### 3. About Section
+- Two column layout (text + decorative illustration area)
+- Soft blush background
+- Story of Coach Iman starting 2016
+
+### 4. Services Section (3 cards)
+- Glassmorphism cards on sage-muted background
+- Card 1: 📚 دورات تدريبية / Courses
+- Card 2: 📅 جلسات خاصة / Coaching Sessions  
+- Card 3: 🛍️ منتجات رقمية / Digital Products
+- Each card: icon, title, description, CTA button
+
+### 5. Featured Course
+- Highlight card: `وأصبحتُ أُماً هادئة / Becoming a Calm Mother`
+- Wide banner style, sage gradient background
+- CTA: `اشتركي الآن / Enroll Now`
+
+### 6. Courses Page (separate section or page `/courses`)
+- Filter tabs: `الكل / All` | `دورات / Courses` | `ورش / Workshops` | `مجاناً / Free`
+- Grid of course cards with thumbnail placeholder, title, description, price badge, CTA
+
+### 7. Testimonials
+- Title: `ما قالته الأمهات / What Mothers Say`
+- Auto-scrolling carousel of testimonial cards
+- Each card: quote, name, star rating
+- Cream background with sage quotation mark decoration
+
+### 8. ⭐ BOOKING / SESSIONS PAGE — Full Calendar System
+
+This is the most important section to build correctly.
+
+**Layout**: 2-column — left/right: session info | calendar picker
+
+**Session Info Panel:**
+- Session types as selectable cards:
+  1. جلسة فردية / Individual Session — 60 min
+  2. حزمة ٣ جلسات / 3-Session Package
+- When selected, card highlights with sage border and checkmark
+
+**Interactive Calendar:**
+- Build a full monthly calendar grid from scratch (no external library needed)
+- Show current month with prev/next month navigation arrows
+- Each day cell: clickable if available, greyed-out & unclickable if:
+  - It's in the past
+  - It's already booked (store booked dates in a JS array/localStorage)
+- Available days: white with sage hover
+- Selected day: filled sage green with white text
+- Booked/unavailable days: `opacity: 0.35; cursor: not-allowed; text-decoration: line-through`
+- Weekend days (Friday/Saturday for Arab users): slightly different shade
+
+**Time Slots (appear after selecting a day):**
+- Show time slots as pill buttons: `10:00 ص`, `12:00 م`, `2:00 م`, `4:00 م`, `6:00 م`
+- Booked slots: greyed out, unclickable
+- Selected slot: filled sage
+
+**Booking Form (appears after selecting day + time):**
+Animated slide-in form with fields:
+- الاسم الكامل / Full Name
+- البريد الإلكتروني / Email
+- رقم الواتساب / WhatsApp Number
+- موضوع الجلسة / Session Topic (select dropdown with options)
+- ملاحظات إضافية / Additional Notes (optional textarea)
+- Submit button: `تأكيد الحجز / Confirm Booking`
+
+**On Submit:**
+- Mark that date+time as booked in localStorage (so it persists on refresh)
+- Show success message with animation: `تم الحجز بنجاح! سيتم التواصل معكِ خلال ٢٤ ساعة ✓`
+- Booked slot now appears greyed-out immediately
+
+**Booked dates to pre-populate (hardcode these as already booked):**
+```javascript
+const bookedSlots = {
+  // format: 'YYYY-MM-DD': ['10:00', '14:00']
+  // Add 4-5 example booked dates spread across current month
+};
+```
+
+### 9. Digital Products Page
+- Grid of product cards: مطبوعات تربوية, أدلة PDF, ورق عمل للأطفال
+- Free vs paid badges
+- Download/buy CTA
+
+### 10. Footer
+- Logo + tagline
+- Navigation links in columns
+- Social icons: Instagram, YouTube, WhatsApp (floating button bottom corner)
+- `© 2024 أكاديمية سلام | Salam Academy. All rights reserved.`
+- Sage background, cream text
+
+---
+
+## ⚙️ Technical Stack
+
+- **React + Vite** (preferred) OR vanilla HTML/CSS/JS in one file
+- No external UI libraries (build everything from scratch for full control)
+- Google Fonts loaded via `<link>` in head
+- All state managed with React useState/useEffect OR vanilla JS
+- localStorage for: language preference + booked appointments
+- IntersectionObserver for scroll animations
+- Fully responsive: 375px (mobile) → 768px (tablet) → 1280px (desktop)
+
+---
+
+## 🚫 Strictly Avoid:
+- Purple, blue, grey color schemes
+- Flat/boring card designs with no depth
+- Generic "AI website" look
+- Hard-coded text without bilingual data attributes
+- Any external calendar library (build it from scratch)
+- Letting users type free text for booking times (must use calendar + time slot picker)
+- Sharp corners anywhere (use border-radius generously)

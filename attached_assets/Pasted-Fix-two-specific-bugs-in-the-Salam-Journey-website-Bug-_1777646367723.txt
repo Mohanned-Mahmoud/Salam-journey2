@@ -1,0 +1,106 @@
+Fix two specific bugs in the Salam Journey website:
+
+---
+
+## Bug 1: Page Navigation Scroll Position
+
+**Problem**: When navigating to any new page/route, the page starts from the same scroll position as the previous page instead of starting from the top.
+
+**Fix**: Add a ScrollToTop component that fires on every route change.
+
+Create `src/components/utils/scroll-to-top.tsx`:
+```tsx
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+
+export function ScrollToTop() {
+  const { pathname } = useLocation();
+  
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [pathname]);
+  
+  return null;
+}
+```
+
+Then in `App.tsx`, place `<ScrollToTop />` as the FIRST child inside `<BrowserRouter>`, before `<Navbar />`.
+
+---
+
+## Bug 2: Testimonials Carousel Cards Disappearing in Arabic (RTL)
+
+**Problem**: In Arabic mode (RTL), the testimonial cards in the "ما قالته الأمهات" section disappear or get clipped during the auto-scroll animation.
+
+**Root Cause**: The CSS carousel/marquee animation uses `translateX` with hardcoded positive/negative values that are designed for LTR. In RTL mode, the scroll direction is reversed, causing cards to animate off-screen immediately and appear invisible.
+
+**Fix**: Rewrite the testimonials carousel in `src/pages/home.tsx` (or wherever the testimonials section lives) using this approach:
+
+1. Use a duplicated array for infinite loop effect (append the array to itself)
+2. Control animation direction based on current language direction
+3. Use `transform: translateX()` with a CSS variable that flips sign based on dir
+
+```tsx
+// In the testimonials section component:
+const { dir } = useLanguage(); // get current direction
+
+// Duplicate testimonials for seamless infinite scroll
+const doubled = [...testimonials, ...testimonials];
+
+// CSS approach - use a wrapper with overflow:hidden
+// Inner track animates continuously
+```
+
+Replace the existing carousel CSS animation with this:
+
+```css
+@keyframes scroll-ltr {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes scroll-rtl {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(50%); }
+}
+
+.carousel-track-ltr {
+  animation: scroll-ltr 30s linear infinite;
+  display: flex;
+  width: max-content;
+}
+
+.carousel-track-rtl {
+  animation: scroll-rtl 30s linear infinite;
+  display: flex;
+  width: max-content;
+}
+```
+
+Apply the correct class based on language:
+```tsx
+<div className="overflow-hidden">
+  <div className={dir === 'rtl' ? 'carousel-track-rtl' : 'carousel-track-ltr'}>
+    {doubled.map((testimonial, i) => (
+      <div key={i} className="testimonial-card flex-shrink-0 w-80 mx-4">
+        {/* card content */}
+      </div>
+    ))}
+  </div>
+</div>
+```
+
+Also add `pause on hover`:
+```css
+.carousel-track-ltr:hover,
+.carousel-track-rtl:hover {
+  animation-play-state: paused;
+}
+```
+
+---
+
+## Important:
+- Use Write() to rewrite entire files, do NOT use str_replace/Update() 
+- Test mentally: after fix, navigating from /courses to /sessions should always start at top
+- Test mentally: switching to Arabic and viewing testimonials should show all cards scrolling correctly from right to left

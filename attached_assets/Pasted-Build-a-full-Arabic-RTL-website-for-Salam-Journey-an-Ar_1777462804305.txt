@@ -1,0 +1,167 @@
+Build a full Arabic RTL website for "Salam Journey" (رحلة سلام) — an Arabic Islamic parenting & self-awareness platform for mothers, founded by Coach Iman. The site is fully in Arabic, right-to-left layout.
+
+---
+
+## 🎨 Brand & Color Palette (extracted from salamjourney.com)
+
+Use these exact colors as CSS variables:
+
+```css
+--color-primary: #C8A97E;        /* warm gold/sand — main brand color */
+--color-primary-dark: #A8845A;   /* deeper gold for hover states */
+--color-secondary: #E8D5B7;      /* soft cream/beige */
+--color-bg: #FAF6F0;             /* off-white warm background */
+--color-bg-dark: #2C2420;        /* deep warm brown — for dark sections */
+--color-accent: #8B6B47;         /* earth brown accent */
+--color-text: #3D2B1F;           /* warm dark brown for body text */
+--color-text-light: #7A6055;     /* muted warm text */
+--color-white: #FFFFFF;
+--color-success: #7DAA80;        /* muted green for CTAs */
+```
+
+**Aesthetic**: Warm, calm, organic, feminine — like a cozy Islamic home. Think soft textures, round corners, gentle shadows. NOT purple, NOT tech-y. Inspired by natural earth tones.
+
+---
+
+## 🖋 Typography
+
+- Display/Headers: Use **"Tajawal"** or **"Cairo"** (Arabic Google Fonts) — bold, warm
+- Body: **"Noto Naskh Arabic"** or **"Amiri"** for readable Arabic body text
+- Load from Google Fonts CDN
+
+---
+
+## 📄 Pages / Sections (Single Page App with smooth scroll or multi-page)
+
+### 1. 🏠 Home (Landing Page)
+
+**Hero Section:**
+- Headline: `رحلة سلام ،، معك خلال رحلتك التربوية والوعي بذاتك`
+- Subheadline: `نساعد الأمهات من خلال المحتوى التربوي والبرامج والدورات التدريبية والجلسات الخاصة لتصبح أم متمكنة وقادرة على الفهم العميق لأطفالها وتحقيق السلام مع ذاتها`
+- Two CTA buttons: `انضمي إلى برامجنا` (primary) | `احجزي جلسة خاصة` (secondary/outlined)
+- Warm gradient background, soft floral or geometric Islamic pattern overlay (CSS only, subtle)
+
+**Stats/Trust Bar:**
+- `+٢٠٠٠ أم` | `منذ ٢٠١٦` | `مسجلة في بريطانيا ٢٠٢٤` | `دورات متخصصة`
+
+**About Section:**
+- Title: `تعرفي علينا`
+- Body: `بدأت رحلتنا منذ عام 2016 حين أصبحت م. إيمان أماً للمرة الأولى وبدأت بنشر محتوى تربوي وتعليمي للأمهات. بعد بحث ودراسة وتجربة، أصبحت التربية والتعليم شغفاً مستمراً — لتصبح اليوم أكاديمية سلام مؤسسةً تعليمية مسجلة في بريطانيا 2024`
+- CTA: `المزيد عنا`
+- Layout: Text on right, image placeholder on left (warm illustrated style)
+
+**Featured Course (Highlight):**
+- Title: `وأصبحتُ أُماً هادئة`
+- Subtitle: `تمكين الأمهات من التعامل بهدوء مع التحديات اليومية`
+- CTA: `اشتركي الآن`
+- Card with warm golden border and soft shadow
+
+**Services Overview (3 columns):**
+1. 📚 `دورات تدريبية` — برامج مسجلة ومباشرة في التربية والوعي الذاتي
+2. 📅 `جلسات خاصة` — استشارات تدريبية مصممة خصيصاً لكِ
+3. 🛍️ `منتجات رقمية` — مطبوعات ومواد تعليمية للأم والطفل
+
+**Testimonials Section:**
+- Title: `ما قالته الأمهات`
+- Subtitle: `المشتركات في الدورات السابقة أو الاستشارات الخاصة`
+- 3-4 testimonial cards with Arabic placeholder quotes, warm cream background, quotation mark styling
+
+**Final CTA Banner:**
+- Background: dark warm brown (`--color-bg-dark`)
+- Text: `مستعدة تبدئي رحلتك؟`
+- Subtext: `انضمي لآلاف الأمهات اللي وجدن السلام مع نفسهن وأطفالهن`
+- CTA: `ابدئي الآن`
+
+---
+
+### 2. 📚 Courses Page (`/courses`)
+
+Grid of course cards. Each card has:
+- Course thumbnail (warm placeholder color)
+- Course title in bold Arabic
+- Short description
+- Price or "مجاناً" badge
+- CTA button: `اشتركي الآن`
+
+Include these sample courses:
+1. `وأصبحت أُماً هادئة` — إدارة المشاعر والهدوء في التعامل مع الأطفال
+2. `ورشة تخطيط للأمهات (ماما منجزة)` — كيف تخططي لحياتك كأم بشكل فعّال
+3. `مطبوعات رمضان` — مطبوعات تعليمية تفاعلية للأطفال — مجاناً
+4. Placeholder card: `دورة قادمة قريباً` with "قريباً" badge
+
+Filtering tabs: `الكل` | `دورات مسجلة` | `ورش مباشرة` | `مجاناً`
+
+---
+
+### 3. 📅 Booking / Sessions Page (`/sessions`)
+
+**Hero:**
+- Title: `استشارات تدريبية مصممة خصيصاً لكِ`
+- Subtitle: `مفتاحك للتغيير نحو الأفضل — عدد محدود من الجلسات المتاحة`
+
+**How it Works (3 steps):**
+1. `اختاري موعدك` — من خلال النموذج أو التقويم
+2. `ادفعي الرسوم` — بطريقة آمنة ومضمونة
+3. `احضري جلستك` — عبر زووم أو أونلاين
+
+**Session Types (2 cards):**
+1. جلسة فردية — ٦٠ دقيقة | للمشاكل التربوية والوعي الذاتي
+2. حزمة ٣ جلسات — خطة متكاملة للتحول
+
+**Booking Form:**
+Fields: الاسم الكامل | البريد الإلكتروني | رقم الواتساب | موضوع الجلسة (dropdown) | الموعد المفضل
+Submit button: `احجزي جلستك الآن`
+
+Note below form: `بعد إرسال الطلب سيتم التواصل معكِ خلال ٢٤ ساعة لتأكيد الموعد`
+
+---
+
+### 4. 🛍️ Digital Products Page (`/products`)
+
+Grid of product cards similar to courses but for downloadable/digital products:
+- مطبوعات تربوية
+- أدلة PDF
+- ورق عمل للأطفال
+
+Each with: thumbnail, title, description, price or free badge, download/buy CTA
+
+---
+
+### 5. ℹ️ About Page (`/about`)
+
+- Brand story (from the content above)
+- Coach Iman bio section with warm illustrated avatar placeholder
+- Mission: `منصة تعليمية إلكترونية تهدف إلى تمكين الأمهات للوصول للسلام الداخلي مع أنفسهن والسلام الخارجي مع الآخرين`
+- Values: السلام الداخلي | التمكين | الفهم العميق | التواصل الفعال
+
+---
+
+## 🔧 Technical Requirements
+
+- **Framework**: React (Vite) or plain HTML/CSS/JS — your choice
+- **Direction**: `dir="rtl"` on `<html>`, all layout RTL
+- **Language**: All text in Arabic
+- **Responsive**: Mobile-first. Works perfectly on phone (most users are on mobile)
+- **Navigation**: Sticky top navbar with logo + links + hamburger on mobile
+- **Smooth scroll** between sections on homepage
+- **Footer**: Links | واتساب | إنستغرام | يوتيوب | حقوق محفوظة لأكاديمية سلام ٢٠٢٤
+
+---
+
+## 🎯 UX Inspiration (from reference funnels)
+
+- Warm, high-converting funnel style like Arabic coaching sites
+- Clear pain→solution flow: show the mother's struggle → the transformation → the offer
+- Social proof (testimonials) prominently placed
+- Urgency elements: "عدد محدود من الجلسات" / "سارع بالتسجيل"
+- WhatsApp CTA floating button (bottom right corner) linking to `https://wa.me/`
+
+---
+
+## 🚫 Do NOT:
+- Use purple or generic tech colors
+- Use Inter or Roboto fonts
+- Make it look like a generic SaaS site
+- Use LTR layout
+
+Make it feel like a warm, trusted, feminine Arabic educational platform — the kind an Arab mother would trust and feel comfortable on.

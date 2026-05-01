@@ -1,0 +1,261 @@
+Add a complete User Authentication system with account management and contextual popup/modal screens throughout the Salam Journey website.
+
+---
+
+## 👤 USER AUTHENTICATION SYSTEM
+
+### Auth Context
+Create `src/hooks/use-auth.tsx` with:
+- AuthProvider wrapping the entire app (inside LanguageProvider)
+- State: `{ user, isLoading, isAuthenticated }`
+- User object: `{ id, name, email, phone, avatar, bookings[], enrolledCourses[], createdAt }`
+- Persist logged-in user to localStorage key `salam_user`
+- Functions: `login()`, `register()`, `logout()`, `updateProfile()`
+
+### Auth Flow (NO backend — simulate with localStorage)
+- On `register()`: save user to localStorage `salam_users` array, auto-login
+- On `login()`: find user in `salam_users` by email+password, set as current user
+- On `logout()`: clear current user, redirect to home
+- Passwords stored as plain string in localStorage (this is a prototype — note in comments)
+
+---
+
+## 🔐 AUTH MODALS (Popup Screens)
+
+### Modal 1: Login Modal
+Trigger: clicking "تسجيل الدخول / Sign In" in navbar
+
+Layout: Centered modal with frosted glass overlay
+┌─────────────────────────────┐
+│  🌿  Salam Journey           │
+│                             │
+│  مرحباً بعودتك               │
+│  Welcome back               │
+│                             │
+│  [Email input]              │
+│  [Password input]  👁        │
+│                             │
+│  [تسجيل الدخول / Sign In]   │
+│                             │
+│  ليس لديك حساب؟ إنشاء حساب  │
+│  Don't have account? Sign Up│
+└─────────────────────────────┘
+- Show/hide password toggle
+- Error state: shake animation + red border if wrong credentials
+- Success: fade out modal + show user avatar in navbar
+
+### Modal 2: Register Modal
+Trigger: clicking "إنشاء حساب / Sign Up"
+┌─────────────────────────────┐
+│  🌿  انضمي إلى رحلة سلام    │
+│     Join Salam Journey      │
+│                             │
+│  [Full Name input]          │
+│  [Email input]              │
+│  [WhatsApp Number]          │
+│  [Password input]     👁    │
+│  [Confirm Password]   👁    │
+│                             │
+│  [إنشاء حساب / Create Account]│
+│                             │
+│  لديك حساب؟ تسجيل الدخول    │
+└─────────────────────────────┘
+- Validate: email format, password min 8 chars, passwords match
+- Show inline validation errors below each field
+- On success: auto-login + show welcome toast notification
+
+### Modal 3: Forgot Password (stretch)
+- Simple modal: enter email → show "تم الإرسال / Email Sent" success state
+
+---
+
+## 🧭 NAVBAR CHANGES
+
+### Logged OUT state:
+Logo | Courses | Sessions | Products | About | [AR/EN] | [تسجيل الدخول]
+- "تسجيل الدخول / Sign In" as outlined sage pill button
+
+### Logged IN state:
+Logo | Courses | Sessions | Products | About | [AR/EN] | [Avatar + Name ▾]
+- Replace Sign In button with user avatar circle (initials if no photo) + first name
+- Dropdown menu on click:
+  - 👤 حسابي / My Account
+  - 📚 دوراتي / My Courses  
+  - 📅 حجوزاتي / My Bookings
+  - ─────────────
+  - 🚪 تسجيل الخروج / Sign Out
+
+---
+
+## 👤 USER ACCOUNT PAGE (`/account`)
+
+Full page with sidebar navigation:
+
+### Sidebar tabs:
+1. الملف الشخصي / Profile
+2. دوراتي / My Courses
+3. حجوزاتي / My Bookings
+4. تغيير كلمة المرور / Change Password
+
+### Tab 1 — Profile
+┌──────────────────────────────────────────┐
+│  [Avatar Circle with initials]  [Edit]   │
+│  Name: _______________                   │
+│  Email: ______________                   │
+│  WhatsApp: ___________                   │
+│                                          │
+│  [حفظ التغييرات / Save Changes]          │
+└──────────────────────────────────────────┘
+- Editable fields, save to localStorage
+- Success toast on save
+
+### Tab 2 — My Courses
+- Grid of enrolled course cards (pulled from user.enrolledCourses[])
+- Each card: course thumbnail, title, progress bar (static 0-100%), "استمري / Continue" button
+- Empty state: "لم تنضمي لأي دورة بعد / No courses yet" with CTA to /courses
+
+### Tab 3 — My Bookings
+- List of booked sessions (pulled from user.bookings[] + localStorage bookedSlots)
+- Each item: date, time, session type, status badge (مؤكد/Confirmed in sage green)
+- Empty state with CTA to /sessions
+
+### Tab 4 — Change Password
+- Current password, New password, Confirm new password fields
+- Validate and update in localStorage
+
+---
+
+## 🔔 CONTEXTUAL POPUP SCREENS
+
+### Popup 1: Course Enrollment Confirmation
+Trigger: clicking "اشتركي الآن / Enroll Now" on any course
+┌─────────────────────────────────┐
+│  ✨ وأصبحتُ أُماً هادئة          │
+│                                 │
+│  📚 محتوى الدورة:               │
+│  • 8 وحدات تعليمية              │
+│  • شهادة إتمام                  │
+│  • وصول مدى الحياة              │
+│                                 │
+│  💰 السعر: ٥٩٩ جنيه             │
+│                                 │
+│  [تأكيد التسجيل / Confirm]      │
+│  [إلغاء / Cancel]               │
+└─────────────────────────────────┘
+- If user NOT logged in: show Login modal first, then redirect back to enrollment
+- If logged in: add course to user.enrolledCourses[], show success state
+- Success state morphs into: "🎉 تم التسجيل! ابدئي رحلتك الآن" with confetti animation (CSS only)
+
+### Popup 2: Booking Confirmation
+Trigger: after submitting the booking form in /sessions
+┌─────────────────────────────────┐
+│  ✅                              │
+│  تم الحجز بنجاح!                │
+│  Booking Confirmed!             │
+│                                 │
+│  📅 الثلاثاء، ١٥ مايو           │
+│  🕙 10:00 صباحاً                │
+│  👤 جلسة فردية                  │
+│                                 │
+│  سيتم التواصل معكِ على واتساب   │
+│  خلال ٢٤ ساعة                   │
+│                                 │
+│  [عرض حجوزاتي / View Bookings]  │
+│  [العودة للرئيسية / Go Home]    │
+└─────────────────────────────────┘
+- Animate in with scale + fade
+- Confetti burst (CSS keyframe animation)
+- Add booking to user.bookings[] if logged in
+
+### Popup 3: Auth Required Gate
+Trigger: when guest tries to enroll in course OR access /account
+┌─────────────────────────────────┐
+│  🔒                              │
+│  يجب تسجيل الدخول أولاً         │
+│  Please sign in first           │
+│                                 │
+│  للوصول لهذه الميزة، يرجى       │
+│  تسجيل الدخول أو إنشاء حساب    │
+│                                 │
+│  [تسجيل الدخول / Sign In]       │
+│  [إنشاء حساب / Sign Up]         │
+│  [ليس الآن / Maybe Later]       │
+└─────────────────────────────────┘
+
+### Popup 4: Logout Confirmation
+Trigger: clicking "تسجيل الخروج / Sign Out"
+┌─────────────────────────────────┐
+│  تسجيل الخروج؟                  │
+│  Sign out?                      │
+│                                 │
+│  هل أنتِ متأكدة من              │
+│  تسجيل الخروج؟                  │
+│                                 │
+│  [نعم، خروج / Yes, Sign Out]    │
+│  [إلغاء / Cancel]               │
+└─────────────────────────────────┘
+
+---
+
+## 🎨 MODAL/POPUP DESIGN SYSTEM
+
+All modals share these rules:
+```css
+/* Overlay */
+backdrop: rgba(45, 74, 69, 0.5) with blur(4px)
+
+/* Modal container */
+background: rgba(255, 255, 255, 0.95)
+backdrop-filter: blur(20px)
+border: 1px solid rgba(127, 169, 155, 0.3)
+border-radius: 24px
+box-shadow: 0 25px 50px rgba(90, 138, 128, 0.2)
+max-width: 420px
+width: 90vw
+
+/* Animations */
+- Enter: scale(0.9) opacity(0) → scale(1) opacity(1), 300ms ease-out
+- Exit: scale(0.95) opacity(1) → scale(0.9) opacity(0), 200ms ease-in
+- Overlay: opacity(0) → opacity(1), 200ms
+
+/* Input fields */
+border: 1.5px solid var(--sage-muted)
+border-radius: 12px
+padding: 12px 16px
+focus: border-color var(--sage), box-shadow 0 0 0 3px rgba(127,169,155,0.15)
+
+/* Primary button */
+background: var(--sage)
+color: white
+border-radius: 50px
+padding: 12px 32px
+hover: background var(--sage-dark), transform translateY(-1px)
+```
+
+---
+
+## 🍞 TOAST NOTIFICATIONS
+
+Create a toast system (or use existing Toaster) for:
+- ✅ "تم التسجيل بنجاح! / Registered successfully!" — sage green
+- ✅ "تم الحفظ / Changes saved" — sage green  
+- ✅ "تم الحجز / Booking confirmed" — sage green
+- ❌ "بيانات غير صحيحة / Invalid credentials" — warm red
+- ❌ "البريد الإلكتروني مستخدم / Email already exists" — warm red
+
+Toasts appear top-center, slide down, auto-dismiss after 4s.
+
+---
+
+## ⚙️ TECHNICAL NOTES
+
+- Use Write() to rewrite entire files — do NOT use Update()/str_replace to avoid edit loop errors
+- Create a reusable `<Modal>` base component in `src/components/ui/modal.tsx`
+- Use React Portal (`ReactDOM.createPortal`) to render modals at document.body level
+- Trap focus inside open modals (accessibility)
+- Close modal on: Escape key, clicking overlay background
+- Prevent body scroll when modal is open (`overflow: hidden` on body)
+- All modal text must be bilingual using the existing useLanguage hook
+- Connect AuthContext to Sessions page: if user is logged in, pre-fill booking form with their name/email/phone
+- Connect AuthContext to Courses page: show "استمري / Continue" instead of "اشتركي / Enroll" for enrolled courses
+- Always use Write() for full file rewrites

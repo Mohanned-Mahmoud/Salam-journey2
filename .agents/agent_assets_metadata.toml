@@ -1,0 +1,26 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "ZdcT_V9I3cf7daAm-WhG0"
+uri = "file://artifacts/salam-journey/public/images/about-mother.png"
+type = "image"
+title = "mother reading with child"
+
+[[generated]]
+id = "pSBl5DmRBNQZGAHxwQNnp"
+uri = "file://artifacts/salam-journey/public/images/course-calm.png"
+type = "image"
+title = "course thumbnail calm"
+
+[[generated]]
+id = "XvHBhb5WgW6m7c4QY7_1M"
+uri = "file://artifacts/salam-journey/public/images/course-planning.png"
+type = "image"
+title = "course thumbnail planning"
+
+[[generated]]
+id = "6IwTN-Rt9UCDTrRiLMGNz"
+uri = "file://artifacts/salam-journey/public/images/coach-iman.png"
+type = "image"
+title = "coach iman avatar"

@@ -1,0 +1,148 @@
+export type AdminSection =
+  | 'dashboard'
+  | 'bookings'
+  | 'courses'
+  | 'products'
+  | 'users'
+  | 'testimonials'
+  | 'settings';
+
+export type BookingStatus = 'confirmed' | 'pending' | 'cancelled';
+
+export type BookingRecord = {
+  id: string;
+  date: string;
+  slot: string;
+  slotLabel: string;
+  sessionType: string;
+  topic: string;
+  notes: string;
+  name: string;
+  email: string;
+  whatsapp: string;
+  status: BookingStatus;
+  createdAt: string;
+};
+
+export type AdminCourse = {
+  id: string;
+  titleAr: string;
+  titleEn: string;
+  descAr: string;
+  category: 'course' | 'workshop' | 'free';
+  price: string;
+  duration: string;
+  students: string;
+  status: 'active' | 'hidden';
+  gradient: string;
+};
+
+export type AdminProduct = {
+  id: string;
+  titleAr: string;
+  titleEn: string;
+  descAr: string;
+  price: string;
+  free: boolean;
+  type: 'pdf' | 'printable' | 'guide' | 'other';
+  downloadUrl: string;
+  status: 'active' | 'hidden';
+};
+
+export type AdminTestimonial = {
+  id: string;
+  nameAr: string;
+  roleAr: string;
+  quoteAr: string;
+  rating: number;
+  status: 'active' | 'hidden';
+};
+
+export type AdminSettings = {
+  siteName: string;
+  contactEmail: string;
+  whatsappNumber: string;
+  instagramUrl: string;
+  youtubeUrl: string;
+  availableTimes: string[];
+  offDays: string[];
+  advanceDays: number;
+  confirmationMessage: string;
+  adminPassword: string;
+};
+
+export type SalamUser = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  createdAt?: string;
+  enrolledCourses: { id: string; enrolledAt: string }[];
+  bookings: BookingRecord[];
+};
+
+/* ── localStorage helpers ── */
+
+export const ADMIN_SESSION_KEY = 'salam_admin_session';
+export const BOOKINGS_KEY = 'salam_bookings';
+export const COURSES_ADMIN_KEY = 'salam_courses';
+export const PRODUCTS_ADMIN_KEY = 'salam_products';
+export const TESTIMONIALS_ADMIN_KEY = 'salam_testimonials';
+export const SETTINGS_KEY = 'salam_settings';
+export const USERS_KEY = 'salam_users';
+
+export function loadJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+export function saveJson<T>(key: string, value: T): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // ignore
+  }
+}
+
+export const DEFAULT_SETTINGS: AdminSettings = {
+  siteName: 'رحلة سلام',
+  contactEmail: 'info@salamjourney.com',
+  whatsappNumber: '+447700000000',
+  instagramUrl: 'https://instagram.com/salamjourney',
+  youtubeUrl: 'https://youtube.com/@salamjourney',
+  availableTimes: ['10:00', '12:00', '14:00', '16:00', '18:00'],
+  offDays: ['الجمعة', 'السبت'],
+  advanceDays: 30,
+  confirmationMessage: 'شكراً لحجزك! سيتم التواصل معك عبر الواتساب خلال 24 ساعة.',
+  adminPassword: 'salam2024',
+};
+
+export const SEED_COURSES: AdminCourse[] = [
+  { id: 'calm', titleAr: 'وأصبحتُ أُمّاً هادئة', titleEn: 'Becoming a Calm Mother', descAr: 'برنامج ٤ أسابيع لتعلّم التعامل مع الغضب وبناء علاقة هادئة.', category: 'course', price: '٢٩٩ ريال', duration: '٤ أسابيع', students: '+820', status: 'active', gradient: 'linear-gradient(135deg, var(--sage-dark), var(--sage))' },
+  { id: 'boundaries', titleAr: 'حدود واضحة بحب', titleEn: 'Boundaries with Love', descAr: 'كيف تضعين حدوداً واضحة لأطفالك دون فقدان دفء العلاقة.', category: 'course', price: '٢٤٩ ريال', duration: '٣ أسابيع', students: '+540', status: 'active', gradient: 'linear-gradient(135deg, var(--blush), var(--blush-light))' },
+  { id: 'tantrums', titleAr: 'ورشة: نوبات الغضب', titleEn: 'Workshop: Tantrums', descAr: 'ورشة عملية لمدة ٩٠ دقيقة لفهم نوبات الغضب.', category: 'workshop', price: '٩٩ ريال', duration: '٩٠ دقيقة', students: '+310', status: 'active', gradient: 'linear-gradient(135deg, var(--sage), var(--sage-light))' },
+  { id: 'self-care', titleAr: 'ورشة: الأم تستحقّ', titleEn: "Workshop: A Mother Deserves", descAr: 'ورشة عن العناية بالذات والوقت الخاص للأم.', category: 'workshop', price: '٧٩ ريال', duration: '٦٠ دقيقة', students: '+220', status: 'active', gradient: 'linear-gradient(135deg, var(--blush-light), var(--cream-dark))' },
+  { id: 'starter', titleAr: 'دليل الأم الواعية (مجاناً)', titleEn: 'Conscious Mother Guide (free)', descAr: 'دليل تمهيدي مجاني للتعرّف على مبادئ التربية الواعية.', category: 'free', price: 'مجاناً', duration: 'PDF', students: '+1.2K', status: 'active', gradient: 'linear-gradient(135deg, var(--sage-light), var(--sage-muted))' },
+  { id: 'newborn', titleAr: 'الأم الجديدة (مجاناً)', titleEn: 'The New Mother (free)', descAr: 'محاضرة مجانية للأمهات في الأشهر الأولى من الأمومة.', category: 'free', price: 'مجاناً', duration: '٤٥ دقيقة', students: '+680', status: 'active', gradient: 'linear-gradient(135deg, var(--cream-dark), var(--blush-light))' },
+];
+
+export const SEED_PRODUCTS: AdminProduct[] = [
+  { id: 'morning-routine', titleAr: 'مفكّرة الروتين الصباحي', titleEn: 'Morning Routine Planner', descAr: 'قابل للطباعة لمساعدتك على بناء صباح هادئ مع طفلك.', price: '٣٩ ريال', free: false, type: 'printable', downloadUrl: '', status: 'active' },
+  { id: 'feelings-cards', titleAr: 'بطاقات المشاعر للأطفال', titleEn: "Children's Feelings Cards", descAr: '٣٠ بطاقة ملوّنة لتعليم الطفل التعبير عن مشاعره.', price: '٤٩ ريال', free: false, type: 'printable', downloadUrl: '', status: 'active' },
+  { id: 'calm-guide', titleAr: 'دليل الأم الهادئة', titleEn: 'Calm Mother Guide', descAr: 'دليل PDF مكوّن من ٢٤ صفحة بأدوات عملية يومية.', price: '٢٩ ريال', free: false, type: 'pdf', downloadUrl: '', status: 'active' },
+  { id: 'self-care', titleAr: 'قائمة العناية بالأم', titleEn: 'Mother Self-Care Checklist', descAr: 'قائمة أسبوعية لذكّرك أن تعتني بنفسك أيضاً.', price: 'مجاناً', free: true, type: 'printable', downloadUrl: '', status: 'active' },
+  { id: 'kids-worksheet', titleAr: 'ورق عمل للأطفال', titleEn: 'Kids Activity Worksheets', descAr: '١٠ أوراق عمل ممتعة وتعليمية للأعمار ٤–٩.', price: '٣٥ ريال', free: false, type: 'printable', downloadUrl: '', status: 'active' },
+  { id: 'affirmations', titleAr: 'بطاقات تأكيدات للأم', titleEn: 'Mother Affirmation Cards', descAr: '٢١ بطاقة تأكيد إيجابي تبدئين بها يومك.', price: 'مجاناً', free: true, type: 'pdf', downloadUrl: '', status: 'active' },
+];
+
+export const SEED_TESTIMONIALS: AdminTestimonial[] = [
+  { id: 't1', nameAr: 'سارة العتيبي', roleAr: 'أم لطفلين', quoteAr: 'غيّرت طريقة تعاملي مع طفلي تماماً. المحتوى عملي ومن قلب أم تفهمنا.', rating: 5, status: 'active' },
+  { id: 't2', nameAr: 'نورة الشهري', roleAr: 'أم جديدة', quoteAr: 'الجلسات الفردية كانت نقطة تحوّل. شعرت لأول مرة أن صوتي مسموع.', rating: 5, status: 'active' },
+  { id: 't3', nameAr: 'مها القحطاني', roleAr: 'أم لثلاثة', quoteAr: 'محتوى راقٍ يجمع بين الجانب التربوي والروحي. أنصح به كل أم.', rating: 5, status: 'active' },
+  { id: 't4', nameAr: 'ريم الدوسري', roleAr: 'أم عاملة', quoteAr: 'أحب أسلوب الكوتش إيمان، حنون ومرشد في نفس الوقت.', rating: 5, status: 'active' },
+];

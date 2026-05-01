@@ -1,0 +1,271 @@
+Build a complete Admin Dashboard page for Salam Journey at route `/admin`.
+
+---
+
+## 🔐 ADMIN AUTH
+
+- Simple hardcoded admin login: email `admin@salamjourney.com`, password `salam2024`
+- Store admin session in localStorage key `salam_admin_session`
+- If not logged in, show a centered login form (same glass-card style as site)
+- Admin login page should NOT show the main navbar/footer
+- Add an "Admin" link in the user dropdown (only visible if user email matches admin email)
+
+---
+
+## 🏗️ ADMIN LAYOUT
+
+Split layout:
+- **Left sidebar** (260px, fixed): navigation menu
+- **Main content area**: changes based on selected section
+
+### Sidebar design:
+┌─────────────────────┐
+│  🌿 رحلة سلام       │
+│     لوحة التحكم     │
+├─────────────────────┤
+│ 📊 الإحصائيات      │
+│ 📅 الحجوزات        │
+│ 📚 الدورات         │
+│ 🛍️  المنتجات       │
+│ 👥 المستخدمون      │
+│ 💬 الشهادات        │
+│ ⚙️  الإعدادات      │
+├─────────────────────┤
+│ 🚪 تسجيل الخروج    │
+└─────────────────────┘
+
+Sidebar colors: `background: var(--text-dark)`, text: `var(--cream)`
+Active item: `background: var(--sage)`, rounded-xl
+
+---
+
+## 📊 SECTION 1: Dashboard (الإحصائيات)
+
+Stats cards row (4 cards):
+- **إجمالي الحجوزات** — count from localStorage bookedSlots
+- **إجمالي المستخدمين** — count from localStorage salam_users
+- **الدورات النشطة** — count of courses
+- **المنتجات** — count of products
+
+Each stat card: white glass card, icon, big number, label, small trend indicator
+
+**Recent Activity Table:**
+Columns: الاسم | النوع | التاريخ | الحالة
+Show last 10 bookings from localStorage
+Status badges: مؤكد (sage green) | معلق (amber) | ملغي (red)
+
+**Quick Chart (CSS only — no libraries):**
+Simple bar chart showing bookings per day using CSS flexbox + height percentages
+
+---
+
+## 📅 SECTION 2: Bookings Management (الحجوزات)
+
+Full table of all bookings from localStorage:
+
+Columns:
+- # | اسم العميل | البريد الإلكتروني | الواتساب | نوع الجلسة | التاريخ | الوقت | الحالة | إجراءات
+
+Features:
+- **Filter by status**: الكل / مؤكد / معلق / ملغي
+- **Search** by name or email
+- **Status change**: dropdown to change booking status (updates localStorage)
+- **Delete booking**: with confirmation
+- **Export CSV button**: generates downloadable CSV of all bookings
+- **Add manual booking button**: opens a modal with the same booking form
+
+Pagination: 10 per page
+
+---
+
+## 📚 SECTION 3: Courses Management (الدورات)
+
+### Courses List Table:
+Columns: # | اسم الدورة | السعر | النوع | الطلاب | الحالة | إجراءات
+
+Actions per row: ✏️ تعديل | 🗑️ حذف | 👁️ عرض
+
+### Add/Edit Course Modal:
+┌──────────────────────────────────────┐
+│  إضافة دورة جديدة                    │
+│                                      │
+│  اسم الدورة (AR) []   │
+│  اسم الدورة (EN) []   │
+│  الوصف (AR)      []   │
+│  السعر           []   │
+│  نوع الدورة      [dropdown]          │
+│    - دورة مسجلة                      │
+│    - ورشة مباشرة                     │
+│    - مجاناً                          │
+│  المدة           [_______________]   │
+│  الحالة          [نشط / مخفي]        │
+│  صورة الغلاف     [URL input]         │
+│  المميزات        [+ إضافة ميزة]      │
+│                                      │
+│  [حفظ]  [إلغاء]                     │
+└──────────────────────────────────────┘
+
+Store courses in localStorage key `salam_courses`
+On save: update the courses page automatically (both pull from same localStorage)
+
+---
+
+## 🛍️ SECTION 4: Products Management (المنتجات)
+
+Same pattern as courses:
+
+### Products Table:
+Columns: # | اسم المنتج | السعر | النوع | المبيعات | الحالة | إجراءات
+
+### Add/Edit Product Modal:
+Fields:
+- اسم المنتج (AR/EN)
+- الوصف
+- السعر (أو مجاني toggle)
+- نوع المنتج: PDF / مطبوعات / دليل / أخرى
+- رابط التحميل (URL)
+- صورة الغلاف (URL)
+- الحالة: نشط / مخفي
+
+Store in localStorage key `salam_products`
+
+---
+
+## 👥 SECTION 5: Users Management (المستخدمون)
+
+Table of all users from localStorage `salam_users`:
+
+Columns: # | الاسم | البريد | الواتساب | تاريخ التسجيل | الدورات المشتركة | الحجوزات | إجراءات
+
+Actions: 👁️ عرض التفاصيل | 🗑️ حذف
+
+### User Detail Modal:
+- Profile info
+- List of enrolled courses
+- List of bookings
+- Option to manually enroll in a course
+
+**Search & Filter**: by name, email
+
+---
+
+## 💬 SECTION 6: Testimonials Management (الشهادات)
+
+Manage the testimonials shown on homepage:
+
+Table: # | الاسم | التقييم | النص | الحالة | إجراءات
+
+### Add Testimonial Modal:
+- الاسم
+- الوصف (أم لطفلين، أم عاملة، إلخ)
+- التقييم (1-5 stars, clickable)
+- نص الشهادة
+- الحالة: نشط / مخفي
+
+Store in localStorage `salam_testimonials`
+Homepage testimonials carousel should pull from this localStorage (not hardcoded)
+
+---
+
+## ⚙️ SECTION 7: Settings (الإعدادات)
+
+### General Settings:
+- اسم الموقع
+- البريد الإلكتروني للتواصل
+- رقم الواتساب
+- رابط الإنستغرام
+- رابط اليوتيوب
+
+### Booking Settings:
+- أوقات العمل المتاحة (checkboxes: 10:00 / 12:00 / 14:00 / 16:00 / 18:00)
+- أيام الإجازة (checkboxes: الجمعة / السبت)
+- عدد الأيام المتاحة مسبقاً (number input, default 30)
+- رسالة التأكيد التلقائي (textarea)
+
+### Admin Password Change:
+- كلمة المرور الحالية
+- كلمة المرور الجديدة
+- تأكيد كلمة المرور
+
+All settings stored in localStorage `salam_settings`
+Settings used across the site (WhatsApp link, available times in booking calendar)
+
+---
+
+## 🎨 ADMIN UI DESIGN SYSTEM
+
+### Colors:
+```css
+/* Sidebar */
+sidebar-bg: var(--text-dark)  /* #2D4A45 */
+sidebar-active: var(--sage)
+sidebar-text: var(--cream)
+sidebar-muted: rgba(250,245,232,0.6)
+
+/* Main content */
+admin-bg: #F4F6F5  /* very light sage-tinted gray */
+card-bg: white
+```
+
+### Admin-specific components:
+```css
+/* Stat card */
+.admin-stat-card {
+  background: white;
+  border-radius: 20px;
+  padding: 24px;
+  border: 1px solid rgba(127,169,155,0.15);
+  box-shadow: 0 4px 20px rgba(90,138,128,0.08);
+}
+
+/* Table */
+.admin-table {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(90,138,128,0.08);
+}
+
+.admin-table th {
+  background: var(--sage-muted);
+  color: var(--text-dark);
+  font-weight: 600;
+  padding: 14px 16px;
+  text-align: right;
+}
+
+.admin-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(127,169,155,0.1);
+}
+
+/* Buttons */
+.admin-btn-primary: background var(--sage), color white, border-radius 10px
+.admin-btn-danger: background #E57373, color white, border-radius 10px
+.admin-btn-ghost: background transparent, border 1px solid var(--sage-muted)
+```
+
+### Responsive:
+- Mobile: sidebar collapses to top tab bar (icon only)
+- Tablet+: sidebar visible
+
+---
+
+## ⚙️ TECHNICAL REQUIREMENTS
+
+- Route: `/admin` — add to App.tsx routes
+- All data operations on localStorage
+- No page reload needed — all updates reactive with React state
+- Admin page does NOT use the main Navbar/Footer
+- Use Write() for all file changes
+- Modals use the same glass-card design from the main site
+- All text bilingual (admin can be English-only is fine for simplicity)
+- Sidebar uses `dir="rtl"` Arabic labels
+
+## DATA CONNECTIONS:
+- Courses admin → `salam_courses` localStorage → Courses page reads from same key
+- Products admin → `salam_products` localStorage → Products page reads from same key  
+- Testimonials admin → `salam_testimonials` localStorage → Homepage carousel reads from same key
+- Bookings admin → reads `salam_bookings` + `bookedSlots` localStorage
+- Settings admin → `salam_settings` → Booking calendar reads available times from this
+- Users admin → reads `salam_users` localStorage
