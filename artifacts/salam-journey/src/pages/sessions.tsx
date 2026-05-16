@@ -34,15 +34,23 @@ export default function Sessions() {
   const [confirmedBooking, setConfirmedBooking] = useState<BookingDetails | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const handleConfirmed = (payload: ConfirmedBookingPayload) => {
+  const handleConfirmed = async (payload: ConfirmedBookingPayload) => {
     /* Persist into the user's profile when signed in. */
-    addBooking({
+    const result = await addBooking({
       date: payload.date,
       slot: payload.slot,
       sessionType: payload.sessionType.ar,
       topic: payload.topic,
       notes: payload.notes,
+      name: payload.name,
+      email: payload.email,
+      whatsapp: payload.whatsapp,
     });
+
+    if (!result.ok) {
+      notify.error(t(tx("تعذر حفظ الحجز، حاولّي مرة أخرى", "Could not save the booking, please try again")));
+      return false;
+    }
 
     setConfirmedBooking({
       date: payload.date,
@@ -52,6 +60,7 @@ export default function Sessions() {
     });
     setModalOpen(true);
     notify.success(t(tx("تم الحجز بنجاح ✓", "Booking confirmed ✓")));
+    return true;
   };
 
   return (

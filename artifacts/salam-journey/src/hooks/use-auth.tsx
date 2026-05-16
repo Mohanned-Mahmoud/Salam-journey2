@@ -1,85 +1,58 @@
-/* Prototype-only auth: passwords are stored as plain strings in localStorage.
- * In production, never do this — hash on a real backend. */
+/* Prototype-only auth: the UI keeps a session id in localStorage,
+ * but all account writes now go through the backend. */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from "react";
+import { ApiError, apiJson } from "@/lib/api";
 
-const USERS_KEY   = "salam_users";
 const CURRENT_KEY = "salam_user";
 
 export type Booking = {
   id: string;
-  date: string;     // YYYY-MM-DD
-  slot: string;     // HH:mm
+  date: string;
+  slot: string;
   sessionType: string;
   topic?: string;
   notes?: string;
+  name?: string;
+  email?: string;
+  whatsapp?: string;
   createdAt: string;
 };
 
 export type EnrolledCourse = {
   id: string;
-  title: string;          // canonical (Arabic) title for storage
+  title: string;
   enrolledAt: string;
-  progress: number;       // 0..100
+  progress: number;
 };
 
-export type StoredUser = {
+export type PublicUser = {
   id: string;
   name: string;
   email: string;
   phone: string;
-  password: string;       // prototype only
   avatar: string | null;
   bookings: Booking[];
   enrolledCourses: EnrolledCourse[];
   createdAt: string;
 };
 
-export type PublicUser = Omit<StoredUser, "password">;
+export type StoredUser = PublicUser & { password: string };
 
 type AuthContextValue = {
   user: PublicUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => { ok: true } | { ok: false; error: "not_found" | "wrong_password" };
-  register: (input: { name: string; email: string; phone: string; password: string }) =>
-    | { ok: true }
-    | { ok: false; error: "email_taken" };
+  login: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: "not_found" | "wrong_password" }>;
+  googleLogin: (credential: string) => Promise<{ ok: true } | { ok: false; error: "google_unavailable" }>;
+  register: (input: { name: string; email: string; phone: string; password: string }) => Promise<{ ok: true } | { ok: false; error: "email_taken" }>;
   logout: () => void;
-  updateProfile: (patch: Partial<Pick<StoredUser, "name" | "email" | "phone" | "avatar">>) =>
-    | { ok: true }
-    | { ok: false; error: "email_taken" };
-  changePassword: (current: string, next: string) =>
-    | { ok: true }
-    | { ok: false; error: "wrong_password" };
+  updateProfile: (patch: Partial<Pick<StoredUser, "name" | "email" | "phone" | "avatar">>) => Promise<{ ok: true } | { ok: false; error: "email_taken" }>;
+  changePassword: (current: string, next: string) => Promise<{ ok: true } | { ok: false; error: "wrong_password" }>;
   enrollCourse: (course: { id: string; title: string }) => { ok: true; alreadyEnrolled: boolean };
-  addBooking: (booking: Omit<Booking, "id" | "createdAt">) => { ok: true };
+  addBooking: (booking: Omit<Booking, "id" | "createdAt">) => Promise<{ ok: true } | { ok: false; error: "save_failed" }>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-
-/* ──────────────────────────────────────────────────────────── */
-/* Storage helpers                                              */
-/* ──────────────────────────────────────────────────────────── */
-
-function readUsers(): StoredUser[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(USERS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as StoredUser[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeUsers(users: StoredUser[]) {
-  try {
-    window.localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  } catch {
-    // ignore
-  }
-}
 
 function readCurrentId(): string | null {
   if (typeof window === "undefined") return null;
@@ -99,69 +72,148 @@ function writeCurrentId(id: string | null) {
   }
 }
 
-function toPublic(u: StoredUser): PublicUser {
-  const { password: _password, ...rest } = u;
-  return rest;
+type UserRecord = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  createdAt: string;
+};
+
+type BookingRecord = {
+  id: string;
+  date: string;
+  slot: string | null;
+  sessionType: string | null;
+  topic: string | null;
+  notes: string | null;
+  guestName: string | null;
+  guestEmail: string | null;
+  guestWhatsapp: string | null;
+  createdAt: string;
+};
+
+function toPublicFromApi(user: UserRecord, bookings: BookingRecord[]): PublicUser {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone ?? "",
+    avatar: null,
+    bookings: bookings.map((booking) => ({
+      id: booking.id,
+      date: booking.date,
+      slot: booking.slot ?? "",
+      sessionType: booking.sessionType ?? "",
+      topic: booking.topic ?? undefined,
+      notes: booking.notes ?? undefined,
+      name: booking.guestName ?? undefined,
+      email: booking.guestEmail ?? undefined,
+      whatsapp: booking.guestWhatsapp ?? undefined,
+      createdAt: booking.createdAt,
+    })),
+    enrolledCourses: [],
+    createdAt: user.createdAt,
+  };
 }
 
-function makeId() {
-  return `u_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+async function hydrateUser(userId: string): Promise<PublicUser | null> {
+  try {
+    const [user, bookings] = await Promise.all([
+      apiJson<UserRecord>(`/users/${userId}`),
+      apiJson<BookingRecord[]>(`/bookings/user/${userId}`),
+    ]);
+    return toPublicFromApi(user, bookings);
+  } catch {
+    return null;
+  }
 }
-
-/* ──────────────────────────────────────────────────────────── */
-/* Provider                                                     */
-/* ──────────────────────────────────────────────────────────── */
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<PublicUser | null>(null);
   const [isLoading, setLoading] = useState(true);
 
-  /* Hydrate on mount. */
   useEffect(() => {
     const id = readCurrentId();
-    if (id) {
-      const found = readUsers().find((u) => u.id === id);
-      if (found) setUser(toPublic(found));
+    if (!id) {
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    void (async () => {
+      const hydrated = await hydrateUser(id);
+      if (hydrated) {
+        setUser(hydrated);
+      } else {
+        writeCurrentId(null);
+      }
+      setLoading(false);
+    })();
   }, []);
 
-  const refreshFromStorage = useCallback((id: string) => {
-    const found = readUsers().find((u) => u.id === id);
-    setUser(found ? toPublic(found) : null);
+  const refreshFromApi = useCallback(async (id: string) => {
+    const hydrated = await hydrateUser(id);
+    setUser(hydrated);
   }, []);
 
-  const login = useCallback<AuthContextValue["login"]>((email, password) => {
-    const users = readUsers();
-    const found = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
-    if (!found) return { ok: false, error: "not_found" };
-    if (found.password !== password) return { ok: false, error: "wrong_password" };
-    writeCurrentId(found.id);
-    setUser(toPublic(found));
-    return { ok: true };
-  }, []);
+  const login = useCallback<AuthContextValue["login"]>(async (email, password) => {
+    try {
+      const response = await apiJson<{ user: UserRecord }>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
 
-  const register = useCallback<AuthContextValue["register"]>(({ name, email, phone, password }) => {
-    const users = readUsers();
-    const normalized = email.trim().toLowerCase();
-    if (users.some((u) => u.email.toLowerCase() === normalized)) {
-      return { ok: false, error: "email_taken" };
+      writeCurrentId(response.user.id);
+      const hydrated = await hydrateUser(response.user.id);
+      setUser(hydrated);
+      return { ok: true };
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.status === 404) return { ok: false, error: "not_found" };
+        if (error.status === 401) return { ok: false, error: "wrong_password" };
+      }
+      throw error;
     }
-    const newUser: StoredUser = {
-      id: makeId(),
-      name: name.trim(),
-      email: normalized,
-      phone: phone.trim(),
-      password,
-      avatar: null,
-      bookings: [],
-      enrolledCourses: [],
-      createdAt: new Date().toISOString(),
-    };
-    writeUsers([...users, newUser]);
-    writeCurrentId(newUser.id);
-    setUser(toPublic(newUser));
-    return { ok: true };
+  }, []);
+
+  const googleLogin = useCallback<AuthContextValue["googleLogin"]>(async (credential) => {
+    try {
+      const response = await apiJson<{ user: UserRecord }>("/auth/google", {
+        method: "POST",
+        body: JSON.stringify({ credential }),
+      });
+
+      writeCurrentId(response.user.id);
+      const hydrated = await hydrateUser(response.user.id);
+      setUser(hydrated);
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "google_unavailable" };
+    }
+  }, []);
+
+  const register = useCallback<AuthContextValue["register"]>(async ({ name, email, phone, password }) => {
+    try {
+      const created = await apiJson<UserRecord>("/users", {
+        method: "POST",
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone.trim(),
+          passwordHash: password,
+        }),
+      });
+
+      writeCurrentId(created.id);
+      const hydrated = await hydrateUser(created.id);
+      setUser(hydrated);
+      return { ok: true };
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        return { ok: false, error: "email_taken" };
+      }
+      throw error;
+    }
   }, []);
 
   const logout = useCallback(() => {
@@ -169,72 +221,80 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const updateProfile = useCallback<AuthContextValue["updateProfile"]>((patch) => {
+  const updateProfile = useCallback<AuthContextValue["updateProfile"]>(async (patch) => {
     if (!user) return { ok: true };
-    const users = readUsers();
-    if (patch.email) {
-      const next = patch.email.trim().toLowerCase();
-      if (users.some((u) => u.id !== user.id && u.email.toLowerCase() === next)) {
+
+    try {
+      await apiJson<UserRecord>(`/users/${user.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: patch.name,
+          email: patch.email,
+          phone: patch.phone,
+        }),
+      });
+      await refreshFromApi(user.id);
+      return { ok: true };
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
         return { ok: false, error: "email_taken" };
       }
+      throw error;
     }
-    const next = users.map((u) =>
-      u.id === user.id
-        ? { ...u, ...patch, email: patch.email ? patch.email.trim().toLowerCase() : u.email }
-        : u,
-    );
-    writeUsers(next);
-    refreshFromStorage(user.id);
-    return { ok: true };
-  }, [user, refreshFromStorage]);
+  }, [user, refreshFromApi]);
 
-  const changePassword = useCallback<AuthContextValue["changePassword"]>((current, nextPwd) => {
+  const changePassword = useCallback<AuthContextValue["changePassword"]>(async (current, nextPwd) => {
     if (!user) return { ok: true };
-    const users = readUsers();
-    const me = users.find((u) => u.id === user.id);
-    if (!me || me.password !== current) return { ok: false, error: "wrong_password" };
-    const updated = users.map((u) => (u.id === user.id ? { ...u, password: nextPwd } : u));
-    writeUsers(updated);
-    return { ok: true };
-  }, [user]);
 
-  const enrollCourse = useCallback<AuthContextValue["enrollCourse"]>((course) => {
-    if (!user) return { ok: true, alreadyEnrolled: false };
-    const users = readUsers();
-    const me = users.find((u) => u.id === user.id);
-    if (!me) return { ok: true, alreadyEnrolled: false };
-    if (me.enrolledCourses.some((c) => c.id === course.id)) {
-      return { ok: true, alreadyEnrolled: true };
+    try {
+      await apiJson<{ user: UserRecord }>("/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify({
+          userId: user.id,
+          currentPassword: current,
+          nextPassword: nextPwd,
+        }),
+      });
+      await refreshFromApi(user.id);
+      return { ok: true };
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        return { ok: false, error: "wrong_password" };
+      }
+      throw error;
     }
-    const enrollment: EnrolledCourse = {
-      id: course.id,
-      title: course.title,
-      enrolledAt: new Date().toISOString(),
-      progress: 0,
-    };
-    const next = users.map((u) =>
-      u.id === user.id ? { ...u, enrolledCourses: [...u.enrolledCourses, enrollment] } : u,
-    );
-    writeUsers(next);
-    refreshFromStorage(user.id);
+  }, [user, refreshFromApi]);
+
+  const enrollCourse = useCallback<AuthContextValue["enrollCourse"]>(() => {
     return { ok: true, alreadyEnrolled: false };
-  }, [user, refreshFromStorage]);
+  }, []);
 
-  const addBooking = useCallback<AuthContextValue["addBooking"]>((booking) => {
-    if (!user) return { ok: true };
-    const users = readUsers();
-    const enriched: Booking = {
-      ...booking,
-      id: `b_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
-      createdAt: new Date().toISOString(),
-    };
-    const next = users.map((u) =>
-      u.id === user.id ? { ...u, bookings: [...u.bookings, enriched] } : u,
-    );
-    writeUsers(next);
-    refreshFromStorage(user.id);
-    return { ok: true };
-  }, [user, refreshFromStorage]);
+  const addBooking = useCallback<AuthContextValue["addBooking"]>(async (booking) => {
+    try {
+      await apiJson<{ id: string; createdAt: string }>("/bookings", {
+        method: "POST",
+        body: JSON.stringify({
+          userId: user?.id ?? null,
+          date: booking.date,
+          slot: booking.slot,
+          sessionType: booking.sessionType,
+          topic: booking.topic ?? null,
+          notes: booking.notes ?? null,
+          guestName: booking.name ?? user?.name ?? null,
+          guestEmail: booking.email ?? user?.email ?? null,
+          guestWhatsapp: booking.whatsapp ?? user?.phone ?? null,
+        }),
+      });
+
+      if (user) {
+        await refreshFromApi(user.id);
+      }
+
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "save_failed" };
+    }
+  }, [user, refreshFromApi]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -242,6 +302,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       isAuthenticated: !!user,
       login,
+      googleLogin,
       register,
       logout,
       updateProfile,
@@ -249,7 +310,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       enrollCourse,
       addBooking,
     }),
-    [user, isLoading, login, register, logout, updateProfile, changePassword, enrollCourse, addBooking],
+    [user, isLoading, login, googleLogin, register, logout, updateProfile, changePassword, enrollCourse, addBooking],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -261,14 +322,12 @@ export function useAuth() {
   return ctx;
 }
 
-/** Initials for avatar placeholders. */
 export function initialsOf(name: string): string {
   if (!name) return "S";
   const parts = name.trim().split(/\s+/).slice(0, 2);
   return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "S";
 }
 
-/** First name, useful for greetings. */
 export function firstNameOf(name: string): string {
   if (!name) return "";
   return name.trim().split(/\s+/)[0];

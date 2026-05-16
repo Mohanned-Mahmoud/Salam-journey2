@@ -4,6 +4,7 @@ import { useLanguage, tx } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import { notify } from "@/lib/notify";
 import { AuthBrand, AuthField, TextInput, PasswordInput } from "./auth-shared";
+import { GoogleSignInButton } from "./google-sign-in-button";
 
 type Props = {
   isOpen: boolean;
@@ -34,7 +35,7 @@ export function RegisterModal({ isOpen, onClose, onSuccess, switchToLogin }: Pro
     }
   }, [isOpen]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const next: Record<string, string> = {};
 
@@ -55,7 +56,7 @@ export function RegisterModal({ isOpen, onClose, onSuccess, switchToLogin }: Pro
     }
     setErrors({});
 
-    const result = register({ name, email, phone, password });
+    const result = await register({ name, email, phone, password });
     if (result.ok) {
       notify.success(t(tx("تم التسجيل بنجاح! 🌿", "Registered successfully! 🌿")));
       onSuccess();
@@ -130,6 +131,21 @@ export function RegisterModal({ isOpen, onClose, onSuccess, switchToLogin }: Pro
             {t(tx("إنشاء حساب", "Create account"))}
           </button>
         </form>
+
+        <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-[0.18em]" style={{ color: "var(--text-body)" }}>
+          <span className="h-px flex-1" style={{ background: "rgba(127,169,155,0.3)" }} />
+          <span>{t(tx("أو", "Or"))}</span>
+          <span className="h-px flex-1" style={{ background: "rgba(127,169,155,0.3)" }} />
+        </div>
+
+        <GoogleSignInButton
+          label={t(tx("المتابعة باستخدام Google", "Continue with Google"))}
+          onSuccess={onSuccess}
+          onError={(message) => {
+            setErrors({ email: message });
+            notify.error(message);
+          }}
+        />
 
         <div className="mt-6 text-center text-sm" style={{ color: "var(--text-body)" }}>
           {t(tx("لديك حساب؟", "Already have an account?"))}{" "}

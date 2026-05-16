@@ -167,7 +167,7 @@ export type ConfirmedBookingPayload = {
 
 type Props = {
   /** Called once a booking has been persisted locally. */
-  onConfirmed?: (booking: ConfirmedBookingPayload) => void;
+  onConfirmed?: (booking: ConfirmedBookingPayload) => boolean | Promise<boolean>;
 };
 
 export function BookingCalendar({ onConfirmed }: Props) {
@@ -247,7 +247,7 @@ export function BookingCalendar({ onConfirmed }: Props) {
     setSelectedSlot(null);
   };
 
-  const handleConfirm = (e: React.FormEvent) => {
+  const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDate || !selectedSlot) return;
     const key = fmtKey(
@@ -255,21 +255,15 @@ export function BookingCalendar({ onConfirmed }: Props) {
       selectedDate.getMonth(),
       selectedDate.getDate(),
     );
-    setBookedMap((prev) => {
-      const next = { ...prev, [key]: Array.from(new Set([...(prev[key] ?? []), selectedSlot])) };
-      saveBooked(next);
-      return next;
-    });
-
     const slotIdx = TIME_SLOT_KEYS.indexOf(selectedSlot);
     const slotLabel = slotLabels[slotIdx] ?? selectedSlot;
     const sessionType = SESSION_TYPES.find((s) => s.id === sessionTypeId)!.title;
 
-    saveBookingRecord({
+    const confirmed = await onConfirmed?.({
       date: key,
       slot: selectedSlot,
       slotLabel,
-      sessionType: t(sessionType),
+      sessionType,
       topic: form.topic,
       notes: form.notes,
       name: form.name,
@@ -277,11 +271,21 @@ export function BookingCalendar({ onConfirmed }: Props) {
       whatsapp: form.whatsapp,
     });
 
-    onConfirmed?.({
+    if (confirmed === false) {
+      return;
+    }
+
+    setBookedMap((prev) => {
+      const next = { ...prev, [key]: Array.from(new Set([...(prev[key] ?? []), selectedSlot])) };
+      saveBooked(next);
+      return next;
+    });
+
+    saveBookingRecord({
       date: key,
       slot: selectedSlot,
       slotLabel,
-      sessionType,
+      sessionType: t(sessionType),
       topic: form.topic,
       notes: form.notes,
       name: form.name,

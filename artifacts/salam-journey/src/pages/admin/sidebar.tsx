@@ -1,6 +1,8 @@
 import { BarChart2, Calendar, BookOpen, ShoppingBag, Users, MessageSquare, Settings, LogOut, LayoutDashboard } from 'lucide-react';
 import type { AdminSection } from './types';
 
+const ADMIN_SESSION_KEY = "salam_admin_session";
+
 type Props = {
   active: AdminSection;
   onChange: (s: AdminSection) => void;

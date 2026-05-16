@@ -207,9 +207,9 @@ function ProfileTab() {
 
   if (!user) return null;
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const r = updateProfile(form);
+    const r = await updateProfile(form);
     if (!r.ok && r.error === "email_taken") {
       notify.error(t(tx("البريد الإلكتروني مستخدم بالفعل", "Email is already in use")));
       return;
@@ -437,7 +437,7 @@ function PasswordTab() {
   const [confirm, setConfirm] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const next_errors: Record<string, string> = {};
     if (!current) next_errors.current = t(tx("أدخلي كلمة المرور الحالية", "Enter your current password"));
@@ -445,7 +445,7 @@ function PasswordTab() {
     if (next !== confirm) next_errors.confirm = t(tx("كلمتا المرور غير متطابقتين", "Passwords do not match"));
     if (Object.keys(next_errors).length) { setErrors(next_errors); return; }
 
-    const r = changePassword(current, next);
+    const r = await changePassword(current, next);
     if (!r.ok) {
       const msg = t(tx("كلمة المرور الحالية غير صحيحة", "Current password is incorrect"));
       setErrors({ current: msg });
