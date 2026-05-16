@@ -18,6 +18,8 @@ node_modules
 **/.env
 **/.env.*
 !**/.env.example
+*-firebase-adminsdk-*.json
+firebase-adminsdk.json
 
 # IDEs and editors
 /.idea

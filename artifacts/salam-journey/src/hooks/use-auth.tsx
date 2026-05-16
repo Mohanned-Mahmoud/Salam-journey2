@@ -44,6 +44,7 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: "not_found" | "wrong_password" }>;
   googleLogin: (credential: string) => Promise<{ ok: true } | { ok: false; error: "google_unavailable" }>;
+  firebaseLogin: (idToken: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   register: (input: { name: string; email: string; phone: string; password: string }) => Promise<{ ok: true } | { ok: false; error: "email_taken" }>;
   logout: () => void;
   updateProfile: (patch: Partial<Pick<StoredUser, "name" | "email" | "phone" | "avatar">>) => Promise<{ ok: true } | { ok: false; error: "email_taken" }>;
@@ -192,6 +193,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const firebaseLogin = useCallback<AuthContextValue["firebaseLogin"]>(async (idToken) => {
+    try {
+      const response = await apiJson<{
+        access_token: string;
+        token_type: string;
+        expires_in: number;
+        user: UserRecord;
+      }>("/auth/firebase", {
+        method: "POST",
+        body: JSON.stringify({ idToken }),
+      });
+
+      // Store the JWT token in localStorage for subsequent requests
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("auth_token", response.access_token);
+        window.localStorage.setItem("auth_token_expires", String(Date.now() + response.expires_in * 1000));
+      }
+
+      writeCurrentId(response.user.id);
+      const hydrated = await hydrateUser(response.user.id);
+      setUser(hydrated);
+      return { ok: true };
+    } catch (error) {
+      if (error instanceof ApiError) {
+        console.error("Firebase login API error:", error.message, error.payload);
+        return { ok: false, error: error.message || "Firebase sign-in failed" };
+      } else {
+        console.error("Firebase login error:", error);
+        return { ok: false, error: "Firebase sign-in failed" };
+      }
+    }
+  }, []);
+
   const register = useCallback<AuthContextValue["register"]>(async ({ name, email, phone, password }) => {
     try {
       const created = await apiJson<UserRecord>("/users", {
@@ -303,6 +337,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!user,
       login,
       googleLogin,
+      firebaseLogin,
       register,
       logout,
       updateProfile,
@@ -310,7 +345,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       enrollCourse,
       addBooking,
     }),
-    [user, isLoading, login, googleLogin, register, logout, updateProfile, changePassword, enrollCourse, addBooking],
+    [user, isLoading, login, googleLogin, firebaseLogin, register, logout, updateProfile, changePassword, enrollCourse, addBooking],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -3,20 +3,96 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db, usersTable, insertUserSchema, type User } from "@workspace/db";
 import admin from "firebase-admin";
+import { createAccessToken } from "../lib/jwt";
+import path from "path";
+import fs from "fs";
 
 let firebaseInitialized = false;
 function tryInitFirebase() {
   if (firebaseInitialized) return;
-  const key = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (!key) return;
-  try {
-    const parsed = JSON.parse(key);
-    admin.initializeApp({ credential: admin.credential.cert(parsed as any) });
-    firebaseInitialized = true;
-  } catch (err) {
-    // ignore initialization errors; fallback to Google tokeninfo
-    console.error("Failed to initialize Firebase Admin:", err);
+
+  // Most reliable option: explicit file path from env
+  const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+  if (serviceAccountPath) {
+    try {
+      if (!fs.existsSync(serviceAccountPath)) {
+        console.error(`FIREBASE_SERVICE_ACCOUNT_PATH not found: ${serviceAccountPath}`);
+      } else {
+        const data = fs.readFileSync(serviceAccountPath, "utf-8");
+        const parsed = JSON.parse(data);
+        admin.initializeApp({ credential: admin.credential.cert(parsed as any) });
+        firebaseInitialized = true;
+        console.log(`Firebase initialized from FIREBASE_SERVICE_ACCOUNT_PATH: ${serviceAccountPath}`);
+        return;
+      }
+    } catch (err) {
+      console.error("Failed to initialize Firebase from FIREBASE_SERVICE_ACCOUNT_PATH:", err);
+    }
   }
+
+  // Try to load from environment variable first
+  const key = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (key) {
+    try {
+      const parsed = JSON.parse(key);
+      admin.initializeApp({ credential: admin.credential.cert(parsed as any) });
+      firebaseInitialized = true;
+      console.log("Firebase initialized from FIREBASE_SERVICE_ACCOUNT_KEY");
+      return;
+    } catch (err) {
+      console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:", err);
+    }
+  }
+
+  // Try to load from file in project root (for local development)
+  const serviceAccountFiles = [
+    "salam-jourey-firebase-adminsdk-fbsvc-2a397888cd.json",
+    "firebase-adminsdk.json",
+  ];
+
+  const candidateDirs = [
+    process.env.INIT_CWD,
+    process.cwd(),
+    path.resolve(process.cwd(), ".."),
+    path.resolve(process.cwd(), "..", ".."),
+  ].filter((value): value is string => Boolean(value));
+
+  for (const dir of candidateDirs) {
+    for (const filename of serviceAccountFiles) {
+      const filePath = path.resolve(dir, filename);
+      if (!fs.existsSync(filePath)) continue;
+
+      try {
+        const data = fs.readFileSync(filePath, "utf-8");
+        const parsed = JSON.parse(data);
+        admin.initializeApp({ credential: admin.credential.cert(parsed as any) });
+        firebaseInitialized = true;
+        console.log(`Firebase initialized from ${filePath}`);
+        return;
+      } catch (err) {
+        console.error(`Failed to load Firebase from ${filePath}:`, err);
+      }
+    }
+  }
+
+  // Try to load from artifacts/api-server directory
+  const apiServerPath = path.resolve(process.cwd(), "firebase-adminsdk.json");
+  if (fs.existsSync(apiServerPath)) {
+    try {
+      const data = fs.readFileSync(apiServerPath, "utf-8");
+      const parsed = JSON.parse(data);
+      admin.initializeApp({ credential: admin.credential.cert(parsed as any) });
+      firebaseInitialized = true;
+      console.log("Firebase initialized from artifacts/api-server/firebase-adminsdk.json");
+      return;
+    } catch (err) {
+      console.error("Failed to load Firebase from artifacts/api-server:", err);
+    }
+  }
+
+  console.warn(
+    "Firebase Admin SDK not initialized. Fallback to Google tokeninfo verification will be used."
+  );
 }
 
 const router: IRouter = Router();
@@ -183,6 +259,109 @@ router.post("/auth/google", async (req, res) => {
     return res.json({ user: sanitizeUser(user) });
   } catch (error) {
     return res.status(500).json({ error: "Failed to authenticate with Google" });
+  }
+});
+
+/**
+ * POST /auth/firebase
+ * Accepts a Firebase ID token, verifies it, finds or creates the user,
+ * and returns a custom JWT for subsequent requests.
+ */
+router.post("/auth/firebase", async (req, res) => {
+  try {
+    const idToken = typeof req.body?.idToken === "string" ? req.body.idToken : "";
+    
+    if (!idToken) {
+      return res.status(400).json({ error: "Missing idToken" });
+    }
+
+    // Initialize Firebase Admin if not already done
+    tryInitFirebase();
+
+    if (!firebaseInitialized) {
+      return res.status(500).json({ error: "Firebase Admin not configured" });
+    }
+
+    // Verify the Firebase ID token
+    let decodedToken;
+    try {
+      decodedToken = await admin.auth().verifyIdToken(idToken);
+    } catch (error) {
+      console.error("Firebase token verification failed:", error);
+      return res.status(401).json({ error: "Invalid Firebase token" });
+    }
+
+    const email = decodedToken.email?.trim().toLowerCase();
+    const picture = decodedToken.picture || null;
+
+    if (!email) {
+      return res.status(400).json({ error: "Firebase token missing email" });
+    }
+
+    // Find existing user or create new one
+    const existingUsers = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, email))
+      .limit(1);
+
+    let user = existingUsers[0];
+
+    if (!user) {
+      // Generate a unique username from email
+      const baseUsername = email.split("@")[0];
+      let username = baseUsername;
+      let counter = 1;
+
+      // Check if username is already taken
+      while (true) {
+        const taken = await db
+          .select()
+          .from(usersTable)
+          .where(eq(usersTable.name, username))
+          .limit(1);
+        
+        if (!taken.length) {
+          break;
+        }
+        
+        username = `${baseUsername}${Math.floor(Math.random() * 10000)}`;
+        counter++;
+      }
+
+      // Create new user
+      const insertedUsers = await db
+        .insert(usersTable)
+        .values({
+          name: username,
+          email: email,
+          phone: null,
+          passwordHash: null, // No password for Firebase auth
+        })
+        .returning();
+
+      user = insertedUsers[0];
+    } else {
+      // Update picture if not set
+      if (picture && !user.phone) {
+        // Note: We don't have a picture field in the schema, so we'll just update the user
+        // You may want to add a profile_picture field to the users table later
+      }
+    }
+
+    // Generate custom JWT
+    const accessToken = createAccessToken({ sub: user.id });
+
+    // Return response with access token and user data
+    return res.json({
+      access_token: accessToken,
+      token_type: "Bearer",
+      expires_in: 7 * 24 * 60 * 60, // 7 days in seconds
+      user: sanitizeUser(user),
+    });
+  } catch (error) {
+    console.error("Firebase auth error:", error);
+    return res.status(500).json({ error: "Firebase authentication failed" });
   }
 });
 

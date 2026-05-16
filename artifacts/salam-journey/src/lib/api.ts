@@ -12,13 +12,45 @@ export class ApiError extends Error {
   }
 }
 
+function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const token = window.localStorage.getItem("auth_token");
+    const expiresAt = window.localStorage.getItem("auth_token_expires");
+    
+    // Check if token exists and hasn't expired
+    if (token && expiresAt) {
+      const expirationTime = parseInt(expiresAt, 10);
+      if (expirationTime > Date.now()) {
+        return token;
+      }
+    }
+    
+    // Clear expired token
+    window.localStorage.removeItem("auth_token");
+    window.localStorage.removeItem("auth_token_expires");
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function apiJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = getAuthToken();
+  
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(init.headers as Record<string, string> ?? {}),
+  };
+
+  // Add JWT token if available
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init.headers ?? {}),
-    },
+    headers,
   });
 
   const contentType = response.headers.get("content-type") ?? "";
