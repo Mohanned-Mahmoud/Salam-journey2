@@ -1,5 +1,5 @@
+import { useEffect, useState } from 'react';
 import { Calendar, Users, BookOpen, ShoppingBag, TrendingUp } from 'lucide-react';
-import { loadJson, BOOKINGS_KEY, COURSES_ADMIN_KEY, PRODUCTS_ADMIN_KEY, USERS_KEY, SEED_COURSES, SEED_PRODUCTS } from './types';
 import type { BookingRecord, AdminCourse, AdminProduct, SalamUser } from './types';
 
 const STATUS_LABELS: Record<string, string> = { confirmed: 'مؤكد', pending: 'معلق', cancelled: 'ملغي' };
@@ -7,10 +7,55 @@ const STATUS_COLORS: Record<string, string> = { confirmed: '#5A8A80', pending: '
 const STATUS_BG: Record<string, string> = { confirmed: 'rgba(90,138,128,0.12)', pending: 'rgba(212,164,53,0.12)', cancelled: 'rgba(181,82,74,0.12)' };
 
 export function AdminDashboard() {
-  const bookings = loadJson<BookingRecord[]>(BOOKINGS_KEY, []);
-  const courses = loadJson<AdminCourse[]>(COURSES_ADMIN_KEY, SEED_COURSES);
-  const products = loadJson<AdminProduct[]>(PRODUCTS_ADMIN_KEY, SEED_PRODUCTS);
-  const users = loadJson<SalamUser[]>(USERS_KEY, []);
+  const [courses, setCourses] = useState<AdminCourse[]>([]);
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [bookings, setBookings] = useState<BookingRecord[]>([]);
+  const [users, setUsers] = useState<SalamUser[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDashboardData() {
+      try {
+        const [usersResponse, bookingsResponse, coursesResponse, productsResponse] = await Promise.all([
+          fetch('/api/users'),
+          fetch('/api/bookings'),
+          fetch('/api/courses'),
+          fetch('/api/products'),
+        ]);
+
+        if (!usersResponse.ok || !bookingsResponse.ok) {
+          throw new Error('failed');
+        }
+
+        const [usersData, bookingsData, coursesData, productsData] = await Promise.all([
+          usersResponse.json() as Promise<SalamUser[]>,
+          bookingsResponse.json() as Promise<BookingRecord[]>,
+          coursesResponse.json() as Promise<AdminCourse[]>,
+          productsResponse.json() as Promise<AdminProduct[]>,
+        ]);
+
+        if (!cancelled) {
+          setUsers(usersData);
+          setBookings(bookingsData);
+          setCourses(coursesData);
+          setProducts(productsData);
+        }
+      } catch {
+        if (!cancelled) {
+          setUsers([]);
+          setBookings([]);
+          setCourses([]);
+          setProducts([]);
+        }
+      }
+    }
+
+    void loadDashboardData();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const activeCourses = courses.filter((c) => c.status === 'active').length;
   const activeProducts = products.filter((p) => p.status === 'active').length;

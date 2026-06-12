@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, coursesTable, courseRoomsTable, insertCourseSchema } from "@workspace/db";
+import { db, coursesTable, courseRoomsTable, coachesTable, insertCourseSchema } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -42,15 +42,40 @@ router.get("/courses/:id", async (req, res) => {
 // Create course
 router.post("/courses", async (req, res) => {
   try {
-    const validated = insertCourseSchema.parse(req.body);
+    const body = req.body as Record<string, unknown>;
+    const coachId = typeof body.coachId === "string" && body.coachId.trim()
+      ? body.coachId.trim()
+      : (await db.select({ id: coachesTable.id }).from(coachesTable).limit(1))[0]?.id;
+
+    let resolvedCoachId = coachId;
+    if (!resolvedCoachId) {
+      const insertedCoach = await db
+        .insert(coachesTable)
+        .values({
+          name: "Coach Iman",
+          email: "coach.iman@salamjourney.local",
+          bio: "Default coach created automatically for courses.",
+        })
+        .returning({ id: coachesTable.id });
+      resolvedCoachId = insertedCoach[0]?.id;
+    }
+
+    if (!resolvedCoachId) {
+      return res.status(400).json({ error: "No coach available" });
+    }
+
+    const validated = insertCourseSchema.parse({
+      ...body,
+      coachId: resolvedCoachId,
+    });
     const course = await db
       .insert(coursesTable)
       .values(validated)
       .returning();
 
-    res.status(201).json(course[0]);
+    return res.status(201).json(course[0]);
   } catch (error) {
-    res.status(400).json({ error: "Invalid course data" });
+    return res.status(400).json({ error: "Invalid course data" });
   }
 });
 

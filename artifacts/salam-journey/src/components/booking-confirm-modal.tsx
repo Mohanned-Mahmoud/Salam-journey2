@@ -10,6 +10,8 @@ export type BookingDetails = {
   slot: string;          // canonical slot key e.g. "10:00"
   slotLabel: string;     // display label e.g. "10:00 ص" / "10:00 AM"
   sessionType: Bilingual;
+  bookingKind: "single" | "package";
+  packageSessionsTotal: number | null;
 };
 
 type Props = {
@@ -62,6 +64,9 @@ export function BookingConfirmModal({ booking, isOpen, onClose }: Props) {
           <Row Icon={Calendar} label={formattedDate} />
           <Row Icon={Clock} label={booking.slotLabel} />
           <Row Icon={UserIcon} label={t(booking.sessionType)} />
+          {booking.bookingKind === "package" && (
+            <Row Icon={Check} label={t(tx("باقة ٣ جلسات", "3-session package"))} />
+          )}
         </div>
 
         <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center">

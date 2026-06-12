@@ -1,18 +1,43 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Star, Eye, EyeOff, X } from 'lucide-react';
-import { loadJson, saveJson, TESTIMONIALS_ADMIN_KEY, SEED_TESTIMONIALS } from './types';
 import type { AdminTestimonial } from './types';
 
 type FormState = Omit<AdminTestimonial, 'id'>;
 const EMPTY: FormState = { nameAr: '', roleAr: '', quoteAr: '', rating: 5, status: 'active' };
 
 export function AdminTestimonials() {
-  const [items, setItems] = useState<AdminTestimonial[]>(() => loadJson<AdminTestimonial[]>(TESTIMONIALS_ADMIN_KEY, SEED_TESTIMONIALS));
+  const [items, setItems] = useState<AdminTestimonial[]>([]);
   const [modal, setModal] = useState<{ mode: 'add' | 'edit'; id?: string } | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  function persist(next: AdminTestimonial[]) { setItems(next); saveJson(TESTIMONIALS_ADMIN_KEY, next); }
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTestimonials() {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/testimonials');
+        if (!response.ok) throw new Error('failed');
+        const data = (await response.json()) as AdminTestimonial[];
+        if (!cancelled) setItems(data);
+      } catch {
+        if (!cancelled) {
+          setError('تعذر تحميل الشهادات من قاعدة البيانات');
+          setItems([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadTestimonials();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function openAdd() { setForm(EMPTY); setModal({ mode: 'add' }); }
   function openEdit(t: AdminTestimonial) {
@@ -20,21 +45,51 @@ export function AdminTestimonials() {
     setModal({ mode: 'edit', id: t.id });
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!form.nameAr.trim()) return;
     if (modal?.mode === 'add') {
-      persist([...items, { ...form, id: `tst-${Date.now()}` }]);
+      const response = await fetch('/api/testimonials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (!response.ok) return;
+      const created = (await response.json()) as AdminTestimonial;
+      setItems((current) => [...current, created]);
     } else if (modal?.id) {
-      persist(items.map((t) => t.id === modal.id ? { ...form, id: t.id } : t));
+      const response = await fetch(`/api/testimonials/${modal.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (!response.ok) return;
+      const updated = (await response.json()) as AdminTestimonial;
+      setItems((current) => current.map((t) => (t.id === modal.id ? updated : t)));
     }
     setModal(null);
   }
 
-  function toggleStatus(id: string) {
-    persist(items.map((t) => t.id === id ? { ...t, status: t.status === 'active' ? 'hidden' : 'active' } : t));
+  async function toggleStatus(id: string) {
+    const testimonial = items.find((t) => t.id === id);
+    if (!testimonial) return;
+    const nextStatus = testimonial.status === 'active' ? 'hidden' : 'active';
+    const response = await fetch(`/api/testimonials/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: nextStatus }),
+    });
+    if (!response.ok) return;
+    const updated = (await response.json()) as AdminTestimonial;
+    setItems((current) => current.map((t) => (t.id === id ? updated : t)));
   }
 
-  function confirmDelete() { if (deleteId) persist(items.filter((t) => t.id !== deleteId)); setDeleteId(null); }
+  async function confirmDelete() {
+    if (!deleteId) return;
+    const response = await fetch(`/api/testimonials/${deleteId}`, { method: 'DELETE' });
+    if (!response.ok) return;
+    setItems((current) => current.filter((t) => t.id !== deleteId));
+    setDeleteId(null);
+  }
 
   return (
     <div className="space-y-6">
@@ -47,6 +102,9 @@ export function AdminTestimonials() {
           <Plus size={15} /> إضافة شهادة
         </button>
       </div>
+
+      {loading && <p className="text-sm" style={{ color: 'var(--text-muted)' }}>جارٍ تحميل الشهادات...</p>}
+      {!loading && error && <p className="text-sm" style={{ color: '#B5524A' }}>{error}</p>}
 
       <div className="rounded-2xl overflow-hidden" style={{ background: 'white', boxShadow: '0 2px 12px rgba(90,138,128,0.08)', border: '1px solid rgba(127,169,155,0.12)' }}>
         <table className="w-full text-sm">
@@ -83,7 +141,7 @@ export function AdminTestimonials() {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={() => openEdit(t)} className="p-1.5 rounded-lg hover:bg-[var(--cream)]"><Pencil size={14} style={{ color: 'var(--sage-dark)' }} /></button>
-                    <button type="button" onClick={() => toggleStatus(t.id)} className="p-1.5 rounded-lg hover:bg-[var(--cream)]">
+                    <button type="button" onClick={() => void toggleStatus(t.id)} className="p-1.5 rounded-lg hover:bg-[var(--cream)]">
                       {t.status === 'active' ? <EyeOff size={14} style={{ color: 'var(--text-muted)' }} /> : <Eye size={14} style={{ color: 'var(--sage)' }} />}
                     </button>
                     <button type="button" onClick={() => setDeleteId(t.id)} className="p-1.5 rounded-lg hover:bg-red-50"><Trash2 size={14} style={{ color: '#B5524A' }} /></button>
@@ -127,7 +185,7 @@ export function AdminTestimonials() {
               </div>
             </div>
             <div className="flex gap-3 px-6 pb-6">
-              <button type="button" onClick={handleSave} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: 'var(--sage)' }}>حفظ</button>
+              <button type="button" onClick={() => void handleSave()} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: 'var(--sage)' }}>حفظ</button>
               <button type="button" onClick={() => setModal(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: 'var(--cream)', color: 'var(--text-dark)' }}>إلغاء</button>
             </div>
           </div>
@@ -139,7 +197,7 @@ export function AdminTestimonials() {
           <div className="rounded-2xl p-8 max-w-sm w-full text-center space-y-4" style={{ background: 'white' }}>
             <p className="text-lg font-bold" style={{ color: 'var(--text-dark)' }}>حذف الشهادة؟</p>
             <div className="flex gap-3 justify-center">
-              <button type="button" onClick={confirmDelete} className="px-5 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#B5524A' }}>حذف</button>
+              <button type="button" onClick={() => void confirmDelete()} className="px-5 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#B5524A' }}>حذف</button>
               <button type="button" onClick={() => setDeleteId(null)} className="px-5 py-2 rounded-xl text-sm font-semibold" style={{ background: 'var(--cream)', color: 'var(--text-dark)' }}>إلغاء</button>
             </div>
           </div>

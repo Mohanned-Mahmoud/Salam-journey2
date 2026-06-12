@@ -9,15 +9,18 @@ import { useAuth } from "@/hooks/use-auth";
 
 type SessionType = {
   id: string;
+  kind: "single" | "package";
   title: Bilingual;
   duration: Bilingual;
   price: Bilingual;
   description: Bilingual;
+  packageSessionsTotal?: number;
 };
 
 const SESSION_TYPES: SessionType[] = [
   {
     id: "individual",
+    kind: "single",
     title: tx("جلسة فردية", "Individual Session"),
     duration: tx("٦٠ دقيقة", "60 minutes"),
     price: tx("٤٥٠ ريال", "$120"),
@@ -28,6 +31,7 @@ const SESSION_TYPES: SessionType[] = [
   },
   {
     id: "package",
+    kind: "package",
     title: tx("حزمة ٣ جلسات", "3-Session Package"),
     duration: tx("٣ × ٦٠ دقيقة", "3 × 60 minutes"),
     price: tx("١٢٠٠ ريال", "$320"),
@@ -35,6 +39,7 @@ const SESSION_TYPES: SessionType[] = [
       "ثلاث جلسات متابعة على مدار شهر، لتحقيق تحوّل حقيقي في علاقتك مع طفلك.",
       "Three sessions across a month for a real transformation in your bond with your child.",
     ),
+    packageSessionsTotal: 3,
   },
 ];
 
@@ -62,6 +67,7 @@ type BookedMap = Record<string, string[]>;
 
 function saveBookingRecord(record: {
   date: string; slot: string; slotLabel: string; sessionType: string;
+  bookingKind: "single" | "package"; packageSessionsTotal: number | null; packageSessionsRemaining: number | null;
   topic: string; notes: string; name: string; email: string; whatsapp: string;
 }) {
   try {
@@ -158,6 +164,8 @@ export type ConfirmedBookingPayload = {
   slot: string;          // canonical key e.g. "10:00"
   slotLabel: string;     // localized display
   sessionType: Bilingual;
+  bookingKind: "single" | "package";
+  packageSessionsTotal: number | null;
   topic: string;
   notes?: string;
   name: string;
@@ -258,12 +266,15 @@ export function BookingCalendar({ onConfirmed }: Props) {
     const slotIdx = TIME_SLOT_KEYS.indexOf(selectedSlot);
     const slotLabel = slotLabels[slotIdx] ?? selectedSlot;
     const sessionType = SESSION_TYPES.find((s) => s.id === sessionTypeId)!.title;
+    const sessionTypeConfig = SESSION_TYPES.find((s) => s.id === sessionTypeId)!;
 
     const confirmed = await onConfirmed?.({
       date: key,
       slot: selectedSlot,
       slotLabel,
       sessionType,
+      bookingKind: sessionTypeConfig.kind,
+      packageSessionsTotal: sessionTypeConfig.packageSessionsTotal ?? null,
       topic: form.topic,
       notes: form.notes,
       name: form.name,
@@ -286,6 +297,9 @@ export function BookingCalendar({ onConfirmed }: Props) {
       slot: selectedSlot,
       slotLabel,
       sessionType: t(sessionType),
+      bookingKind: sessionTypeConfig.kind,
+      packageSessionsTotal: sessionTypeConfig.packageSessionsTotal ?? null,
+      packageSessionsRemaining: sessionTypeConfig.packageSessionsTotal ?? null,
       topic: form.topic,
       notes: form.notes,
       name: form.name,

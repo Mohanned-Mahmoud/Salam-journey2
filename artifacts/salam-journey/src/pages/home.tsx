@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, ShoppingBag, Star, Sparkles, Users, Award, Globe, Quote } from "lucide-react";
 import { useLanguage, tx } from "@/lib/i18n";
 import { useReveal } from "@/lib/use-reveal";
 import { SoftBlob, SectionDivider } from "@/components/section-divider";
+import { apiJson } from "@/lib/api";
 
 const SERVICES = [
   {
@@ -84,26 +85,43 @@ export default function Home() {
   const ref = useReveal<HTMLDivElement>();
   const { t, lang, dir } = useLanguage();
   const Arrow = lang === "ar" ? ArrowLeft : ArrowRight;
+  const [activeTestimonials, setActiveTestimonials] = useState(TESTIMONIALS);
 
-  const activeTestimonials = useMemo(() => {
-    try {
-      const raw = localStorage.getItem('salam_testimonials');
-      if (raw) {
-        const stored = JSON.parse(raw);
-        if (Array.isArray(stored) && stored.length > 0) {
-          return stored
-            .filter((ts: { status: string }) => ts.status === 'active')
-            .map((ts: { nameAr: string; roleAr: string; quoteAr: string }) => ({
-              quote: tx(ts.quoteAr, ts.quoteAr),
-              name: tx(ts.nameAr, ts.nameAr),
-              role: tx(ts.roleAr, ts.roleAr),
-            }));
-        }
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTestimonials() {
+      try {
+        const data = await apiJson<Array<{
+          id: string;
+          nameAr: string | null;
+          roleAr: string | null;
+          quoteAr: string;
+          rating: number | null;
+          status: string | null;
+        }>>("/testimonials");
+
+        if (cancelled) return;
+
+        const next = data
+          .filter((ts) => ts.status !== "hidden")
+          .map((ts) => ({
+            quote: tx(ts.quoteAr, ts.quoteAr),
+            name: tx(ts.nameAr ?? "", ts.nameAr ?? ""),
+            role: tx(ts.roleAr ?? "", ts.roleAr ?? ""),
+          }));
+
+        setActiveTestimonials(next.length > 0 ? next : TESTIMONIALS);
+      } catch {
+        if (!cancelled) setActiveTestimonials(TESTIMONIALS);
       }
-    } catch {
-      // ignore
     }
-    return TESTIMONIALS;
+
+    void loadTestimonials();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

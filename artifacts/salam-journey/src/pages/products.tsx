@@ -1,9 +1,11 @@
+import { useEffect, useMemo, useState } from "react";
 import { Download, FileText, Sparkles, Heart, Coffee } from "lucide-react";
 import { useLanguage, tx, type Bilingual } from "@/lib/i18n";
 import { useReveal } from "@/lib/use-reveal";
+import { apiJson } from "@/lib/api";
 import { SoftBlob, SectionDivider } from "@/components/section-divider";
 
-type Product = {
+type ProductCard = {
   id: string;
   title: Bilingual;
   desc: Bilingual;
@@ -13,66 +15,60 @@ type Product = {
   gradient: string;
 };
 
-const PRODUCTS: Product[] = [
-  {
-    id: "morning-routine",
-    title: tx("مفكّرة الروتين الصباحي", "Morning Routine Planner"),
-    desc: tx("قابل للطباعة لمساعدتك على بناء صباح هادئ مع طفلك.", "A printable to build a calm morning together with your child."),
-    price: tx("٣٩ ريال", "$10"),
-    free: false,
-    Icon: Sparkles,
-    gradient: "linear-gradient(135deg, var(--sage-dark), var(--sage))",
-  },
-  {
-    id: "feelings-cards",
-    title: tx("بطاقات المشاعر للأطفال", "Children's Feelings Cards"),
-    desc: tx("٣٠ بطاقة ملوّنة لتعليم الطفل التعبير عن مشاعره.", "30 colorful cards to help your child name and express feelings."),
-    price: tx("٤٩ ريال", "$13"),
-    free: false,
-    Icon: Heart,
-    gradient: "linear-gradient(135deg, var(--blush), var(--blush-light))",
-  },
-  {
-    id: "calm-guide",
-    title: tx("دليل الأم الهادئة", "Calm Mother Guide"),
-    desc: tx("دليل PDF مكوّن من ٢٤ صفحة بأدوات عملية يومية.", "A 24-page PDF with practical day-to-day tools."),
-    price: tx("٢٩ ريال", "$8"),
-    free: false,
-    Icon: FileText,
-    gradient: "linear-gradient(135deg, var(--sage), var(--sage-light))",
-  },
-  {
-    id: "self-care",
-    title: tx("قائمة العناية بالأم", "Mother Self-Care Checklist"),
-    desc: tx("قائمة أسبوعية لذكّرك أن تعتني بنفسك أيضاً.", "A weekly checklist to remind you to care for yourself, too."),
-    price: tx("مجاناً", "Free"),
-    free: true,
-    Icon: Coffee,
-    gradient: "linear-gradient(135deg, var(--cream-dark), var(--blush-light))",
-  },
-  {
-    id: "kids-worksheet",
-    title: tx("ورق عمل للأطفال", "Kids Activity Worksheets"),
-    desc: tx("١٠ أوراق عمل ممتعة وتعليمية للأعمار ٤–٩.", "10 fun, educational worksheets for ages 4–9."),
-    price: tx("٣٥ ريال", "$9"),
-    free: false,
-    Icon: FileText,
-    gradient: "linear-gradient(135deg, var(--blush-light), var(--sage-muted))",
-  },
-  {
-    id: "affirmations",
-    title: tx("بطاقات تأكيدات للأم", "Mother Affirmation Cards"),
-    desc: tx("٢١ بطاقة تأكيد إيجابي تبدئين بها يومك.", "21 positive affirmation cards to start your day."),
-    price: tx("مجاناً", "Free"),
-    free: true,
-    Icon: Sparkles,
-    gradient: "linear-gradient(135deg, var(--sage-light), var(--sage-muted))",
-  },
-];
+type ProductType = "pdf" | "printable" | "guide" | "other";
 
 export default function Products() {
   const ref = useReveal<HTMLDivElement>();
   const { lang, t } = useLanguage();
+  const [products, setProducts] = useState<ProductCard[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProducts() {
+      try {
+        setLoading(true);
+        const data = await apiJson<Array<{
+          id: string;
+          titleAr: string;
+          titleEn: string;
+          descAr: string | null;
+          price: string | number | null;
+          isFree: boolean | null;
+          type: ProductType;
+          status: string | null;
+        }>>("/products");
+
+        if (cancelled) return;
+
+        setProducts(
+          data
+            .filter((product) => product.status !== "hidden")
+            .map((product) => ({
+              id: product.id,
+              title: tx(product.titleAr, product.titleEn),
+              desc: tx(product.descAr ?? "", product.descAr ?? ""),
+              price: tx(formatProductPrice(product.price, product.isFree), formatProductPrice(product.price, product.isFree)),
+              free: Boolean(product.isFree),
+              Icon: getProductIcon(product.type),
+              gradient: getProductGradient(product.type),
+            })),
+        );
+      } catch {
+        if (!cancelled) setProducts([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadProducts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const visibleProducts = useMemo(() => products, [products]);
 
   return (
     <div ref={ref} key={lang} className="lang-fade">
@@ -108,8 +104,14 @@ export default function Products() {
       <section style={{ background: "var(--blush-light)" }} className="relative">
         <div className="absolute inset-0 dot-grid opacity-40 pointer-events-none" aria-hidden />
         <div className="relative container mx-auto px-5 md:px-8 py-16 md:py-24">
+          {loading && (
+            <p className="text-center py-10 text-sm" style={{ color: "var(--text-muted)" }}>
+              {t(tx("جارٍ تحميل المنتجات...", "Loading products..."))}
+            </p>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            {PRODUCTS.map((p, i) => (
+            {visibleProducts.map((p, i) => (
               <article
                 key={p.id}
                 className="glass-card flex flex-col overflow-hidden reveal"
@@ -163,8 +165,48 @@ export default function Products() {
               </article>
             ))}
           </div>
+
+          {!loading && visibleProducts.length === 0 && (
+            <p className="text-center mt-12" style={{ color: "var(--text-muted)" }}>
+              {t(tx("لا توجد منتجات حالياً.", "No products available right now."))}
+            </p>
+          )}
         </div>
       </section>
     </div>
   );
+}
+
+function formatProductPrice(price: string | number | null, free: boolean | null) {
+  if (free) return "مجاناً";
+  const value = price ?? 0;
+  return `${value} ريال`;
+}
+
+function getProductGradient(type: ProductType) {
+  switch (type) {
+    case "printable":
+      return "linear-gradient(135deg, var(--sage-dark), var(--sage))";
+    case "guide":
+      return "linear-gradient(135deg, var(--blush), var(--blush-light))";
+    case "other":
+      return "linear-gradient(135deg, var(--cream-dark), var(--blush-light))";
+    case "pdf":
+    default:
+      return "linear-gradient(135deg, var(--sage-light), var(--sage-muted))";
+  }
+}
+
+function getProductIcon(type: ProductType) {
+  switch (type) {
+    case "guide":
+      return Heart;
+    case "other":
+      return Coffee;
+    case "printable":
+      return Sparkles;
+    case "pdf":
+    default:
+      return FileText;
+  }
 }

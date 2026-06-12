@@ -407,7 +407,15 @@ function BookingsTab() {
                   <Calendar size={20} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold mb-0.5" style={{ color: "var(--text-dark)" }}>{b.sessionType}</h4>
+                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                    <h4 className="font-semibold" style={{ color: "var(--text-dark)" }}>{b.sessionType}</h4>
+                    <span
+                      className="px-2 py-0.5 rounded-full text-[11px] font-bold"
+                      style={{ background: b.bookingKind === 'package' ? 'rgba(90,138,128,0.12)' : 'rgba(127,169,155,0.12)', color: 'var(--text-dark)' }}
+                    >
+                      {b.bookingKind === 'package' ? `باقة ${b.packageSessionsTotal ?? 3} جلسات` : t(tx('جلسة فردية', 'Single session'))}
+                    </span>
+                  </div>
                   <p className="text-sm" style={{ color: "var(--text-body)" }}>{formatted}</p>
                   <p className="text-xs flex items-center gap-1.5 mt-1" style={{ color: "var(--text-muted)" }}>
                     <Clock size={12} /> {b.slot}

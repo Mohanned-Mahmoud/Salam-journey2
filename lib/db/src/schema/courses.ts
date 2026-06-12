@@ -16,6 +16,8 @@ export const coursesTable = pgTable("courses", {
   category: courseCategoryEnum("category").notNull(),
   price: numeric("price", { precision: 10, scale: 2 }),
   duration: integer("duration"),
+  students: varchar("students", { length: 50 }),
+  imageUrl: varchar("image_url", { length: 1024 }),
   status: courseStatusEnum("status").default("active"),
   gradient: varchar("gradient", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),

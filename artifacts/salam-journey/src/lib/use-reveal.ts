@@ -14,8 +14,15 @@ export function useReveal<T extends HTMLElement>() {
     const elements = Array.from(root.querySelectorAll<HTMLElement>(".reveal"));
     if (elements.length === 0) return;
 
+    // Fail open: if IntersectionObserver doesn't fire reliably in a given
+    // browser/profile, we still want content to become visible.
+    const fallbackTimer = window.setTimeout(() => {
+      elements.forEach((el) => el.classList.add("is-visible"));
+    }, 600);
+
     if (typeof IntersectionObserver === "undefined") {
       elements.forEach((el) => el.classList.add("is-visible"));
+      window.clearTimeout(fallbackTimer);
       return;
     }
 
@@ -34,7 +41,10 @@ export function useReveal<T extends HTMLElement>() {
     );
 
     elements.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
+    return () => {
+      window.clearTimeout(fallbackTimer);
+      observer.disconnect();
+    };
   }, []);
 
   return ref;

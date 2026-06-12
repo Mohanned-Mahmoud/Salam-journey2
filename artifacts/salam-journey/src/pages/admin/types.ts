@@ -15,6 +15,9 @@ export type BookingRecord = {
   slot: string;
   slotLabel: string;
   sessionType: string;
+  bookingKind: 'single' | 'package';
+  packageSessionsTotal: number | null;
+  packageSessionsRemaining: number | null;
   topic: string;
   notes: string;
   name: string;
@@ -35,6 +38,7 @@ export type AdminCourse = {
   students: string;
   status: 'active' | 'hidden';
   gradient: string;
+  imageUrl?: string;
 };
 
 export type AdminProduct = {
@@ -123,12 +127,12 @@ export const DEFAULT_SETTINGS: AdminSettings = {
 };
 
 export const SEED_COURSES: AdminCourse[] = [
-  { id: 'calm', titleAr: 'وأصبحتُ أُمّاً هادئة', titleEn: 'Becoming a Calm Mother', descAr: 'برنامج ٤ أسابيع لتعلّم التعامل مع الغضب وبناء علاقة هادئة.', category: 'course', price: '٢٩٩ ريال', duration: '٤ أسابيع', students: '+820', status: 'active', gradient: 'linear-gradient(135deg, var(--sage-dark), var(--sage))' },
-  { id: 'boundaries', titleAr: 'حدود واضحة بحب', titleEn: 'Boundaries with Love', descAr: 'كيف تضعين حدوداً واضحة لأطفالك دون فقدان دفء العلاقة.', category: 'course', price: '٢٤٩ ريال', duration: '٣ أسابيع', students: '+540', status: 'active', gradient: 'linear-gradient(135deg, var(--blush), var(--blush-light))' },
-  { id: 'tantrums', titleAr: 'ورشة: نوبات الغضب', titleEn: 'Workshop: Tantrums', descAr: 'ورشة عملية لمدة ٩٠ دقيقة لفهم نوبات الغضب.', category: 'workshop', price: '٩٩ ريال', duration: '٩٠ دقيقة', students: '+310', status: 'active', gradient: 'linear-gradient(135deg, var(--sage), var(--sage-light))' },
-  { id: 'self-care', titleAr: 'ورشة: الأم تستحقّ', titleEn: "Workshop: A Mother Deserves", descAr: 'ورشة عن العناية بالذات والوقت الخاص للأم.', category: 'workshop', price: '٧٩ ريال', duration: '٦٠ دقيقة', students: '+220', status: 'active', gradient: 'linear-gradient(135deg, var(--blush-light), var(--cream-dark))' },
-  { id: 'starter', titleAr: 'دليل الأم الواعية (مجاناً)', titleEn: 'Conscious Mother Guide (free)', descAr: 'دليل تمهيدي مجاني للتعرّف على مبادئ التربية الواعية.', category: 'free', price: 'مجاناً', duration: 'PDF', students: '+1.2K', status: 'active', gradient: 'linear-gradient(135deg, var(--sage-light), var(--sage-muted))' },
-  { id: 'newborn', titleAr: 'الأم الجديدة (مجاناً)', titleEn: 'The New Mother (free)', descAr: 'محاضرة مجانية للأمهات في الأشهر الأولى من الأمومة.', category: 'free', price: 'مجاناً', duration: '٤٥ دقيقة', students: '+680', status: 'active', gradient: 'linear-gradient(135deg, var(--cream-dark), var(--blush-light))' },
+  { id: 'calm', titleAr: 'وأصبحتُ أُمّاً هادئة', titleEn: 'Becoming a Calm Mother', descAr: 'برنامج ٤ أسابيع لتعلّم التعامل مع الغضب وبناء علاقة هادئة.', category: 'course', price: '٢٩٩ ريال', duration: '٤ أسابيع', students: '+820', status: 'active', gradient: 'linear-gradient(135deg, var(--sage-dark), var(--sage))', imageUrl: '' },
+  { id: 'boundaries', titleAr: 'حدود واضحة بحب', titleEn: 'Boundaries with Love', descAr: 'كيف تضعين حدوداً واضحة لأطفالك دون فقدان دفء العلاقة.', category: 'course', price: '٢٤٩ ريال', duration: '٣ أسابيع', students: '+540', status: 'active', gradient: 'linear-gradient(135deg, var(--blush), var(--blush-light))', imageUrl: '' },
+  { id: 'tantrums', titleAr: 'ورشة: نوبات الغضب', titleEn: 'Workshop: Tantrums', descAr: 'ورشة عملية لمدة ٩٠ دقيقة لفهم نوبات الغضب.', category: 'workshop', price: '٩٩ ريال', duration: '٩٠ دقيقة', students: '+310', status: 'active', gradient: 'linear-gradient(135deg, var(--sage), var(--sage-light))', imageUrl: '' },
+  { id: 'self-care', titleAr: 'ورشة: الأم تستحقّ', titleEn: "Workshop: A Mother Deserves", descAr: 'ورشة عن العناية بالذات والوقت الخاص للأم.', category: 'workshop', price: '٧٩ ريال', duration: '٦٠ دقيقة', students: '+220', status: 'active', gradient: 'linear-gradient(135deg, var(--blush-light), var(--cream-dark))', imageUrl: '' },
+  { id: 'starter', titleAr: 'دليل الأم الواعية (مجاناً)', titleEn: 'Conscious Mother Guide (free)', descAr: 'دليل تمهيدي مجاني للتعرّف على مبادئ التربية الواعية.', category: 'free', price: 'مجاناً', duration: 'PDF', students: '+1.2K', status: 'active', gradient: 'linear-gradient(135deg, var(--sage-light), var(--sage-muted))', imageUrl: '' },
+  { id: 'newborn', titleAr: 'الأم الجديدة (مجاناً)', titleEn: 'The New Mother (free)', descAr: 'محاضرة مجانية للأمهات في الأشهر الأولى من الأمومة.', category: 'free', price: 'مجاناً', duration: '٤٥ دقيقة', students: '+680', status: 'active', gradient: 'linear-gradient(135deg, var(--cream-dark), var(--blush-light))', imageUrl: '' },
 ];
 
 export const SEED_PRODUCTS: AdminProduct[] = [

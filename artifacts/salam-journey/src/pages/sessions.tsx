@@ -40,6 +40,9 @@ export default function Sessions() {
       date: payload.date,
       slot: payload.slot,
       sessionType: payload.sessionType.ar,
+      bookingKind: payload.bookingKind,
+      packageSessionsTotal: payload.packageSessionsTotal,
+      packageSessionsRemaining: payload.packageSessionsTotal,
       topic: payload.topic,
       notes: payload.notes,
       name: payload.name,
@@ -57,6 +60,8 @@ export default function Sessions() {
       slot: payload.slot,
       slotLabel: payload.slotLabel,
       sessionType: payload.sessionType,
+      bookingKind: payload.bookingKind,
+      packageSessionsTotal: payload.packageSessionsTotal,
     });
     setModalOpen(true);
     notify.success(t(tx("تم الحجز بنجاح ✓", "Booking confirmed ✓")));

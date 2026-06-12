@@ -1,16 +1,64 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, Trash2, Eye, X } from 'lucide-react';
-import { loadJson, saveJson, USERS_KEY } from './types';
 import type { SalamUser, BookingRecord } from './types';
 
 export function AdminUsers() {
-  const [users, setUsers] = useState<SalamUser[]>(() => loadJson<SalamUser[]>(USERS_KEY, []));
+  const [users, setUsers] = useState<SalamUser[]>([]);
   const [search, setSearch] = useState('');
   const [viewUser, setViewUser] = useState<SalamUser | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  function persist(next: SalamUser[]) { setUsers(next); saveJson(USERS_KEY, next); }
-  function confirmDelete() { if (deleteId) persist(users.filter((u) => u.id !== deleteId)); setDeleteId(null); }
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadUsers() {
+      setLoading(true);
+      setError('');
+      try {
+        const response = await fetch('/api/admin/users');
+        if (!response.ok) {
+          throw new Error('failed');
+        }
+        const data = await response.json() as SalamUser[];
+        if (!cancelled) {
+          setUsers(data);
+        }
+      } catch {
+        if (!cancelled) {
+          setError('تعذّر تحميل المستخدمين من قاعدة البيانات');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadUsers();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function confirmDelete() {
+    if (!deleteId) return;
+
+    try {
+      const response = await fetch(`/api/users/${deleteId}`, { method: 'DELETE' });
+      if (!response.ok) {
+        throw new Error('failed');
+      }
+      setUsers((current) => current.filter((u) => u.id !== deleteId));
+      setDeleteId(null);
+      if (viewUser?.id === deleteId) {
+        setViewUser(null);
+      }
+    } catch {
+      setError('تعذّر حذف المستخدم من قاعدة البيانات');
+    }
+  }
 
   const filtered = users.filter((u) => {
     const q = search.toLowerCase();
@@ -25,6 +73,12 @@ export function AdminUsers() {
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{users.length} مستخدم مسجّل</p>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-xl px-4 py-3 text-sm" style={{ background: 'rgba(181,82,74,0.1)', color: '#B5524A' }}>
+          {error}
+        </div>
+      )}
 
       <div className="relative max-w-sm">
         <Search size={15} className="absolute top-1/2 -translate-y-1/2 start-3" style={{ color: 'var(--text-muted)' }} />
@@ -48,7 +102,9 @@ export function AdminUsers() {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {loading ? (
+              <tr><td colSpan={7} className="text-center py-10" style={{ color: 'var(--text-muted)' }}>جاري تحميل المستخدمين...</td></tr>
+            ) : filtered.length === 0 ? (
               <tr><td colSpan={7} className="text-center py-10" style={{ color: 'var(--text-muted)' }}>
                 {users.length === 0 ? 'لا يوجد مستخدمون مسجّلون بعد' : 'لا توجد نتائج'}
               </td></tr>
@@ -64,9 +120,16 @@ export function AdminUsers() {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: 'rgba(127,169,155,0.1)', color: 'var(--text-dark)' }}>
-                    {u.bookings?.length ?? 0}
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: 'rgba(127,169,155,0.1)', color: 'var(--text-dark)' }}>
+                      {u.bookings?.length ?? 0}
+                    </span>
+                    {(u.bookings ?? []).some((b) => b.bookingKind === 'package') && (
+                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: 'rgba(90,138,128,0.12)', color: 'var(--sage-dark)' }}>
+                        باكيدج
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
@@ -123,7 +186,12 @@ export function AdminUsers() {
                   <ul className="space-y-1">
                     {viewUser.bookings.map((b: BookingRecord) => (
                       <li key={b.id} className="text-sm px-3 py-2 rounded-xl" style={{ background: 'var(--cream)', color: 'var(--text-body)' }}>
-                        {b.sessionType} — {b.date} {b.slot}
+                        <div className="flex items-center justify-between gap-3">
+                          <span>{b.sessionType} — {b.date} {b.slot}</span>
+                          <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ background: b.bookingKind === 'package' ? 'rgba(90,138,128,0.12)' : 'rgba(127,169,155,0.12)', color: 'var(--text-dark)' }}>
+                            {b.bookingKind === 'package' ? `باقة ${b.packageSessionsTotal ?? 3} جلسات` : 'فردية'}
+                          </span>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -140,7 +208,7 @@ export function AdminUsers() {
             <p className="text-lg font-bold" style={{ color: 'var(--text-dark)' }}>حذف المستخدم؟</p>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>سيتم حذف حساب المستخدم نهائياً.</p>
             <div className="flex gap-3 justify-center">
-              <button type="button" onClick={confirmDelete} className="px-5 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#B5524A' }}>حذف</button>
+                <button type="button" onClick={() => { void confirmDelete(); }} className="px-5 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#B5524A' }}>حذف</button>
               <button type="button" onClick={() => setDeleteId(null)} className="px-5 py-2 rounded-xl text-sm font-semibold" style={{ background: 'var(--cream)', color: 'var(--text-dark)' }}>إلغاء</button>
             </div>
           </div>

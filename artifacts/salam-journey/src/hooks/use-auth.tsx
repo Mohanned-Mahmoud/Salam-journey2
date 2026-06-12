@@ -10,6 +10,9 @@ export type Booking = {
   date: string;
   slot: string;
   sessionType: string;
+  bookingKind: "single" | "package";
+  packageSessionsTotal: number | null;
+  packageSessionsRemaining: number | null;
   topic?: string;
   notes?: string;
   name?: string;
@@ -55,6 +58,21 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const authFallback: AuthContextValue = {
+  user: null,
+  isLoading: false,
+  isAuthenticated: false,
+  login: async () => ({ ok: false, error: "not_found" }),
+  googleLogin: async () => ({ ok: false, error: "google_unavailable" }),
+  firebaseLogin: async () => ({ ok: false, error: "Auth context unavailable" }),
+  register: async () => ({ ok: false, error: "email_taken" }),
+  logout: () => {},
+  updateProfile: async () => ({ ok: true }),
+  changePassword: async () => ({ ok: false, error: "wrong_password" }),
+  enrollCourse: () => ({ ok: true, alreadyEnrolled: false }),
+  addBooking: async () => ({ ok: false, error: "save_failed" }),
+};
+
 function readCurrentId(): string | null {
   if (typeof window === "undefined") return null;
   try {
@@ -86,6 +104,9 @@ type BookingRecord = {
   date: string;
   slot: string | null;
   sessionType: string | null;
+  bookingKind: "single" | "package";
+  packageSessionsTotal: number | null;
+  packageSessionsRemaining: number | null;
   topic: string | null;
   notes: string | null;
   guestName: string | null;
@@ -106,6 +127,9 @@ function toPublicFromApi(user: UserRecord, bookings: BookingRecord[]): PublicUse
       date: booking.date,
       slot: booking.slot ?? "",
       sessionType: booking.sessionType ?? "",
+      bookingKind: booking.bookingKind,
+      packageSessionsTotal: booking.packageSessionsTotal,
+      packageSessionsRemaining: booking.packageSessionsRemaining,
       topic: booking.topic ?? undefined,
       notes: booking.notes ?? undefined,
       name: booking.guestName ?? undefined,
@@ -309,9 +333,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: "POST",
         body: JSON.stringify({
           userId: user?.id ?? null,
+          bookingKind: booking.bookingKind,
           date: booking.date,
           slot: booking.slot,
           sessionType: booking.sessionType,
+          packageSessionsTotal: booking.packageSessionsTotal,
+          packageSessionsRemaining: booking.packageSessionsRemaining,
           topic: booking.topic ?? null,
           notes: booking.notes ?? null,
           guestName: booking.name ?? user?.name ?? null,
@@ -353,8 +380,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
-  return ctx;
+  return ctx ?? authFallback;
 }
 
 export function initialsOf(name: string): string {

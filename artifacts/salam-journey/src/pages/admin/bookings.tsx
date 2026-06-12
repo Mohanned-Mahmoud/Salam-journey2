@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Trash2, Search, Download, ChevronLeft, ChevronRight } from 'lucide-react';
-import { loadJson, saveJson, BOOKINGS_KEY } from './types';
 import type { BookingRecord, BookingStatus } from './types';
 
 const STATUS_LABELS: Record<BookingStatus, string> = { confirmed: 'مؤكد', pending: 'معلق', cancelled: 'ملغي' };
@@ -10,29 +9,63 @@ const STATUS_BG: Record<BookingStatus, string> = { confirmed: 'rgba(90,138,128,0
 const PAGE_SIZE = 10;
 
 export function AdminBookings() {
-  const [bookings, setBookings] = useState<BookingRecord[]>(() => loadJson<BookingRecord[]>(BOOKINGS_KEY, []));
+  const [bookings, setBookings] = useState<BookingRecord[]>([]);
   const [filter, setFilter] = useState<BookingStatus | 'all'>('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  function persist(next: BookingRecord[]) {
-    setBookings(next);
-    saveJson(BOOKINGS_KEY, next);
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBookings() {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/bookings');
+        if (!response.ok) throw new Error('failed');
+        const data = (await response.json()) as BookingRecord[];
+        if (!cancelled) setBookings(data);
+      } catch {
+        if (!cancelled) {
+          setError('تعذر تحميل الحجوزات من قاعدة البيانات');
+          setBookings([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadBookings();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function changeStatus(id: string, status: BookingStatus) {
+    const current = bookings.find((b) => b.id === id);
+    if (!current) return;
+    const response = await fetch(`/api/bookings/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...current, status }),
+    });
+    if (!response.ok) return;
+    const updated = (await response.json()) as BookingRecord;
+    setBookings((items) => items.map((b) => (b.id === id ? updated : b)));
   }
 
-  function changeStatus(id: string, status: BookingStatus) {
-    persist(bookings.map((b) => (b.id === id ? { ...b, status } : b)));
-  }
-
-  function confirmDelete(id: string) {
-    persist(bookings.filter((b) => b.id !== id));
+  async function confirmDelete(id: string) {
+    const response = await fetch(`/api/bookings/${id}`, { method: 'DELETE' });
+    if (!response.ok) return;
+    setBookings((items) => items.filter((b) => b.id !== id));
     setDeleteId(null);
   }
 
   function exportCSV() {
-    const headers = ['الاسم', 'البريد', 'الواتساب', 'نوع الجلسة', 'التاريخ', 'الوقت', 'الحالة'];
-    const rows = bookings.map((b) => [b.name, b.email, b.whatsapp, b.sessionType, b.date, b.slot, STATUS_LABELS[b.status]]);
+    const headers = ['الاسم', 'البريد', 'الواتساب', 'نوع الجلسة', 'الخطة', 'التاريخ', 'الوقت', 'الحالة'];
+    const rows = bookings.map((b) => [b.name, b.email, b.whatsapp, b.sessionType, b.bookingKind === 'package' ? `باقة ${b.packageSessionsTotal ?? 3} جلسات` : 'جلسة فردية', b.date, b.slot, STATUS_LABELS[b.status]]);
     const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
@@ -61,6 +94,9 @@ export function AdminBookings() {
           <Download size={15} /> تصدير CSV
         </button>
       </div>
+
+      {loading && <p className="text-sm" style={{ color: 'var(--text-muted)' }}>جارٍ تحميل الحجوزات...</p>}
+      {!loading && error && <p className="text-sm" style={{ color: '#B5524A' }}>{error}</p>}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
@@ -100,14 +136,14 @@ export function AdminBookings() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: 'rgba(127,169,155,0.08)' }}>
-                {['#', 'الاسم', 'البريد', 'الواتساب', 'نوع الجلسة', 'التاريخ', 'الوقت', 'الحالة', 'إجراءات'].map((h) => (
+                {['#', 'الاسم', 'البريد', 'الواتساب', 'نوع الجلسة', 'الخطة', 'التاريخ', 'الوقت', 'الحالة', 'إجراءات'].map((h) => (
                   <th key={h} className="text-right px-4 py-3 font-semibold whitespace-nowrap" style={{ color: 'var(--text-dark)' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {paged.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-10" style={{ color: 'var(--text-muted)' }}>لا توجد نتائج</td></tr>
+                <tr><td colSpan={10} className="text-center py-10" style={{ color: 'var(--text-muted)' }}>لا توجد نتائج</td></tr>
               ) : paged.map((b, i) => (
                 <tr key={b.id} className="border-t" style={{ borderColor: 'rgba(127,169,155,0.08)' }}>
                   <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>{(page - 1) * PAGE_SIZE + i + 1}</td>
@@ -115,12 +151,15 @@ export function AdminBookings() {
                   <td className="px-4 py-3" style={{ color: 'var(--text-body)' }}>{b.email || '—'}</td>
                   <td className="px-4 py-3" style={{ color: 'var(--text-body)' }}>{b.whatsapp || '—'}</td>
                   <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--text-body)' }}>{b.sessionType || '—'}</td>
+                  <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--text-body)' }}>
+                    {b.bookingKind === 'package' ? `باقة ${b.packageSessionsTotal ?? 3} جلسات` : 'جلسة فردية'}
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--text-body)' }}>{b.date}</td>
                   <td className="px-4 py-3 whitespace-nowrap" style={{ color: 'var(--text-body)' }}>{b.slot}</td>
                   <td className="px-4 py-3">
                     <select
                       value={b.status}
-                      onChange={(e) => changeStatus(b.id, e.target.value as BookingStatus)}
+                        onChange={(e) => void changeStatus(b.id, e.target.value as BookingStatus)}
                       className="rounded-lg px-2 py-1 text-xs font-semibold outline-none cursor-pointer"
                       style={{ background: STATUS_BG[b.status], color: STATUS_COLORS[b.status], border: 'none' }}
                     >

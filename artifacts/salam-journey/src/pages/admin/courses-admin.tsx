@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Eye, EyeOff, X } from 'lucide-react';
-import { loadJson, saveJson, COURSES_ADMIN_KEY, SEED_COURSES } from './types';
 import type { AdminCourse } from './types';
 
 type FormState = Omit<AdminCourse, 'id'>;
@@ -9,6 +8,7 @@ const EMPTY_FORM: FormState = {
   titleAr: '', titleEn: '', descAr: '', category: 'course',
   price: '', duration: '', students: '0', status: 'active',
   gradient: 'linear-gradient(135deg, var(--sage-dark), var(--sage))',
+  imageUrl: '',
 };
 
 const CATEGORY_LABELS: Record<AdminCourse['category'], string> = { course: 'دورة مسجّلة', workshop: 'ورشة مباشرة', free: 'مجاناً' };
@@ -21,36 +21,88 @@ const GRADIENTS = [
 ];
 
 export function AdminCourses() {
-  const [courses, setCourses] = useState<AdminCourse[]>(() => loadJson<AdminCourse[]>(COURSES_ADMIN_KEY, SEED_COURSES));
+  const [courses, setCourses] = useState<AdminCourse[]>([]);
   const [modal, setModal] = useState<{ mode: 'add' | 'edit'; id?: string } | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  function persist(next: AdminCourse[]) { setCourses(next); saveJson(COURSES_ADMIN_KEY, next); }
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCourses() {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/courses');
+        if (!response.ok) throw new Error('failed');
+        const data = (await response.json()) as AdminCourse[];
+        if (!cancelled) setCourses(data);
+      } catch {
+        if (!cancelled) {
+          setError('تعذر تحميل الدورات من قاعدة البيانات');
+          setCourses([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadCourses();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function openAdd() { setForm(EMPTY_FORM); setModal({ mode: 'add' }); }
   function openEdit(c: AdminCourse) {
-    setForm({ titleAr: c.titleAr, titleEn: c.titleEn, descAr: c.descAr, category: c.category, price: c.price, duration: c.duration, students: c.students, status: c.status, gradient: c.gradient });
+    setForm({ titleAr: c.titleAr, titleEn: c.titleEn, descAr: c.descAr, category: c.category, price: c.price, duration: c.duration, students: c.students, status: c.status, gradient: c.gradient, imageUrl: c.imageUrl ?? '' });
     setModal({ mode: 'edit', id: c.id });
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!form.titleAr.trim()) return;
     if (modal?.mode === 'add') {
-      const newCourse: AdminCourse = { ...form, id: `c-${Date.now()}` };
-      persist([...courses, newCourse]);
+      const response = await fetch('/api/courses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (!response.ok) return;
+      const created = (await response.json()) as AdminCourse;
+      setCourses((current) => [...current, created]);
     } else if (modal?.id) {
-      persist(courses.map((c) => (c.id === modal.id ? { ...form, id: c.id } : c)));
+      const response = await fetch(`/api/courses/${modal.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (!response.ok) return;
+      const updated = (await response.json()) as AdminCourse;
+      setCourses((current) => current.map((course) => (course.id === modal.id ? updated : course)));
     }
     setModal(null);
   }
 
-  function toggleStatus(id: string) {
-    persist(courses.map((c) => c.id === id ? { ...c, status: c.status === 'active' ? 'hidden' : 'active' } : c));
+  async function toggleStatus(id: string) {
+    const course = courses.find((item) => item.id === id);
+    if (!course) return;
+    const nextStatus = course.status === 'active' ? 'hidden' : 'active';
+    const response = await fetch(`/api/courses/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: nextStatus }),
+    });
+    if (!response.ok) return;
+    const updated = (await response.json()) as AdminCourse;
+    setCourses((current) => current.map((item) => (item.id === id ? updated : item)));
   }
 
-  function confirmDelete() {
-    if (deleteId) persist(courses.filter((c) => c.id !== deleteId));
+  async function confirmDelete() {
+    if (!deleteId) return;
+    const response = await fetch(`/api/courses/${deleteId}`, { method: 'DELETE' });
+    if (!response.ok) return;
+    setCourses((current) => current.filter((course) => course.id !== deleteId));
     setDeleteId(null);
   }
 
@@ -65,6 +117,9 @@ export function AdminCourses() {
           <Plus size={15} /> إضافة دورة
         </button>
       </div>
+
+      {loading && <p className="text-sm" style={{ color: 'var(--text-muted)' }}>جارٍ تحميل الدورات...</p>}
+      {!loading && error && <p className="text-sm" style={{ color: '#B5524A' }}>{error}</p>}
 
       <div className="rounded-2xl overflow-hidden" style={{ background: 'white', boxShadow: '0 2px 12px rgba(90,138,128,0.08)', border: '1px solid rgba(127,169,155,0.12)' }}>
         <table className="w-full text-sm">
@@ -81,7 +136,11 @@ export function AdminCourses() {
                 <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg flex-shrink-0" style={{ background: c.gradient }} />
+                    {c.imageUrl ? (
+                      <img src={c.imageUrl} alt={c.titleAr} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-lg flex-shrink-0" style={{ background: c.gradient }} />
+                    )}
                     <div>
                       <p className="font-medium" style={{ color: 'var(--text-dark)' }}>{c.titleAr}</p>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{c.titleEn}</p>
@@ -99,7 +158,7 @@ export function AdminCourses() {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={() => openEdit(c)} className="p-1.5 rounded-lg hover:bg-[var(--cream)]"><Pencil size={14} style={{ color: 'var(--sage-dark)' }} /></button>
-                    <button type="button" onClick={() => toggleStatus(c.id)} className="p-1.5 rounded-lg hover:bg-[var(--cream)]">
+                    <button type="button" onClick={() => void toggleStatus(c.id)} className="p-1.5 rounded-lg hover:bg-[var(--cream)]">
                       {c.status === 'active' ? <EyeOff size={14} style={{ color: 'var(--text-muted)' }} /> : <Eye size={14} style={{ color: 'var(--sage)' }} />}
                     </button>
                     <button type="button" onClick={() => setDeleteId(c.id)} className="p-1.5 rounded-lg hover:bg-red-50"><Trash2 size={14} style={{ color: '#B5524A' }} /></button>
@@ -151,9 +210,13 @@ export function AdminCourses() {
                   ))}
                 </div>
               </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-dark)' }}>صورة الغلاف (رابط)</label>
+                <input type="text" value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' }} />
+              </div>
             </div>
             <div className="flex gap-3 px-6 pb-6">
-              <button type="button" onClick={handleSave} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: 'var(--sage)' }}>حفظ</button>
+              <button type="button" onClick={() => void handleSave()} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: 'var(--sage)' }}>حفظ</button>
               <button type="button" onClick={() => setModal(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: 'var(--cream)', color: 'var(--text-dark)' }}>إلغاء</button>
             </div>
           </div>
@@ -167,7 +230,7 @@ export function AdminCourses() {
             <p className="text-lg font-bold" style={{ color: 'var(--text-dark)' }}>حذف الدورة؟</p>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>لا يمكن التراجع عن هذا الإجراء.</p>
             <div className="flex gap-3 justify-center">
-              <button type="button" onClick={confirmDelete} className="px-5 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#B5524A' }}>حذف</button>
+              <button type="button" onClick={() => void confirmDelete()} className="px-5 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#B5524A' }}>حذف</button>
               <button type="button" onClick={() => setDeleteId(null)} className="px-5 py-2 rounded-xl text-sm font-semibold" style={{ background: 'var(--cream)', color: 'var(--text-dark)' }}>إلغاء</button>
             </div>
           </div>

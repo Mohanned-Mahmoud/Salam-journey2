@@ -57,3 +57,13 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Firebase
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+
+
+.claude/
+.agents/ 

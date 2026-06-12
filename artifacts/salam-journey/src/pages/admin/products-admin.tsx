@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Eye, EyeOff, X } from 'lucide-react';
-import { loadJson, saveJson, PRODUCTS_ADMIN_KEY, SEED_PRODUCTS } from './types';
 import type { AdminProduct } from './types';
 
 type FormState = Omit<AdminProduct, 'id'>;
@@ -13,12 +12,40 @@ const EMPTY_FORM: FormState = {
 const TYPE_LABELS: Record<AdminProduct['type'], string> = { pdf: 'PDF', printable: 'مطبوعات', guide: 'دليل', other: 'أخرى' };
 
 export function AdminProducts() {
-  const [products, setProducts] = useState<AdminProduct[]>(() => loadJson<AdminProduct[]>(PRODUCTS_ADMIN_KEY, SEED_PRODUCTS));
+  const [products, setProducts] = useState<AdminProduct[]>([]);
   const [modal, setModal] = useState<{ mode: 'add' | 'edit'; id?: string } | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  function persist(next: AdminProduct[]) { setProducts(next); saveJson(PRODUCTS_ADMIN_KEY, next); }
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProducts() {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/products');
+        if (!response.ok) throw new Error('failed');
+        const data = (await response.json()) as Array<Omit<AdminProduct, 'free'> & { isFree?: boolean }>;
+        if (!cancelled) {
+          setProducts(data.map((product) => ({ ...product, free: Boolean((product as { isFree?: boolean }).isFree) })));
+        }
+      } catch {
+        if (!cancelled) {
+          setError('تعذر تحميل المنتجات من قاعدة البيانات');
+          setProducts([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void loadProducts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function openAdd() { setForm(EMPTY_FORM); setModal({ mode: 'add' }); }
   function openEdit(p: AdminProduct) {
@@ -26,21 +53,51 @@ export function AdminProducts() {
     setModal({ mode: 'edit', id: p.id });
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!form.titleAr.trim()) return;
     if (modal?.mode === 'add') {
-      persist([...products, { ...form, id: `p-${Date.now()}` }]);
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, isFree: form.free }),
+      });
+      if (!response.ok) return;
+      const created = (await response.json()) as Omit<AdminProduct, 'free'> & { isFree?: boolean };
+      setProducts((current) => [...current, { ...created, free: Boolean(created.isFree) }]);
     } else if (modal?.id) {
-      persist(products.map((p) => p.id === modal.id ? { ...form, id: p.id } : p));
+      const response = await fetch(`/api/products/${modal.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, isFree: form.free }),
+      });
+      if (!response.ok) return;
+      const updated = (await response.json()) as Omit<AdminProduct, 'free'> & { isFree?: boolean };
+      setProducts((current) => current.map((product) => (product.id === modal.id ? { ...updated, free: Boolean(updated.isFree) } : product)));
     }
     setModal(null);
   }
 
-  function toggleStatus(id: string) {
-    persist(products.map((p) => p.id === id ? { ...p, status: p.status === 'active' ? 'hidden' : 'active' } : p));
+  async function toggleStatus(id: string) {
+    const product = products.find((item) => item.id === id);
+    if (!product) return;
+    const nextStatus = product.status === 'active' ? 'hidden' : 'active';
+    const response = await fetch(`/api/products/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: nextStatus, isFree: product.free }),
+    });
+    if (!response.ok) return;
+    const updated = (await response.json()) as Omit<AdminProduct, 'free'> & { isFree?: boolean };
+    setProducts((current) => current.map((item) => (item.id === id ? { ...updated, free: Boolean(updated.isFree) } : item)));
   }
 
-  function confirmDelete() { if (deleteId) persist(products.filter((p) => p.id !== deleteId)); setDeleteId(null); }
+  async function confirmDelete() {
+    if (!deleteId) return;
+    const response = await fetch(`/api/products/${deleteId}`, { method: 'DELETE' });
+    if (!response.ok) return;
+    setProducts((current) => current.filter((product) => product.id !== deleteId));
+    setDeleteId(null);
+  }
 
   return (
     <div className="space-y-6">
@@ -53,6 +110,9 @@ export function AdminProducts() {
           <Plus size={15} /> إضافة منتج
         </button>
       </div>
+
+      {loading && <p className="text-sm" style={{ color: 'var(--text-muted)' }}>جارٍ تحميل المنتجات...</p>}
+      {!loading && error && <p className="text-sm" style={{ color: '#B5524A' }}>{error}</p>}
 
       <div className="rounded-2xl overflow-hidden" style={{ background: 'white', boxShadow: '0 2px 12px rgba(90,138,128,0.08)', border: '1px solid rgba(127,169,155,0.12)' }}>
         <table className="w-full text-sm">
@@ -81,7 +141,7 @@ export function AdminProducts() {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-[var(--cream)]"><Pencil size={14} style={{ color: 'var(--sage-dark)' }} /></button>
-                    <button type="button" onClick={() => toggleStatus(p.id)} className="p-1.5 rounded-lg hover:bg-[var(--cream)]">
+                    <button type="button" onClick={() => void toggleStatus(p.id)} className="p-1.5 rounded-lg hover:bg-[var(--cream)]">
                       {p.status === 'active' ? <EyeOff size={14} style={{ color: 'var(--text-muted)' }} /> : <Eye size={14} style={{ color: 'var(--sage)' }} />}
                     </button>
                     <button type="button" onClick={() => setDeleteId(p.id)} className="p-1.5 rounded-lg hover:bg-red-50"><Trash2 size={14} style={{ color: '#B5524A' }} /></button>
@@ -131,7 +191,7 @@ export function AdminProducts() {
               </label>
             </div>
             <div className="flex gap-3 px-6 pb-6">
-              <button type="button" onClick={handleSave} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: 'var(--sage)' }}>حفظ</button>
+              <button type="button" onClick={() => void handleSave()} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: 'var(--sage)' }}>حفظ</button>
               <button type="button" onClick={() => setModal(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold" style={{ background: 'var(--cream)', color: 'var(--text-dark)' }}>إلغاء</button>
             </div>
           </div>
@@ -144,7 +204,7 @@ export function AdminProducts() {
             <p className="text-lg font-bold" style={{ color: 'var(--text-dark)' }}>حذف المنتج؟</p>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>لا يمكن التراجع عن هذا الإجراء.</p>
             <div className="flex gap-3 justify-center">
-              <button type="button" onClick={confirmDelete} className="px-5 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#B5524A' }}>حذف</button>
+              <button type="button" onClick={() => void confirmDelete()} className="px-5 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#B5524A' }}>حذف</button>
               <button type="button" onClick={() => setDeleteId(null)} className="px-5 py-2 rounded-xl text-sm font-semibold" style={{ background: 'var(--cream)', color: 'var(--text-dark)' }}>إلغاء</button>
             </div>
           </div>

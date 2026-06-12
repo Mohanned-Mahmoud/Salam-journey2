@@ -26,6 +26,15 @@ type AuthModalsContextValue = {
 
 const Ctx = createContext<AuthModalsContextValue | null>(null);
 
+const fallbackModals: AuthModalsContextValue = {
+  openLogin: () => {},
+  openRegister: () => {},
+  openForgotPassword: () => {},
+  openLogout: () => {},
+  openAuthGate: () => {},
+  close: () => {},
+};
+
 export function AuthModalsProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>({ kind: "none" });
 
@@ -98,6 +107,5 @@ export function AuthModalsProvider({ children }: { children: ReactNode }) {
 
 export function useAuthModals() {
   const ctx = useContext(Ctx);
-  if (!ctx) throw new Error("useAuthModals must be used within an AuthModalsProvider");
-  return ctx;
+  return ctx ?? fallbackModals;
 }
