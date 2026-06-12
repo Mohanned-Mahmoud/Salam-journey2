@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, ShoppingBag, Star, Sparkles, Users, Award, Globe, Quote } from "lucide-react";
 import { useLanguage, tx } from "@/lib/i18n";
@@ -40,10 +40,10 @@ const SERVICES = [
 ];
 
 const TRUST = [
-  { icon: Users, value: "+2000", label: tx("أم انضمّت", "Mothers joined") },
-  { icon: Sparkles, value: "2016", label: tx("بدأنا منذ", "Since") },
+  { icon: Users, value: "+700", label: tx("أم انضمّت", "Mothers joined") },
+  { icon: Sparkles, value: "2024", label: tx("بدأنا منذ", "Since") },
   { icon: Globe, value: "UK", label: tx("مسجّلة في بريطانيا", "Registered in the UK") },
-  { icon: Award, value: "12+", label: tx("دورات متخصصة", "Specialized courses") },
+  { icon: Award, value: "3+", label: tx("دورات متخصصة", "Specialized courses") },
 ];
 
 const TESTIMONIALS = [
@@ -151,7 +151,7 @@ export default function Home() {
               }}
             >
               <Sparkles size={13} />
-              {t(tx("+٢٠٠٠ أم انضمّت إلينا · منذ 2016", "+2000 mothers joined · Since 2016"))}
+              {t(tx("+٧٠٠ أم انضمّت إلينا · منذ 2024", "+700 mothers joined · Since 2024"))}
             </span>
 
             <h1 className="reveal text-4xl md:text-6xl lg:text-7xl leading-[1.1] mb-6" data-reveal-delay="80">
@@ -170,8 +170,8 @@ export default function Home() {
             >
               {t(
                 tx(
-                  "نساعد الأمهات من خلال المحتوى التربوي والدورات والجلسات الخاصة لتصبحي أمّاً متمكنة تحقق السلام مع نفسها وأطفالها.",
-                  "Empowering mothers through parenting content, courses & coaching sessions to find peace within themselves and with their children.",
+                  "نساعد الأمهات من خلال المحتوى التربوي والدورات والجلسات الخاصة لتصبحي أمّاً متمكنة وقادرة على فهم أطفالك والتواصل الفعال معهم وتحقيق السلام مع ذاتك",
+                  "We support mothers through educational content, courses, and private sessions so you can become an empowered mother, able to understand your children, communicate effectively with them, and find peace with yourself.",
                 ),
               )}
             </p>
@@ -234,7 +234,7 @@ export default function Home() {
                   {t(tx("مجتمع الأمهات", "Mothers community"))}
                 </div>
                 <div className="font-bold" style={{ color: "var(--text-dark)" }}>
-                  +2000
+                  +700
                 </div>
               </div>
             </div>
