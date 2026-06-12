@@ -41,7 +41,7 @@ if (fs.existsSync(staticPath)) {
   app.use(express.static(staticPath));
 
   // Catch-all route to serve index.html for React routing
-  app.get("*", (req, res) => {
+  app.get("(.*)", (req, res) => {
     res.sendFile(path.join(staticPath, "index.html"));
   });
   logger.info({ staticPath }, "Serving frontend static files from path");
