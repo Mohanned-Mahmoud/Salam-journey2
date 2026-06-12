@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Check, CalendarDays, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, CalendarDays, Clock, CheckCircle } from "lucide-react";
 import { useLanguage, tx, type Bilingual } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -12,34 +12,29 @@ type SessionType = {
   kind: "single" | "package";
   title: Bilingual;
   duration: Bilingual;
-  price: Bilingual;
   description: Bilingual;
-  packageSessionsTotal?: number;
 };
 
 const SESSION_TYPES: SessionType[] = [
   {
     id: "individual",
     kind: "single",
-    title: tx("جلسة فردية", "Individual Session"),
+    title: tx("جلسة استشارية متخصصة", "Specialized Consultation Session"),
     duration: tx("٦٠ دقيقة", "60 minutes"),
-    price: tx("٤٥٠ ريال", "$120"),
     description: tx(
       "جلسة استشارية مخصصة لمناقشة تحدياتك التربوية ووضع خطة عملية.",
-      "A one-on-one coaching session to work through your parenting challenges with a clear plan.",
+      "A specialized consultation session to work through your parenting challenges with a clear plan.",
     ),
   },
   {
-    id: "package",
+    id: "coaching",
     kind: "package",
-    title: tx("حزمة ٣ جلسات", "3-Session Package"),
-    duration: tx("٣ × ٦٠ دقيقة", "3 × 60 minutes"),
-    price: tx("١٢٠٠ ريال", "$320"),
+    title: tx("جلسة كوتشنج", "Coaching Session"),
+    duration: tx("٦٠ دقيقة", "60 minutes"),
     description: tx(
-      "ثلاث جلسات متابعة على مدار شهر، لتحقيق تحوّل حقيقي في علاقتك مع طفلك.",
-      "Three sessions across a month for a real transformation in your bond with your child.",
+      "جلسة كوتشنج مخصصة لمساعدتك على اكتشاف وعيك الذاتي وتحقيق السلام الداخلي.",
+      "A coaching session designed to help you discover self-awareness and achieve inner peace.",
     ),
-    packageSessionsTotal: 3,
   },
 ];
 
@@ -47,14 +42,6 @@ const TIME_SLOTS_AR = ["10:00 ص", "12:00 م", "2:00 م", "4:00 م", "6:00 م"];
 const TIME_SLOTS_EN = ["10:00 AM", "12:00 PM", "2:00 PM", "4:00 PM", "6:00 PM"];
 /** Canonical slot key used for storage/uniqueness. */
 const TIME_SLOT_KEYS = ["10:00", "12:00", "14:00", "16:00", "18:00"];
-
-const TOPICS = [
-  tx("تحدّيات في التربية", "Parenting challenges"),
-  tx("التعامل مع نوبات الغضب", "Handling tantrums"),
-  tx("بناء الثقة بالنفس عند الأطفال", "Building child confidence"),
-  tx("توازن الأم العاملة", "Working mother balance"),
-  tx("السلام الداخلي للأم", "Inner peace for mothers"),
-];
 
 /* ──────────────────────────────────────────────────────────── */
 /* Utilities                                                    */
@@ -183,18 +170,28 @@ export function BookingCalendar({ onConfirmed }: Props) {
   const { user } = useAuth();
   const today = useMemo(() => startOfDay(new Date()), []);
 
-  const [sessionTypeId, setSessionTypeId] = useState(SESSION_TYPES[0].id);
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [bookedMap, setBookedMap] = useState<BookedMap>({});
 
+  // جلب تكلفة الجلسات ديناميكياً من لوحة تحكم الآدمن
+  const sessionPrices = (user as any)?.adminConfig?.prices || {
+    single: "50$", 
+    fourSessions: "180$", 
+    sixSessions: "250$"
+  };
+
+  // تهيئة الـ State المحدث للمرحلة الرابعة
   const [form, setForm] = useState({
     name: "",
     email: "",
     whatsapp: "",
-    topic: TOPICS[0].ar,
+    sessionType: { ar: "جلسة استشارية متخصصة", en: "Specialized Consultation Session" },
+    bookingKind: "single" as "single" | "package",
+    packageSessionsTotal: 1,
+    topic: "",
     notes: "",
   });
 
@@ -238,7 +235,7 @@ export function BookingCalendar({ onConfirmed }: Props) {
   const nextMonth = () => {
     const m = viewMonth + 1;
     if (m > 11) { setViewMonth(0); setViewYear((y) => y + 1); }
-    else setViewMonth(m);
+    else setViewYear((y) => y + 1);
   };
 
   const canGoBack = !(viewYear === today.getFullYear() && viewMonth === today.getMonth());
@@ -265,16 +262,17 @@ export function BookingCalendar({ onConfirmed }: Props) {
     );
     const slotIdx = TIME_SLOT_KEYS.indexOf(selectedSlot);
     const slotLabel = slotLabels[slotIdx] ?? selectedSlot;
-    const sessionType = SESSION_TYPES.find((s) => s.id === sessionTypeId)!.title;
-    const sessionTypeConfig = SESSION_TYPES.find((s) => s.id === sessionTypeId)!;
+    
+    const sessionTypeBilingual = tx(form.sessionType.ar, form.sessionType.en);
+    const packageTotal = form.bookingKind === "single" ? null : form.packageSessionsTotal;
 
     const confirmed = await onConfirmed?.({
       date: key,
       slot: selectedSlot,
       slotLabel,
-      sessionType,
-      bookingKind: sessionTypeConfig.kind,
-      packageSessionsTotal: sessionTypeConfig.packageSessionsTotal ?? null,
+      sessionType: sessionTypeBilingual,
+      bookingKind: form.bookingKind,
+      packageSessionsTotal: packageTotal,
       topic: form.topic,
       notes: form.notes,
       name: form.name,
@@ -296,10 +294,10 @@ export function BookingCalendar({ onConfirmed }: Props) {
       date: key,
       slot: selectedSlot,
       slotLabel,
-      sessionType: t(sessionType),
-      bookingKind: sessionTypeConfig.kind,
-      packageSessionsTotal: sessionTypeConfig.packageSessionsTotal ?? null,
-      packageSessionsRemaining: sessionTypeConfig.packageSessionsTotal ?? null,
+      sessionType: t(sessionTypeBilingual),
+      bookingKind: form.bookingKind,
+      packageSessionsTotal: packageTotal,
+      packageSessionsRemaining: packageTotal,
       topic: form.topic,
       notes: form.notes,
       name: form.name,
@@ -307,9 +305,9 @@ export function BookingCalendar({ onConfirmed }: Props) {
       whatsapp: form.whatsapp,
     });
 
-    /* Reset slot + notes after confirmation; keep contact info for the next booking. */
+    /* Reset slot + text inputs after confirmation */
     setSelectedSlot(null);
-    setForm((prev) => ({ ...prev, notes: "" }));
+    setForm((prev) => ({ ...prev, topic: "", notes: "" }));
   };
 
   const cells: (number | null)[] = [];
@@ -324,78 +322,51 @@ export function BookingCalendar({ onConfirmed }: Props) {
     : "";
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-      {/* Session info panel */}
-      <aside className="lg:col-span-5 space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 w-full">
+      {/* Sidebar الإرشادي الجانبي */}
+      <aside className="lg:col-span-5 space-y-6 w-full">
         <div>
           <p
             className="uppercase tracking-[0.18em] text-xs font-semibold mb-2"
             style={{ color: "var(--sage-dark)" }}
           >
-            {t(tx("الخطوة ١", "Step 1"))}
+            {t(tx("خطوات الحجز", "Booking Steps"))}
           </p>
-          <h3 className="text-2xl md:text-3xl mb-2">
-            {t(tx("اختاري نوع الجلسة", "Choose your session"))}
+          <h3 className="text-2xl md:text-3xl mb-2 whitespace-normal break-words">
+            {t(tx("رحلتك نحو السلام الداخلي", "Your Journey to Inner Peace"))}
           </h3>
-          <p className="text-sm" style={{ color: "var(--text-body)" }}>
+          <p className="text-sm whitespace-normal text-pretty" style={{ color: "var(--text-body)" }}>
             {t(
               tx(
-                "نقدّم خيارين مرنين يناسبان احتياجك وجدولك.",
-                "Two flexible formats that fit your needs and schedule.",
+                "جدولي جلستك الخاصة الآن باتباع خطوات التقويم التفاعلي البسيطة.",
+                "Schedule your private session now by following the simple interactive calendar steps.",
               ),
             )}
           </p>
         </div>
 
-        <div className="space-y-3">
-          {SESSION_TYPES.map((s) => {
-            const active = s.id === sessionTypeId;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setSessionTypeId(s.id)}
-                className="w-full text-start p-5 rounded-2xl transition-all relative"
-                style={{
-                  background: active ? "var(--white)" : "rgba(255,255,255,0.6)",
-                  border: `2px solid ${active ? "var(--sage-dark)" : "rgba(127,169,155,0.25)"}`,
-                  boxShadow: active ? "0 12px 30px rgba(90,138,128,0.15)" : "none",
-                }}
-                aria-pressed={active}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="text-lg" style={{ color: "var(--text-dark)" }}>
-                        {t(s.title)}
-                      </h4>
-                    </div>
-                    <p className="text-sm leading-relaxed" style={{ color: "var(--text-body)" }}>
-                      {t(s.description)}
-                    </p>
-                    <div className="flex items-center gap-4 mt-3 text-sm" style={{ color: "var(--sage-dark)" }}>
-                      <span className="flex items-center gap-1.5"><Clock size={14} /> {t(s.duration)}</span>
-                      <span className="font-semibold">{t(s.price)}</span>
-                    </div>
-                  </div>
-                  <span
-                    className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-all"
-                    style={{
-                      background: active ? "var(--sage-dark)" : "var(--sage-muted)",
-                      color: active ? "white" : "var(--sage-dark)",
-                    }}
-                    aria-hidden
-                  >
-                    {active ? <Check size={16} /> : <span className="block w-2 h-2 rounded-full bg-white/60" />}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
+        <div className="space-y-3 w-full">
+          {SESSION_TYPES.map((s) => (
+            <div
+              key={s.id}
+              className="w-full p-5 rounded-2xl border bg-white/60 min-w-0 h-auto"
+              style={{ borderColor: "rgba(127,169,155,0.25)" }}
+            >
+              <h4 className="text-base font-bold mb-1 break-words" style={{ color: "var(--text-dark)" }}>
+                {t(s.title)}
+              </h4>
+              <p className="text-xs md:text-sm leading-relaxed text-pretty whitespace-normal" style={{ color: "var(--text-body)" }}>
+                {t(s.description)}
+              </p>
+              <div className="flex items-center gap-1.5 mt-2 text-xs font-semibold" style={{ color: "var(--sage-dark)" }}>
+                <Clock size={12} /> {t(s.duration)}
+              </div>
+            </div>
+          ))}
         </div>
 
         <div
-          className="rounded-2xl p-5 text-sm leading-relaxed"
+          className="rounded-2xl p-5 text-sm leading-relaxed whitespace-normal text-pretty"
           style={{ background: "var(--blush-light)", color: "var(--text-dark)" }}
         >
           <strong className="block mb-1">{t(tx("ملاحظة", "Heads up"))}</strong>
@@ -408,11 +379,11 @@ export function BookingCalendar({ onConfirmed }: Props) {
         </div>
       </aside>
 
-      {/* Calendar + slots + form */}
-      <div className="lg:col-span-7 space-y-6">
-        {/* Calendar card */}
+      {/* تقويم الحجز والمرحلة الرابعة */}
+      <div className="lg:col-span-7 space-y-6 w-full">
+        {/* Step 2: Pick a day */}
         <div
-          className="rounded-3xl p-5 md:p-7"
+          className="rounded-3xl p-5 md:p-7 w-full"
           style={{
             background: "var(--white)",
             border: "1px solid rgba(127,169,155,0.2)",
@@ -424,7 +395,7 @@ export function BookingCalendar({ onConfirmed }: Props) {
               className="uppercase tracking-[0.18em] text-xs font-semibold"
               style={{ color: "var(--sage-dark)" }}
             >
-              {t(tx("الخطوة ٢ — اختاري اليوم", "Step 2 — Pick a day"))}
+              {t(tx("الخطوة ١ — اختاري اليوم", "Step 1 — Pick a day"))}
             </p>
             <CalendarDays size={20} style={{ color: "var(--sage-dark)" }} />
           </div>
@@ -503,50 +474,18 @@ export function BookingCalendar({ onConfirmed }: Props) {
                     transform: isSelected ? "scale(1.04)" : undefined,
                     boxShadow: isSelected ? "0 8px 18px rgba(90,138,128,0.35)" : undefined,
                   }}
-                  onMouseEnter={(e) => {
-                    if (!disabled && !isSelected) {
-                      e.currentTarget.style.background = "var(--sage-light)";
-                      e.currentTarget.style.color = "var(--text-dark)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!disabled && !isSelected) {
-                      e.currentTarget.style.background = isWeekend ? "var(--sage-muted)" : "var(--white)";
-                      e.currentTarget.style.color = "var(--text-dark)";
-                    }
-                  }}
                 >
                   {lang === "ar" ? day.toLocaleString("ar-EG") : day}
                 </button>
               );
             })}
           </div>
-
-          {/* Legend */}
-          <div className="flex flex-wrap items-center gap-4 mt-5 text-xs" style={{ color: "var(--text-muted)" }}>
-            <span className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded" style={{ background: "var(--sage-dark)" }} />
-              {t(tx("اليوم المختار", "Selected"))}
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded" style={{ background: "var(--sage-muted)" }} />
-              {t(tx("عطلة نهاية الأسبوع", "Weekend"))}
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded" style={{ background: "var(--white)", border: "1px solid var(--sage)" }} />
-              {t(tx("متاح", "Available"))}
-            </span>
-            <span className="flex items-center gap-2 opacity-50">
-              <span className="w-3 h-3 rounded line-through" style={{ background: "var(--cream-dark)" }} />
-              {t(tx("غير متاح", "Unavailable"))}
-            </span>
-          </div>
         </div>
 
-        {/* Time slots */}
+        {/* Step 3: Pick a time */}
         {selectedDate && (
           <div
-            className="rounded-3xl p-5 md:p-7 animate-slide-up"
+            className="rounded-3xl p-5 md:p-7 animate-slide-up w-full"
             style={{
               background: "var(--white)",
               border: "1px solid rgba(127,169,155,0.2)",
@@ -557,7 +496,7 @@ export function BookingCalendar({ onConfirmed }: Props) {
               className="uppercase tracking-[0.18em] text-xs font-semibold mb-2"
               style={{ color: "var(--sage-dark)" }}
             >
-              {t(tx("الخطوة ٣ — اختاري الوقت", "Step 3 — Pick a time"))}
+              {t(tx("الخطوة ٢ — اختاري الوقت", "Step 2 — Pick a time"))}
             </p>
             <h4 className="text-lg mb-4" style={{ color: "var(--text-dark)" }}>
               {formattedSelectedDate}
@@ -585,7 +524,6 @@ export function BookingCalendar({ onConfirmed }: Props) {
                       cursor: isBooked ? "not-allowed" : "pointer",
                       textDecoration: isBooked ? "line-through" : "none",
                     }}
-                    aria-pressed={isSelected}
                   >
                     {slotLabels[idx]}
                   </button>
@@ -595,40 +533,107 @@ export function BookingCalendar({ onConfirmed }: Props) {
           </div>
         )}
 
-        {/* Booking form */}
+        {/* الخطوة الرابعة المحدثة بالكامل مع أنواع الجلسات، الحزم، وموضوع الجلسة المفتوح */}
         {selectedDate && selectedSlot && (
           <form
             onSubmit={handleConfirm}
-            className="rounded-3xl p-5 md:p-7 animate-slide-up"
+            className="rounded-3xl p-5 md:p-7 animate-slide-up w-full space-y-6"
             style={{
               background: "var(--cream)",
               border: "1px solid rgba(127,169,155,0.25)",
               boxShadow: "0 20px 50px rgba(90,138,128,0.08)",
             }}
           >
-            <p
-              className="uppercase tracking-[0.18em] text-xs font-semibold mb-2"
-              style={{ color: "var(--sage-dark)" }}
-            >
-              {t(tx("الخطوة ٤ — بياناتك", "Step 4 — Your details"))}
-            </p>
-            <h4 className="text-xl mb-1" style={{ color: "var(--text-dark)" }}>
-              {t(tx("أكملي بيانات الحجز", "Complete your booking"))}
-            </h4>
-            {user && (
-              <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
-                {t(tx("تمت تعبئة بياناتك تلقائياً — يمكنكِ تعديلها.", "We've prefilled your details — feel free to edit."))}
+            <div>
+              <p
+                className="uppercase tracking-[0.18em] text-xs font-semibold mb-1"
+                style={{ color: "var(--sage-dark)" }}
+              >
+                {t(tx("الخطوة ٣ — تفاصيل حجزك", "Step 3 — Your Booking Details"))}
               </p>
-            )}
+              <h4 className="text-xl mb-1 font-bold" style={{ color: "var(--text-dark)" }}>
+                {t(tx("أكملي بيانات الجلسة", "Complete your booking"))}
+              </h4>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+            {/* أولاً: نوع الجلسة المحدث */}
+            <div className="space-y-2 w-full">
+              <label className="block text-sm font-semibold" style={{ color: "var(--text-dark)" }}>
+                {t(tx("نوع الجلسة", "Session Type"))}
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                {[
+                  { ar: "جلسة استشارية متخصصة", en: "Specialized Consultation Session" },
+                  { ar: "جلسة كوتشنج", en: "Coaching Session" }
+                ].map((type) => {
+                  const isSelected = form.sessionType.ar === type.ar;
+                  return (
+                    <button
+                      key={type.ar}
+                      type="button"
+                      onClick={() => setForm({ ...form, sessionType: type })}
+                      className={`p-4 rounded-xl border text-start transition-all flex justify-between items-center min-w-0 h-auto ${
+                        isSelected ? "bg-white border-2 shadow-sm" : "bg-white/50 hover:bg-white/80 border-gray-200"
+                      }`}
+                      style={{ borderColor: isSelected ? "var(--sage-dark)" : undefined }}
+                    >
+                      <span className="text-sm font-medium whitespace-normal text-pretty break-words min-w-0 flex-1" style={{ color: "var(--text-dark)" }}>
+                        {t(tx(type.ar, type.en))}
+                      </span>
+                      {isSelected && <CheckCircle size={18} className="shrink-0 ms-2" style={{ color: "var(--sage-dark)" }} />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ثانياً: الحزم والأسعار الديناميكية من حساب الآدمن */}
+            <div className="space-y-2 w-full">
+              <label className="block text-sm font-semibold" style={{ color: "var(--text-dark)" }}>
+                {t(tx("الحزم المتاحة والأسعار", "Available Packages & Pricing"))}
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+                {[
+                  { id: "single", total: 1, titleAr: "جلسة فردية", titleEn: "Single Session", price: sessionPrices.single },
+                  { id: "four", total: 4, titleAr: "4 جلسات", titleEn: "4 Sessions", price: sessionPrices.fourSessions },
+                  { id: "six", total: 6, titleAr: "6 جلسات", titleEn: "6 Sessions", price: sessionPrices.sixSessions },
+                ].map((pkg) => {
+                  const isSelected = form.bookingKind === (pkg.id === "single" ? "single" : "package") && form.packageSessionsTotal === pkg.total;
+                  return (
+                    <button
+                      key={pkg.id}
+                      type="button"
+                      onClick={() => setForm({
+                        ...form,
+                        bookingKind: pkg.id === "single" ? "single" : "package",
+                        packageSessionsTotal: pkg.total
+                      })}
+                      className={`p-4 rounded-xl border text-center transition-all flex flex-col justify-between items-center min-w-0 h-auto ${
+                        isSelected ? "bg-white border-2 shadow-sm" : "bg-white/50 hover:bg-white/80 border-gray-200"
+                      }`}
+                      style={{ borderColor: isSelected ? "var(--sage-dark)" : undefined }}
+                    >
+                      <span className="font-bold text-sm whitespace-normal text-pretty break-words" style={{ color: "var(--text-dark)" }}>
+                        {t(tx(pkg.titleAr, pkg.titleEn))}
+                      </span>
+                      <span className="text-base font-extrabold mt-1" style={{ color: "var(--sage-dark)" }}>
+                        {pkg.price}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* البيانات الشخصية للمستخدم */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-dashed border-gray-200">
               <Field label={t(tx("الاسم الكامل", "Full Name"))}>
                 <input
                   type="text"
                   required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full"
+                  className="w-full whitespace-normal"
                   style={inputStyle}
                   placeholder={t(tx("اكتبي اسمك", "Your full name"))}
                 />
@@ -639,51 +644,55 @@ export function BookingCalendar({ onConfirmed }: Props) {
                   required
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full"
+                  className="w-full whitespace-normal"
                   style={inputStyle}
                   placeholder="you@example.com"
                 />
               </Field>
-              <Field label={t(tx("رقم الواتساب", "WhatsApp Number"))}>
-                <input
-                  type="tel"
-                  required
-                  value={form.whatsapp}
-                  onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
-                  className="w-full"
-                  style={inputStyle}
-                  placeholder="+966 ..."
-                />
-              </Field>
-              <Field label={t(tx("موضوع الجلسة", "Session Topic"))}>
-                <select
-                  value={form.topic}
-                  onChange={(e) => setForm({ ...form, topic: e.target.value })}
-                  className="w-full"
-                  style={inputStyle}
-                >
-                  {TOPICS.map((topic) => (
-                    <option key={topic.ar} value={topic.ar}>
-                      {t(topic)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
               <div className="md:col-span-2">
-                <Field label={t(tx("ملاحظات إضافية (اختياري)", "Additional Notes (optional)"))}>
-                  <textarea
-                    value={form.notes}
-                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    rows={3}
-                    className="w-full"
-                    style={{ ...inputStyle, resize: "vertical" }}
-                    placeholder={t(tx("شاركينا أي تفاصيل تساعد المدربة", "Share any details that may help your coach"))}
+                <Field label={t(tx("رقم الواتساب", "WhatsApp Number"))}>
+                  <input
+                    type="tel"
+                    required
+                    value={form.whatsapp}
+                    onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+                    className="w-full whitespace-normal"
+                    style={inputStyle}
+                    placeholder="+966 ..."
                   />
                 </Field>
               </div>
             </div>
 
-            <button type="submit" className="pill-btn pill-btn-primary mt-6 w-full md:w-auto">
+            {/* ثالثاً: حقل موضوع الجلسة المفتوح المحدث بدلاً من المنسدل */}
+            <div className="space-y-1.5 w-full">
+              <label className="block text-sm font-semibold" style={{ color: "var(--text-dark)" }}>
+                {t(tx("موضوع الجلسة (اكتبي نبذه بسيطة عما تردين الحديث عنه)", "Session Topic (Write a brief note about what you would like to discuss)"))}
+              </label>
+              <textarea
+                required
+                value={form.topic}
+                onChange={(e) => setForm({ ...form, topic: e.target.value })}
+                rows={3}
+                className="w-full text-sm whitespace-normal text-pretty break-words"
+                style={inputStyle}
+                placeholder={t(tx("اكتبي المحاور أو النقاط التي تودين مشاركتها هنا...", "Write down the main points you'd like to share here..."))}
+              />
+            </div>
+
+            {/* الملاحظات الإضافية الاختيارية */}
+            <Field label={t(tx("ملاحظات إضافية (اختياري)", "Additional Notes (optional)"))}>
+              <textarea
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                rows={2}
+                className="w-full text-sm whitespace-normal text-pretty break-words"
+                style={{ ...inputStyle, resize: "vertical" }}
+                placeholder={t(tx("شاركينا أي تفاصيل تساعد المدربة", "Share any details that may help your coach"))}
+              />
+            </Field>
+
+            <button type="submit" className="pill-btn pill-btn-primary mt-4 w-full md:w-auto font-bold text-base shadow-sm">
               {t(tx("تأكيد الحجز", "Confirm Booking"))}
             </button>
           </form>
@@ -699,7 +708,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return (
     <label className="block">
       <span
-        className="block mb-1.5 text-sm font-semibold"
+        className="block mb-1.5 text-sm font-semibold whitespace-normal text-pretty"
         style={{ color: "var(--text-dark)" }}
       >
         {label}

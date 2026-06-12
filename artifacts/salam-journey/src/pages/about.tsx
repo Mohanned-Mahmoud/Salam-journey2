@@ -185,8 +185,91 @@ export default function About() {
         <SectionDivider color="var(--blush-light)" />
       </section>
 
-      {/* Coach story */}
+      {/* قسم الهوية الجديد المماثل للصورة المرفوعة */}
       <section style={{ background: "var(--blush-light)" }} className="w-full">
+        <div className="container mx-auto px-5 md:px-8 py-16 max-w-7xl">
+          <div className="text-center max-w-4xl mx-auto mb-12 reveal break-words">
+            <h2 className="text-3xl md:text-5xl mb-6 leading-tight" style={{ color: "var(--text-dark)" }}>
+              {t(tx("ما هي رحلة سلام؟", "What is Salam Journey?"))}
+            </h2>
+            
+            <p className="text-lg md:text-xl font-medium mb-4 leading-relaxed text-pretty" style={{ color: "var(--sage-dark)" }}>
+              {t(tx(
+                "مرحبا بك فى رحلة سلام.. نؤمن أنه مهما كانت تحدياتك يمكنك تحقيق السلام والتناغم فى رحلتك الخاصة. كوني على أتم استعداد فستنطلق الرحلة!",
+                "Welcome to Salam Journey.. We believe that no matter what your challenges are, you can achieve peace and harmony on your own special journey. Be fully prepared, for the journey is about to begin!"
+              ))}
+            </p>
+            
+            <p className="text-base md:text-lg leading-relaxed text-pretty" style={{ color: "var(--text-body)" }}>
+              {t(tx(
+                "رحلة سلام هي رحلة بدأت من قلب أم. ورقة الشجر تهدف للسلام الطمأنينة السكينة، وهي فى نفس ذات الوقت يد الأم التي تمسك بيد صغيرها لتعرفه على الحياة.. لم تفلتها لتكون هي!",
+                "Salam Journey is a journey that began from a mother's heart. The tree leaf aims for peace, tranquility, and serenity, while at the very same time, it represents a mother's hand holding her little one's hand to introduce them to life.. never letting go, so she can fully be herself!"
+              ))}
+            </p>
+          </div>
+
+          {/* الـ 3 خانات المطابقة لـ image_6ae874.png */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 w-full mt-10">
+            {/* بطاقة هدفنا */}
+            <div 
+              className="rounded-3xl p-6 md:p-8 text-center reveal border flex flex-col justify-between min-w-0 h-auto bg-white/60"
+              style={{ borderColor: "rgba(127,169,155,0.4)" }}
+            >
+              <div>
+                <h3 className="text-xl font-bold mb-4" style={{ color: "var(--text-dark)" }}>
+                  {t(tx("هدفنا", "Our Goal"))}
+                </h3>
+                <p className="text-base leading-relaxed text-pretty whitespace-normal" style={{ color: "var(--text-body)" }}>
+                  {t(tx(
+                    "تمكين الأمهات وتحقيق التناغم والتوازن النفسي والتربوي في رحلتهن الخاصة لتجاوز كافة التحديات اليومية.",
+                    "Empowering mothers and achieving psychological and educational harmony and balance in their special journey to overcome all daily challenges."
+                  ))}
+                </p>
+              </div>
+            </div>
+
+            {/* بطاقة رسالتنا */}
+            <div 
+              className="rounded-3xl p-6 md:p-8 text-center reveal border flex flex-col justify-between min-w-0 h-auto bg-white/60"
+              style={{ borderColor: "rgba(127,169,155,0.4)" }}
+            >
+              <div>
+                <h3 className="text-xl font-bold mb-4" style={{ color: "var(--text-dark)" }}>
+                  {t(tx("رسالتنا", "Our Mission"))}
+                </h3>
+                <p className="text-base leading-relaxed text-pretty whitespace-normal" style={{ color: "var(--text-body)" }}>
+                  {t(tx(
+                    "هي أن ننير لك الطريق وأن نساعدك فى أشد اللحظات لكي تكوني الداعم الأول لطفلك ولتعيشي بسلام وراحة وطمأنينة فى الوقت نفسه.",
+                    "Is to illuminate the path for you and help you in the most difficult moments so that you can be your child's primary supporter and live in peace, comfort, and tranquility at the same time."
+                  ))}
+                </p>
+              </div>
+            </div>
+
+            {/* بطاقة رؤيتنا */}
+            <div 
+              className="rounded-3xl p-6 md:p-8 text-center reveal border flex flex-col justify-between min-w-0 h-auto bg-white/60"
+              style={{ borderColor: "rgba(127,169,155,0.4)" }}
+            >
+              <div>
+                <h3 className="text-xl font-bold mb-4" style={{ color: "var(--text-dark)" }}>
+                  {t(tx("رؤيتنا", "Our Vision"))}
+                </h3>
+                <p className="text-base leading-relaxed text-pretty whitespace-normal" style={{ color: "var(--text-body)" }}>
+                  {t(tx(
+                    "مرافقة الأمهات والآباء نحو وعي أعمق، مع ربط علوم التربية المعاصرة بجذور ديننا وثقافتنا العريقة لتأسيس بيئة مستقرة.",
+                    "Accompanying mothers and fathers toward deeper awareness, while connecting contemporary parenting sciences with the roots of our faith and rich culture to establish a stable environment."
+                  ))}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <SectionDivider color="var(--cream)" />
+      </section>
+
+      {/* Coach story */}
+      <section style={{ background: "var(--cream)" }} className="w-full">
         <div className="container mx-auto px-5 md:px-8 py-20 md:py-28 max-w-full">
           <div className="text-center max-w-2xl mx-auto mb-14 reveal break-words">
             <h2 className="text-3xl md:text-5xl mb-4 leading-tight">
@@ -291,7 +374,6 @@ export default function About() {
                             <h3 className="text-2xl md:text-3xl mb-4" style={{ color: "var(--text-dark)" }}>
                               {t(section.title)}
                             </h3>
-                            {/* تعديل الكلاس هنا لـ whitespace-normal ليتماشى النص مع أبعاد الصندوق تلقائياً */}
                             <div className="space-y-4 whitespace-normal text-base md:text-lg leading-relaxed text-pretty" style={{ color: "var(--text-body)" }}>
                               {section.paragraphs.map((paragraph) => (
                                 <p key={paragraph.ar} className="break-words max-w-full">{t(paragraph)}</p>
