@@ -31,7 +31,7 @@ const DEFAULT_KNOWLEDGE = `
 - بطاقات تأكيدات للأم - مجاناً
 
 ## مبادئنا
-التربية الواعية تقوم على: الهدوء، الحدود بالحب، فهم مشاعر الطفل، العناية بالأم أولاً.
+التربية الواعية تقوم على: الهدوء، الحدود بالحب, فهم مشاعر الطفل، العناية بالأم أولاً.
 `;
 
 async function getKnowledge(): Promise<string> {
@@ -52,9 +52,9 @@ router.post("/ai/chat", async (req, res) => {
       return;
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      res.status(500).json({ error: "AI not configured" });
+      res.status(500).json({ error: "Gemini API key is missing in .env" });
       return;
     }
 
@@ -63,70 +63,106 @@ router.post("/ai/chat", async (req, res) => {
     const systemPrompt = `أنتِ مساعدة ذكية لمنصة "رحلة سلام" للتربية الواعية.
 مهمتكِ مساعدة الأمهات في فهم مشاكلهن التربوية وتوجيههن إلى الحل المناسب (جلسة فردية، دورة، أو منتج رقمي).
 
-قواعد مهمة:
+قواعد مهمة ومقدسة:
 1. أجيبي فقط بناءً على المعلومات المقدمة أدناه - لا تخترعي معلومات غير موجودة.
 2. إذا لم تجدي إجابة في المعلومات المتاحة، قولي بوضوح أنك ستوجهين السؤال للكوتش.
-3. تحدثي بأسلوب دافئ وحنون يليق بأم تحتاج للدعم.
-4. اقترحي دائماً الخطوة التالية المناسبة (حجز جلسة، شراء دورة، تحميل منتج).
-5. أجيبي باللغة التي تتحدث بها المستخدمة (عربي أو إنجليزي).
-6. اجعلي إجاباتكِ مختصرة وعملية (3-5 جمل كحد أقصى).
+3. تحدثي بأسلوب دافئ وحنون يليق بأم تحتاج للدعم والاحتواء.
+4. 🌟 وجهي الأمهات دائماً لاتخاذ خطوة عملية، وعند اقتراح صفحة، استخدمي روابط الـ Markdown التالية [اسم الزر أو الرابط](المسار) حرفياً ليتم تفعيلها كأزرار تفاعلية:
+   - لحجز الجلسات والاستشارات الفردية استخدمي المسار: [حجز جلسة استشارية](/sessions)
+   - لتصفح ورش العمل والدورات التربوية استخدمي المسار: [تصفح الدورات والورش](/courses)
+   - لتنزيل الأدلة الرقمية والمنتجات المجانية استخدمي المسار: [تصفح المنتجات الرقمية](/products)
+5. إذا كانت المعلومات المتاحة في قاعدة البيانات تحتوي على روابط خارجية (مثل روابط كتب أو ملفات PDF)، اذكرريها بصيغة الـ Markdown الافتراضية [اسم الرابط](الرابط) كما هي دون تعديل.
+6. أجيبي باللغة التي تتحدث بها المستخدمة (عربي أو إنجليزي).
+7. اجعلي إجاباتكِ مختصرة وعملية جداً (3-5 جمل كحد أقصى).
 
 المعلومات المتاحة:
 ${knowledge}`;
+
+    const geminiContents = messages
+      .filter((m) => m.role !== "system")
+      .map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
 
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("X-Accel-Buffering", "no");
+    if (typeof (res as any).flushHeaders === "function") {
+      (res as any).flushHeaders();
+    }
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        max_tokens: 500,
-        stream: true,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages.slice(-10),
-        ],
-      }),
-    });
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:streamGenerateContent?alt=sse",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-goog-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          contents: geminiContents,
+          systemInstruction: {
+            parts: [{ text: systemPrompt }],
+          },
+          generationConfig: {
+            maxOutputTokens: 1000,
+            temperature: 0.7,
+          },
+        }),
+      }
+    );
 
     if (!response.ok || !response.body) {
-      const err = await response.text();
-      res.write(`data: ${JSON.stringify({ error: err })}\n\n`);
+      const errText = !response.ok ? await response.text() : "Response body is null";
+      res.write(`data: ${JSON.stringify({ error: `Gemini Error: ${errText}` })}\n\n`);
       res.end();
       return;
     }
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
+    let backendBuffer = "";
+
+    // دالة داخلية لمعالجة وتمرير السطور بانتظام
+    const processLine = (line: string) => {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data: ")) return;
+
+      const jsonStart = trimmed.indexOf("{");
+      if (jsonStart === -1) return;
+      const cleanJsonStr = trimmed.substring(jsonStart);
+
+      try {
+        const parsed = JSON.parse(cleanJsonStr);
+        const textToken = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (textToken) {
+          res.write(`data: ${JSON.stringify({ content: textToken })}\n\n`);
+        }
+      } catch {}
+    };
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
+      backendBuffer += decoder.decode(value, { stream: true });
+      const lines = backendBuffer.split("\n");
+      backendBuffer = lines.pop() || ""; // عزل السطر غير المكتمل مؤقتاً
 
       for (const line of lines) {
-        const data = line.slice(6);
-        if (data === "[DONE]") {
-          res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-          continue;
-        }
-        try {
-          const parsed = JSON.parse(data);
-          const content = parsed.choices?.[0]?.delta?.content;
-          if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
-        } catch {}
+        processLine(line);
       }
     }
 
+    // 🌟 خطوة الإنقاذ الحاسمة: معالجة بواقي البافر الأخيرة لو متبقي فيها داتا بعد انتهاء اللوب
+    if (backendBuffer.trim()) {
+      processLine(backendBuffer);
+    }
+
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   } catch (err: any) {
     res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
@@ -134,6 +170,7 @@ ${knowledge}`;
   }
 });
 
+// --- بقية المسارات للأدمن تظل مستقرة ---
 router.get("/ai/knowledge", async (_req, res) => {
   try {
     const rows = await db.select().from(aiKnowledgeTable).orderBy(aiKnowledgeTable.updatedAt);

@@ -34,6 +34,11 @@ export function AiChat() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // 🌟 مراجع طابور الأنيميشن والتحكم بالتدفق السلس (كلمة كلمة)
+  const wordQueueRef = useRef<string[]>([]);
+  const animationIntervalRef = useRef<any>(null);
+  const isStreamingRef = useRef(false);
+
   useEffect(() => {
     if (open) {
       setHasUnread(false);
@@ -45,15 +50,109 @@ export function AiChat() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  // تنظيف الـ Interval عند إغلاق المكون منعا لأي Memory Leak
+  useEffect(() => {
+    return () => {
+      if (animationIntervalRef.current) clearInterval(animationIntervalRef.current);
+    };
+  }, []);
+
+  // 🌟 دالة مطورة لتحويل النصوص والروابط (Markdown) إلى عناصر تفاعلية
+  function formatAiMessage(text: string) {
+    if (!text) return null;
+    return text.split("\n").map((line, index) => {
+      let isBullet = false;
+      let cleanLine = line;
+
+      if (line.trim().startsWith("- ")) {
+        cleanLine = line.trim().substring(2);
+        isBullet = true;
+      } else if (line.trim().startsWith("* ")) {
+        cleanLine = line.trim().substring(2);
+        isBullet = true;
+      }
+
+      // 🌟 تفتيت السطر بناءً على علامات الـ Bold والروابط معا
+      const parts = cleanLine.split(/(\*\*.*?\*\*|\[.*?\]\(.*?\))/g);
+      const renderedLine = parts.map((part, i) => {
+        // معالجة النصوص العريضة Bold
+        if (part.startsWith("**") && part.endsWith("**")) {
+          return <strong key={i} className="font-extrabold text-sage-dark">{part.slice(2, -2)}</strong>;
+        }
+        
+        // 🌟 معالجة الـ Hyperlinks [نص الرابط](اللينك) تحويلها لروابط تفاعلية
+        if (part.startsWith("[") && part.includes("](") && part.endsWith(")")) {
+          const closeBracketIdx = part.indexOf("](");
+          const linkText = part.slice(1, closeBracketIdx);
+          const linkUrl = part.slice(closeBracketIdx + 2, -1);
+          
+          return (
+            <a
+              key={i}
+              href={linkUrl}
+              target={linkUrl.startsWith("http") ? "_blank" : "_self"}
+              rel="noopener noreferrer"
+              className="font-bold underline text-sage-dark hover:text-sage transition-colors duration-200 inline-block mx-0.5"
+            >
+              {linkText}
+            </a>
+          );
+        }
+        
+        return part;
+      });
+
+      return (
+        <p key={index} className={isBullet ? "list-item ms-5 list-disc mb-1" : "mb-1"}>
+          {renderedLine}
+        </p>
+      );
+    });
+  }
+
+  // 🌟 محرك أنيميشن الكتابة الموحد (يسحب كلمة أو مسافة كل 35 مللي ثانية)
+  const startAnimationLoop = () => {
+    if (animationIntervalRef.current) return;
+
+    animationIntervalRef.current = setInterval(() => {
+      if (wordQueueRef.current.length > 0) {
+        const nextToken = wordQueueRef.current.shift();
+        if (nextToken !== undefined) {
+          setMessages((prev) => {
+            const updated = [...prev];
+            const last = updated[updated.length - 1];
+            if (last && last.role === "assistant") {
+              last.content += nextToken;
+            }
+            return updated;
+          });
+        }
+      } else if (!isStreamingRef.current) {
+        // الطابور فضي والنتورك خلصت بث كلياً، اقفل المحرك بسلام
+        clearInterval(animationIntervalRef.current);
+        animationIntervalRef.current = null;
+        setLoading(false);
+      }
+    }, 35); 
+  };
+
   async function send(text?: string) {
     const content = (text ?? input).trim();
     if (!content || loading) return;
     setInput("");
+    
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+    }
 
     const userMsg: Message = { role: "user", content };
     const nextMessages = [...messages, userMsg];
     setMessages(nextMessages);
     setLoading(true);
+
+    // تجهيز طابور الكلمات الجديد
+    wordQueueRef.current = [];
+    isStreamingRef.current = true;
 
     try {
       const res = await fetch("/api/ai/chat", {
@@ -66,39 +165,47 @@ export function AiChat() {
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let assistantContent = "";
-
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+      let clientBuffer = "";
+
+      const parseAndQueue = (line: string) => {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data: ")) return;
+
+        const data = trimmed.slice(6).trim();
+        if (!data || data === "[DONE]") return;
+
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.done) return;
+          if (parsed.content) {
+            // 🌟 تفكيك النص القادم لكلمات ومسافات للحفاظ على الهيكل ومطابقتها للتأثير السطري
+            const tokens = parsed.content.split(/(\s+)/);
+            wordQueueRef.current.push(...tokens);
+            startAnimationLoop();
+          }
+        } catch {}
+      };
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
+        clientBuffer += decoder.decode(value, { stream: true });
+        const lines = clientBuffer.split("\n");
+        clientBuffer = lines.pop() || "";
 
         for (const line of lines) {
-          const data = line.slice(6);
-          if (!data || data === "[DONE]") continue;
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.done) break;
-            if (parsed.content) {
-              assistantContent += parsed.content;
-              setMessages((prev) => {
-                const updated = [...prev];
-                updated[updated.length - 1] = {
-                  role: "assistant",
-                  content: assistantContent,
-                };
-                return updated;
-              });
-            }
-          } catch {}
+          parseAndQueue(line);
         }
       }
 
-      if (!open) setHasUnread(true);
+      // 🌟 حصاد الباقي الأخير في بافر العميل لضمان اكتمال السلسلة كلياً
+      if (clientBuffer.trim()) {
+        parseAndQueue(clientBuffer);
+      }
+
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -110,8 +217,14 @@ export function AiChat() {
               : "Sorry, something went wrong. Please try again.",
         },
       ]);
-    } finally {
       setLoading(false);
+    } finally {
+      // إعلام المحرك أن استقبال النتورك انتهى، وباقي تفريغ الطابور فقط
+      isStreamingRef.current = false;
+      // في حالة عدم وجود نصوص، أغلق اللودر فوراً
+      if (wordQueueRef.current.length === 0) {
+        setLoading(false);
+      }
     }
   }
 
@@ -123,7 +236,7 @@ export function AiChat() {
       {/* Floating button */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-6 end-6 z-[80] w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95"
+        className="fixed bottom-6 start-6 z-[80] w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95"
         style={{
           background: "linear-gradient(135deg, var(--sage), var(--sage-dark))",
           boxShadow: "0 8px 32px rgba(90,138,128,0.4)",
@@ -150,7 +263,7 @@ export function AiChat() {
       {/* Chat panel */}
       <div
         dir={dir}
-        className={`fixed bottom-24 end-6 z-[80] w-[340px] sm:w-[380px] rounded-3xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${
+        className={`fixed bottom-24 start-6 z-[80] w-[340px] sm:w-[380px] rounded-3xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${
           open
             ? "opacity-100 scale-100 pointer-events-auto translate-y-0"
             : "opacity-0 scale-95 pointer-events-none translate-y-4"
@@ -188,7 +301,7 @@ export function AiChat() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ minHeight: 0 }}>
-          {/* Welcome */}
+          {/* Welcome Message */}
           <div className="flex gap-2 items-start">
             <div
               className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5"
@@ -207,7 +320,7 @@ export function AiChat() {
             </div>
           </div>
 
-          {/* Suggestion chips (only shown on first message) */}
+          {/* Suggestion Chips */}
           {isFirstMessage && (
             <div className="flex flex-wrap gap-2 ps-9">
               {(SUGGESTIONS[lang] ?? SUGGESTIONS.ar).map((s) => (
@@ -227,7 +340,7 @@ export function AiChat() {
             </div>
           )}
 
-          {/* Messages */}
+          {/* Messages Mapping */}
           {messages.map((msg, i) => (
             <div
               key={i}
@@ -249,7 +362,7 @@ export function AiChat() {
                 )}
               </div>
               <div
-                className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed max-w-[85%] whitespace-pre-line ${
+                className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed max-w-[85%] ${
                   msg.role === "user" ? "rounded-se-none" : "rounded-ss-none"
                 }`}
                 style={{
@@ -260,15 +373,14 @@ export function AiChat() {
                   color: msg.role === "user" ? "white" : "var(--text-dark)",
                 }}
               >
-                {msg.content || (
+                {msg.content || msg.role === "user" ? (
+                  msg.role === "user" ? msg.content : formatAiMessage(msg.content)
+                ) : (
                   <Loader2 size={14} className="animate-spin opacity-60" />
                 )}
               </div>
             </div>
           ))}
-
-          {/* Loading dots */}
-          {loading && messages[messages.length - 1]?.content === "" && null}
 
           <div ref={bottomRef} />
         </div>
