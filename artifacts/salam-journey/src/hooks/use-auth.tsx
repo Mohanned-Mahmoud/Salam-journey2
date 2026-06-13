@@ -34,6 +34,7 @@ export type PublicUser = {
   email: string;
   phone: string;
   avatar: string | null;
+  role: string; // 🌟 ضفنا الـ role هنا جوه التايب الرئيسي للفرونت إند
   bookings: Booking[];
   enrolledCourses: EnrolledCourse[];
   createdAt: string;
@@ -96,6 +97,7 @@ type UserRecord = {
   name: string;
   email: string;
   phone: string | null;
+  role?: string | null; // 🌟 ضفنا الـ role هنا عشان يستقبلها من الـ API
   createdAt: string;
 };
 
@@ -122,6 +124,7 @@ function toPublicFromApi(user: UserRecord, bookings: BookingRecord[]): PublicUse
     email: user.email,
     phone: user.phone ?? "",
     avatar: null,
+    role: user.role ?? "user", // 🌟 السطر السحري: هنا بنمرر الـ role للـ State ومنضيعهاش!
     bookings: bookings.map((booking) => ({
       id: booking.id,
       date: booking.date,

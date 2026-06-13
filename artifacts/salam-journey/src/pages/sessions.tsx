@@ -4,25 +4,44 @@ import { useReveal } from "@/lib/use-reveal";
 import { BookingCalendar, type ConfirmedBookingPayload } from "@/components/booking-calendar";
 import { BookingConfirmModal, type BookingDetails } from "@/components/booking-confirm-modal";
 import { SoftBlob, SectionDivider } from "@/components/section-divider";
-import { Heart, ShieldCheck, MessageCircle } from "lucide-react";
+// 🌟 استيراد الأيقونات الجديدة المتوافقة مع الركائز الأربعة
+import { Heart, ShieldCheck, ClipboardCheck, GraduationCap } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { notify } from "@/lib/notify";
 
+// 🚀 مصفوفة الركائز الأربعة المحدثة بالكامل مع الترجمة الموازية
 const FEATURES = [
   {
+    icon: GraduationCap,
+    title: tx("إرشاد خبير", "Expert Guidance"),
+    desc: tx(
+      "إرشاد مخصص من إيمان ناصر، خريجة علوم الحاسب ومدربة تربوية معتمدة وكوتش للوالدين ومختصة بالعلاج المعرفي السلوكي (CBT)، ذات خبرة واسعة في مساعدة الأسر على التعامل مع التحديات وتحقيق التناغم بين أفرادها.",
+      "Tailored guidance from Eman Nasser, a Computer Science graduate, certified educational trainer, parent coach, and CBT specialist, with extensive experience helping families navigate challenges and achieve harmony."
+    ),
+  },
+  {
     icon: Heart,
-    title: tx("بيئة آمنة وحاضنة", "Safe & nurturing space"),
-    desc: tx("ساحة خاصة بكِ بلا أحكام، مع كوتش تفهم رحلتك.", "A private, judgment-free space with a coach who understands your journey."),
+    title: tx("دعم مخصص", "Tailored Support"),
+    desc: tx(
+      "كل عائلة تختلف عن غيرها؛ لذلك صُممت الجلسات الفردية خصيصاً لكِ لتتوافق مع أهدافكِ، أفراد أسرتكِ، ولتلبية احتياجاتكِ.",
+      "Every family is unique; therefore, individual sessions are specifically designed for you to align with your goals, family members, and meet your specific needs."
+    ),
+  },
+  {
+    icon: ClipboardCheck,
+    title: tx("متابعة بعد الجلسة", "Post-Session Follow-up"),
+    desc: tx(
+      "تزويد بالأدوات المساعدة، التمارين التطبيقية، وأوراق العمل المخصصة لضمان استمرار الأثر والمستندة إلى حالتكِ.",
+      "Providing supportive tools, practical exercises, and tailored worksheets to ensure lasting impact based on your situation."
+    ),
   },
   {
     icon: ShieldCheck,
-    title: tx("سرية تامّة", "Full confidentiality"),
-    desc: tx("ما يُقال في الجلسة يبقى بينكِ وبين كوتشك.", "What's shared in your session stays strictly between you and your coach."),
-  },
-  {
-    icon: MessageCircle,
-    title: tx("متابعة بعد الجلسة", "Post-session follow-up"),
-    desc: tx("ملاحظات وخطوات عملية يصلكِ ملخصها بعد كل جلسة.", "You'll receive notes and actionable steps summarized after every session."),
+    title: tx("بيئة آمنة وحاضنة", "Safe & Nurturing Environment"),
+    desc: tx(
+      "مساحة خاصة بكِ بلا أحكام وبسرية تامة، ننير لكِ من خلالها الطريق للازدهار في حياتكِ ومع أبنائكِ.",
+      "A private space free of judgment and in absolute confidentiality, illuminating your path to thrive in your life and with your children."
+    ),
   },
 ];
 
@@ -117,18 +136,20 @@ export default function Sessions() {
         <div className="container mx-auto px-5 md:px-8 py-20 md:py-28 max-w-full">
           <div className="text-center max-w-xl mx-auto mb-12 reveal break-words">
             <h2 className="text-3xl md:text-4xl mb-3 leading-tight">
-              {t(tx("لماذا تحجز معنا الأمهات؟", "Why mothers book with us"))}
+              {t(tx("لماذا تحجز معنا الأمهات؟", "Why Do Mothers Book With Us?"))}
             </h2>
             <p className="text-pretty" style={{ color: "var(--text-body)" }}>
               {t(
                 tx(
-                  "ثلاث ركائز نلتزم بها مع كل أم تشاركنا رحلتها.",
-                  "Three commitments we hold for every mother who joins us.",
+                  "الركائز الأساسية التي نلتزم بها مع كل أم تشاركنا رحلتها.",
+                  "The core pillars we commit to with every mother sharing her journey.",
                 ),
               )}
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+          
+          {/* ✨ تم التعديل لـ md:grid-cols-2 ليعطي مساحة مثالية ومريحة لقراءة الفقرات الطويلة */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
             {FEATURES.map((f, i) => (
               <div key={f.title.ar} className="glass-card p-7 reveal break-words min-w-0 h-auto" data-reveal-delay={i * 90}>
                 <span

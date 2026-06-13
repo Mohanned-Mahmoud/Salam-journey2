@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster as SonnerToaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,7 +7,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { WhatsAppButton } from "@/components/layout/whatsapp-button";
 import { LanguageProvider } from "@/lib/i18n";
-import { AuthProvider } from "@/hooks/use-auth";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { AuthModalsProvider } from "@/components/auth/auth-modals";
 import { ScrollToTop } from "@/components/utils/scroll-to-top";
 
@@ -29,13 +29,33 @@ const queryClient = new QueryClient({
 
 function Router() {
   const [location] = useLocation();
-  const isAdmin = location === "/admin" || location.startsWith("/admin/");
+  const { user, isAuthenticated, isLoading } = useAuth(); // 🌟 سحبنا الـ isLoading هنا
+  
+  // 🛡️ التحقق ديناميكي بالكامل من الـ role المدمج في الحساب
+  const isUserAdmin = isAuthenticated && (user as any)?.role === "admin";
+  const isAdminRoute = location === "/admin" || location.startsWith("/admin/");
 
-  if (isAdmin) {
+  // ⏳ الحل السحري: لو إحنا في مسار آدمن والسيستم لسه بيحمل البيانات، استنى ومبتطردش فوراً!
+  if (isAdminRoute && isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[var(--cream)]">
+        <p className="text-lg font-medium animate-pulse" style={{ color: "var(--text-dark)" }}>
+          جاري التحقق من صلاحيات الآدمن...
+        </p>
+      </div>
+    );
+  }
+
+  if (isAdminRoute) {
     return (
       <Switch>
+        {/* صفحة تسجيل دخول الآدمن متاحة للجميع */}
         <Route path="/admin/login" component={AdminLoginPage} />
-        <Route path="/admin" component={AdminPage} />
+        
+        {/* 🔒 جدار الحماية الذكي: لا يشتغل إلا بعد انتهاء الـ isLoading تماماً */}
+        <Route path="/admin">
+          {isUserAdmin ? <AdminPage /> : <Redirect to="/" replace />}
+        </Route>
       </Switch>
     );
   }

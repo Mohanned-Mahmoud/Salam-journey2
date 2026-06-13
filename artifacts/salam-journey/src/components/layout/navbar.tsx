@@ -6,7 +6,7 @@ import { useAuth, firstNameOf, initialsOf } from "@/hooks/use-auth";
 import { useAuthModals } from "@/components/auth/auth-modals";
 
 const NAV_LINKS = [
-  { href: "/",         label: tx("الرئيسية", "Home") },
+  { href: "/",     label: tx("الرئيسية", "Home") },
   { href: "/courses",  label: tx("الدورات", "Courses") },
   { href: "/sessions", label: tx("الجلسات", "Sessions") },
   { href: "/products", label: tx("المنتجات", "Products") },
@@ -77,8 +77,9 @@ export function Navbar() {
 
   const langLabel = lang === "ar" ? "EN" : "AR";
 
-  const ADMIN_EMAIL = 'admin@salamjourney.com';
-  const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL;
+  // 💡 يمكنك تغيير هذا الإيميل هنا إلى إيميل الكوتش الفعلي لتجربته لوكال
+// 🛡️ التشييك بقا ديناميكي بالكامل من الـ role الموحد في قاعدة البيانات
+const isAdmin = isAuthenticated && user?.role === "admin";
 
   const accountItems = [
     { href: "/account?tab=profile",  label: tx("حسابي", "My Account"),    Icon: UserIcon },
@@ -118,6 +119,22 @@ export function Navbar() {
         </nav>
 
         <div className="hidden lg:flex items-center gap-3">
+          {/* 🌟 زرار لوحة التحكم للآدمن في الشاشات الكبيرة يظهر فقط عند تحقق الشرط */}
+          {isAdmin && (
+            <Link 
+              href="/admin" 
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all"
+              style={{
+                background: "rgba(181, 82, 74, 0.1)", // لون أحمر هادئ متناسق مع زر تسجيل الخروج
+                color: "#B5524A",
+                border: "1px solid rgba(181, 82, 74, 0.25)"
+              }}
+            >
+              <LayoutDashboard size={15} />
+              <span>{t(tx("لوحة التحكم", "Dashboard"))}</span>
+            </Link>
+          )}
+
           <button
             type="button"
             onClick={toggle}
@@ -310,9 +327,14 @@ export function Navbar() {
                   key={href}
                   href={href}
                   className="py-3 px-4 rounded-2xl text-base font-medium flex items-center gap-3"
-                  style={{ color: "var(--text-body)" }}
+                  style={{ 
+                    color: href === "/admin" ? "#B5524A" : "var(--text-body)",
+                    background: href === "/admin" ? "rgba(181, 82, 74, 0.05)" : "transparent",
+                    fontWeight: href === "/admin" ? "600" : "500"
+                  }}
+                  onClick={() => setOpen(false)}
                 >
-                  <Icon size={16} style={{ color: "var(--sage-dark)" }} />
+                  <Icon size={16} style={{ color: href === "/admin" ? "#B5524A" : "var(--sage-dark)" }} />
                   {t(label)}
                 </Link>
               ))}

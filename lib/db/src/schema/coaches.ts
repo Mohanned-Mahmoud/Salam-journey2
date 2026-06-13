@@ -6,6 +6,8 @@ export const coachesTable = pgTable("coaches", {
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   bio: text("bio"),
+  // الحقل الجديد والضروري لحفظ المفتاح السحري لتقويم جوجل الخاص بالمدرّبة
+  googleRefreshToken: text("google_refresh_token"), 
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

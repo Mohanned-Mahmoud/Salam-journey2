@@ -1,14 +1,72 @@
 import { Router, type IRouter } from "express";
 import { db, bookingsTable, coachesTable, insertBookingSchema } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { google } from "googleapis"; // تثبيت المكتبة مطلوب: pnpm add googleapis
+import { mapBookingToFrontend, mapBookingsToFrontend } from "../utils/booking-mapper"; // 🌟 mapping helper
+
 
 const router: IRouter = Router();
+
+// دالة مساعدة لإنشاء الحدث داخل تقويم جوجل
+async function createGoogleCalendarEvent(bookingData: any, adminRefreshToken: string) {
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI
+  );
+
+  oauth2Client.setCredentials({
+    refresh_token: adminRefreshToken,
+  });
+
+  const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+  // دمج التاريخ والساعة لبداية ونهاية الجلسة (جلسة مدتها ساعة تلقائياً)
+  const slotTime = bookingData.slot || "10:00";
+  const startDateTime = `${bookingData.date}T${slotTime}:00`;
+  
+  const [hours, minutes] = slotTime.split(":");
+  const endHours = String(Number(hours) + 1).padStart(2, "0");
+  const endDateTime = `${bookingData.date}T${endHours}:${minutes}:00`;
+
+  const event = {
+    summary: `رحلة سلام - ${bookingData.sessionType || "جلسة خاصة"}`,
+    description: `اسم الأم: ${bookingData.guestName || "غير محدد"}\nموضوع الجلسة: ${bookingData.topic || "غير محدد"}\nرقم الواتساب: ${bookingData.guestWhatsapp || "غير محدد"}\nملاحظات إضافية: ${bookingData.notes || "لا يوجد"}`,
+    start: {
+      dateTime: startDateTime,
+      timeZone: "Asia/Riyadh", // التوقيت الافتراضي للحساب
+    },
+    end: {
+      dateTime: endDateTime,
+      timeZone: "Asia/Riyadh",
+    },
+    // إرسال دعوة مباشرة لإيميل الأم المدخل في الـ Form
+    attendees: bookingData.guestEmail ? [{ email: bookingData.guestEmail }] : [],
+    reminders: {
+      useDefault: false,
+      overrides: [
+        { method: "email", minutes: 24 * 60 }, // تذكير بالإيميل قبلها بـ 24 ساعة
+        { method: "popup", minutes: 30 },      // تذكير على الموبايل قبلها بـ 30 دقيقة
+      ],
+    },
+  };
+
+  try {
+    await calendar.events.insert({
+      calendarId: "primary",
+      requestBody: event,
+      sendUpdates: "all", // تفعيل إرسال الإيميلات للمدعوين تلقائياً
+    });
+  } catch (error) {
+    console.error("Google Calendar Event Creation Failed:", error);
+  }
+}
 
 // Get all bookings
 router.get("/bookings", async (req, res) => {
   try {
     const bookings = await db.select().from(bookingsTable);
-    res.json(bookings);
+    res.json(mapBookingsToFrontend(bookings));
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch bookings" });
   }
@@ -23,7 +81,7 @@ router.get("/bookings/user/:userId", async (req, res) => {
       .from(bookingsTable)
       .where(eq(bookingsTable.userId, userId));
 
-    res.json(bookings);
+    res.json(mapBookingsToFrontend(bookings));
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch bookings" });
   }
@@ -42,7 +100,7 @@ router.get("/bookings/:id", async (req, res) => {
     if (!booking.length) {
       return res.status(404).json({ error: "Booking not found" });
     }
-    return res.json(booking[0]);
+    return res.json(mapBookingToFrontend(booking[0]));
   } catch (error) {
     return res.status(500).json({ error: "Failed to fetch booking" });
   }
@@ -85,6 +143,8 @@ router.post("/bookings", async (req, res) => {
     if (!parsed.date) {
       return res.status(400).json({ error: "date is required" });
     }
+    
+    // جلب بيانات الكوتش أو إنشائه الافتراضي
     let coachId = typeof req.body?.coachId === "string" && req.body.coachId.trim()
       ? req.body.coachId.trim()
       : (await db.select({ id: coachesTable.id }).from(coachesTable).limit(1))[0]?.id;
@@ -106,7 +166,8 @@ router.post("/bookings", async (req, res) => {
       return res.status(400).json({ error: "No coach available" });
     }
 
-    const booking = await db
+    // حفظ الحجز في قاعدة البيانات الأساسية للمشروع
+    const insertedBookings = await db
       .insert(bookingsTable)
       .values({
         coachId,
@@ -126,7 +187,20 @@ router.post("/bookings", async (req, res) => {
       } as any)
       .returning();
 
-    return res.status(201).json(booking[0]);
+    const currentBooking = insertedBookings[0];
+
+    // جلب الـ Refresh Token المخزن للكوتش لتحديث التقويم
+    const coachRecord = (await db.select().from(coachesTable).where(eq(coachesTable.id, coachId)).limit(1))[0];
+    const coachRefreshToken = (coachRecord as any)?.googleRefreshToken || process.env.COACH_GOOGLE_REFRESH_TOKEN;
+
+    if (coachRefreshToken && currentBooking) {
+      // استدعاء الأتمتة في الخلفية بشكل آمن دون تعطيل الـ Response للعميل
+      createGoogleCalendarEvent(currentBooking, coachRefreshToken).catch(err =>
+        console.error("Background Calendar Error:", err)
+      );
+    }
+
+    return res.status(201).json(mapBookingToFrontend(currentBooking));
   } catch (error) {
     return res.status(400).json({ error: "Invalid booking data" });
   }
@@ -146,7 +220,7 @@ router.put("/bookings/:id", async (req, res) => {
     if (!booking.length) {
       return res.status(404).json({ error: "Booking not found" });
     }
-    return res.json(booking[0]);
+    return res.json(mapBookingToFrontend(booking[0]));
   } catch (error) {
     return res.status(400).json({ error: "Invalid booking data" });
   }

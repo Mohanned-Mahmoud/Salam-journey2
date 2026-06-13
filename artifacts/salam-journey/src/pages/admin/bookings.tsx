@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Trash2, Search, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { apiJson } from '@/lib/api';
 import type { BookingRecord, BookingStatus } from './types';
 
 const STATUS_LABELS: Record<BookingStatus, string> = { confirmed: 'مؤكد', pending: 'معلق', cancelled: 'ملغي' };
@@ -23,13 +24,16 @@ export function AdminBookings() {
     async function loadBookings() {
       try {
         setLoading(true);
-        const response = await fetch('/api/bookings');
-        if (!response.ok) throw new Error('failed');
-        const data = (await response.json()) as BookingRecord[];
-        if (!cancelled) setBookings(data);
+        // 🌟 جلب كائنات المستخدمين المحمية والتي تحتوي الحجوزات بداخلها جاهزة ومهيأة بالكامل
+        const usersData = await apiJson<any[]>('/admin/users');
+        
+        if (!cancelled) {
+          const allBookings = usersData.flatMap((u) => u.bookings || []) as BookingRecord[];
+          setBookings(allBookings);
+        }
       } catch {
         if (!cancelled) {
-          setError('تعذر تحميل الحجوزات من قاعدة البيانات');
+          setError('تعذر تحميل الحجوزات من قاعدة البيانات حية');
           setBookings([]);
         }
       } finally {
@@ -46,21 +50,25 @@ export function AdminBookings() {
   async function changeStatus(id: string, status: BookingStatus) {
     const current = bookings.find((b) => b.id === id);
     if (!current) return;
-    const response = await fetch(`/api/bookings/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...current, status }),
-    });
-    if (!response.ok) return;
-    const updated = (await response.json()) as BookingRecord;
-    setBookings((items) => items.map((b) => (b.id === id ? updated : b)));
+    try {
+      const updated = await apiJson<BookingRecord>(`/bookings/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...current, status }),
+      });
+      setBookings((items) => items.map((b) => (b.id === id ? updated : b)));
+    } catch {
+      // error handling
+    }
   }
 
   async function confirmDelete(id: string) {
-    const response = await fetch(`/api/bookings/${id}`, { method: 'DELETE' });
-    if (!response.ok) return;
-    setBookings((items) => items.filter((b) => b.id !== id));
-    setDeleteId(null);
+    try {
+      await apiJson(`/bookings/${id}`, { method: 'DELETE' });
+      setBookings((items) => items.filter((b) => b.id !== id));
+      setDeleteId(null);
+    } catch {
+      // error handling
+    }
   }
 
   function exportCSV() {
@@ -88,14 +96,14 @@ export function AdminBookings() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--text-dark)' }}>إدارة الحجوزات</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{bookings.length} حجز إجمالاً</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{bookings.length} حجز فعلي في قاعدة البيانات</p>
         </div>
         <button type="button" onClick={exportCSV} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: 'var(--sage)', color: 'white' }}>
           <Download size={15} /> تصدير CSV
         </button>
       </div>
 
-      {loading && <p className="text-sm" style={{ color: 'var(--text-muted)' }}>جارٍ تحميل الحجوزات...</p>}
+      {loading && <p className="text-sm" style={{ color: 'var(--text-muted)' }}>جارٍ تحميل الحجوزات من Neon DB...</p>}
       {!loading && error && <p className="text-sm" style={{ color: '#B5524A' }}>{error}</p>}
 
       {/* Filters */}
@@ -159,7 +167,7 @@ export function AdminBookings() {
                   <td className="px-4 py-3">
                     <select
                       value={b.status}
-                        onChange={(e) => void changeStatus(b.id, e.target.value as BookingStatus)}
+                      onChange={(e) => void changeStatus(b.id, e.target.value as BookingStatus)}
                       className="rounded-lg px-2 py-1 text-xs font-semibold outline-none cursor-pointer"
                       style={{ background: STATUS_BG[b.status], color: STATUS_COLORS[b.status], border: 'none' }}
                     >
@@ -205,7 +213,7 @@ export function AdminBookings() {
             <p className="text-lg font-bold" style={{ color: 'var(--text-dark)' }}>هل أنت متأكد؟</p>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>سيتم حذف هذا الحجز نهائياً ولا يمكن التراجع.</p>
             <div className="flex gap-3 justify-center">
-              <button type="button" onClick={() => confirmDelete(deleteId)} className="px-5 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#B5524A' }}>حذف</button>
+              <button type="button" onClick={() => void confirmDelete(deleteId)} className="px-5 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#B5524A' }}>حذف</button>
               <button type="button" onClick={() => setDeleteId(null)} className="px-5 py-2 rounded-xl text-sm font-semibold" style={{ background: 'var(--cream)', color: 'var(--text-dark)' }}>إلغاء</button>
             </div>
           </div>

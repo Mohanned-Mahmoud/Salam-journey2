@@ -9,17 +9,12 @@ import { AdminProducts } from './products-admin';
 import { AdminUsers } from './users-admin';
 import { AdminTestimonials } from './testimonials-admin';
 import { AdminSettings } from './settings-admin';
-import { ADMIN_SESSION_KEY } from './types';
+import { useAuth } from '@/hooks/use-auth'; // 🌟 استيراد الهوك الموحد
 import type { AdminSection } from './types';
-
-function getToken(): string {
-  return localStorage.getItem(ADMIN_SESSION_KEY) ?? '';
-}
 
 export default function AdminPage() {
   const [, navigate] = useLocation();
-  const [authed, setAuthed] = useState<boolean>(false);
-  const [checking, setChecking] = useState<boolean>(true);
+  const { logout } = useAuth(); // 🌟 سحب دالة تسجيل الخروج الموحدة
   const [section, setSection] = useState<AdminSection>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -28,45 +23,10 @@ export default function AdminPage() {
     return () => { document.title = 'رحلة سلام'; };
   }, []);
 
-  useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      navigate('/');
-      return;
-    }
-    fetch('/api/admin/verify', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => {
-        if (r.ok) {
-          setAuthed(true);
-          setChecking(false);
-        } else {
-          localStorage.removeItem(ADMIN_SESSION_KEY);
-          navigate('/');
-        }
-      })
-      .catch(() => {
-        navigate('/');
-      });
-  }, [navigate]);
-
-  async function handleLogout() {
-    const token = getToken();
-    if (token) {
-      await fetch('/api/admin/logout', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      }).catch(() => {});
-    }
-    localStorage.removeItem(ADMIN_SESSION_KEY);
+  // 🚪 دالة تسجيل الخروج الموحدة لجميع الحسابات والآدمن
+  function handleLogout() {
+    logout();
     navigate('/');
-  }
-
-  if (checking || !authed) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--cream)' }}>
-        <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--sage)' }} />
-      </div>
-    );
   }
 
   const SECTIONS: Record<AdminSection, React.ReactNode> = {

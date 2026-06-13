@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Eye, EyeOff, X } from 'lucide-react';
+import { apiJson } from '@/lib/api'; 
 import type { AdminProduct } from './types';
 
 type FormState = Omit<AdminProduct, 'id'>;
@@ -25,11 +26,9 @@ export function AdminProducts() {
     async function loadProducts() {
       try {
         setLoading(true);
-        const response = await fetch('/api/products');
-        if (!response.ok) throw new Error('failed');
-        const data = (await response.json()) as Array<Omit<AdminProduct, 'free'> & { isFree?: boolean }>;
+        const data = await apiJson<Array<Omit<AdminProduct, 'free'> & { isFree?: boolean }>>('/products');
         if (!cancelled) {
-          setProducts(data.map((product) => ({ ...product, free: Boolean((product as { isFree?: boolean }).isFree) })));
+          setProducts(data.map((product) => ({ ...product, free: Boolean(product.isFree) })));
         }
       } catch {
         if (!cancelled) {
@@ -49,54 +48,65 @@ export function AdminProducts() {
 
   function openAdd() { setForm(EMPTY_FORM); setModal({ mode: 'add' }); }
   function openEdit(p: AdminProduct) {
-    setForm({ titleAr: p.titleAr, titleEn: p.titleEn, descAr: p.descAr, price: p.price, free: p.free, type: p.type, downloadUrl: p.downloadUrl, status: p.status });
+    setForm({ 
+      titleAr: p.titleAr, 
+      titleEn: p.titleEn, 
+      descAr: p.descAr ?? '', 
+      price: p.price ?? '', 
+      free: p.free, 
+      type: p.type, 
+      downloadUrl: p.downloadUrl ?? '', 
+      status: p.status 
+    });
     setModal({ mode: 'edit', id: p.id });
   }
 
   async function handleSave() {
     if (!form.titleAr.trim()) return;
-    if (modal?.mode === 'add') {
-      const response = await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, isFree: form.free }),
-      });
-      if (!response.ok) return;
-      const created = (await response.json()) as Omit<AdminProduct, 'free'> & { isFree?: boolean };
-      setProducts((current) => [...current, { ...created, free: Boolean(created.isFree) }]);
-    } else if (modal?.id) {
-      const response = await fetch(`/api/products/${modal.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, isFree: form.free }),
-      });
-      if (!response.ok) return;
-      const updated = (await response.json()) as Omit<AdminProduct, 'free'> & { isFree?: boolean };
-      setProducts((current) => current.map((product) => (product.id === modal.id ? { ...updated, free: Boolean(updated.isFree) } : product)));
+    try {
+      if (modal?.mode === 'add') {
+        const created = await apiJson<Omit<AdminProduct, 'free'> & { isFree?: boolean }>('/products', {
+          method: 'POST',
+          body: JSON.stringify({ ...form, isFree: form.free }),
+        });
+        setProducts((current) => [...current, { ...created, free: Boolean(created.isFree) }]);
+      } else if (modal?.id) {
+        const updated = await apiJson<Omit<AdminProduct, 'free'> & { isFree?: boolean }>(`/products/${modal.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ ...form, isFree: form.free }),
+        });
+        setProducts((current) => current.map((product) => (product.id === modal.id ? { ...updated, free: Boolean(updated.isFree) } : product)));
+      }
+      setModal(null);
+    } catch {
+      // error handle
     }
-    setModal(null);
   }
 
   async function toggleStatus(id: string) {
     const product = products.find((item) => item.id === id);
     if (!product) return;
     const nextStatus = product.status === 'active' ? 'hidden' : 'active';
-    const response = await fetch(`/api/products/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: nextStatus, isFree: product.free }),
-    });
-    if (!response.ok) return;
-    const updated = (await response.json()) as Omit<AdminProduct, 'free'> & { isFree?: boolean };
-    setProducts((current) => current.map((item) => (item.id === id ? { ...updated, free: Boolean(updated.isFree) } : item)));
+    try {
+      const updated = await apiJson<Omit<AdminProduct, 'free'> & { isFree?: boolean }>(`/products/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: nextStatus, isFree: product.free }),
+      });
+      setProducts((current) => current.map((item) => (item.id === id ? { ...updated, free: Boolean(updated.isFree) } : item)));
+    } catch {
+      // error handle
+    }
   }
 
   async function confirmDelete() {
     if (!deleteId) return;
-    const response = await fetch(`/api/products/${deleteId}`, { method: 'DELETE' });
-    if (!response.ok) return;
-    setProducts((current) => current.filter((product) => product.id !== deleteId));
-    setDeleteId(null);
+    try {
+      await apiJson(`/products/${deleteId}`, { method: 'DELETE' });
+      setProducts((current) => current.filter((product) => product.id !== deleteId));
+      setDeleteId(null);
+    } catch {
+      // error handle
+    }
   }
 
   return (
@@ -166,10 +176,13 @@ export function AdminProducts() {
                 <Field label="اسم المنتج (AR)" value={form.titleAr} onChange={(v) => setForm({ ...form, titleAr: v })} />
                 <Field label="اسم المنتج (EN)" value={form.titleEn} onChange={(v) => setForm({ ...form, titleEn: v })} />
               </div>
-              <Field label="الوصف" value={form.descAr} onChange={(v) => setForm({ ...form, descAr: v })} multiline />
+              {/* 🌟 معالجة الـ Null Check للوصف */}
+              <Field label="الوصف" value={form.descAr ?? ''} onChange={(v) => setForm({ ...form, descAr: v })} multiline />
               <div className="grid grid-cols-2 gap-4">
-                <Field label="السعر" value={form.price} onChange={(v) => setForm({ ...form, price: v })} />
-                <Field label="رابط التحميل" value={form.downloadUrl} onChange={(v) => setForm({ ...form, downloadUrl: v })} />
+                {/* 🌟 تحويل السعر الصادر من الداتابيز لنص صريح متوافق مع المدخلات */}
+                <Field label="السعر" value={String(form.price ?? '')} onChange={(v) => setForm({ ...form, price: v })} />
+                {/* 🌟 معالجة الـ Null Check لرابط التحميل */}
+                <Field label="رابط التحميل" value={form.downloadUrl ?? ''} onChange={(v) => setForm({ ...form, downloadUrl: v })} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

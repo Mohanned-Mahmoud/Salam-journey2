@@ -15,9 +15,10 @@
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2",
-    "firebase-admin": "^11.4.0",
     "drizzle-orm": "catalog:",
     "express": "^5",
+    "firebase-admin": "^11.4.0",
+    "googleapis": "^173.0.0",
     "pino": "^9",
     "pino-http": "^10"
   },

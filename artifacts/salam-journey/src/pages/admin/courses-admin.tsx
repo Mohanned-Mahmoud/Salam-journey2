@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Eye, EyeOff, X } from 'lucide-react';
+import { apiJson } from '@/lib/api'; 
 import type { AdminCourse } from './types';
 
 type FormState = Omit<AdminCourse, 'id'>;
 
 const EMPTY_FORM: FormState = {
+  coachId: '00000000-0000-0000-0000-000000000000', 
   titleAr: '', titleEn: '', descAr: '', category: 'course',
-  price: '', duration: '', students: '0', status: 'active',
+  price: 0, duration: 0, status: 'active',
   gradient: 'linear-gradient(135deg, var(--sage-dark), var(--sage))',
   imageUrl: '',
+  students: '0'
 };
 
 const CATEGORY_LABELS: Record<AdminCourse['category'], string> = { course: 'دورة مسجّلة', workshop: 'ورشة مباشرة', free: 'مجاناً' };
@@ -30,80 +33,88 @@ export function AdminCourses() {
 
   useEffect(() => {
     let cancelled = false;
-
     async function loadCourses() {
       try {
         setLoading(true);
-        const response = await fetch('/api/courses');
-        if (!response.ok) throw new Error('failed');
-        const data = (await response.json()) as AdminCourse[];
+        const data = await apiJson<AdminCourse[]>('/courses');
         if (!cancelled) setCourses(data);
       } catch {
         if (!cancelled) {
           setError('تعذر تحميل الدورات من قاعدة البيانات');
           setCourses([]);
         }
-      } finally {
+      } finally { // 🌟 تم تصحيح الإملاء هنا لتفادي انهيار السيرفر
         if (!cancelled) setLoading(false);
       }
     }
-
     void loadCourses();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   function openAdd() { setForm(EMPTY_FORM); setModal({ mode: 'add' }); }
   function openEdit(c: AdminCourse) {
-    setForm({ titleAr: c.titleAr, titleEn: c.titleEn, descAr: c.descAr, category: c.category, price: c.price, duration: c.duration, students: c.students, status: c.status, gradient: c.gradient, imageUrl: c.imageUrl ?? '' });
+    setForm({ 
+      coachId: c.coachId, 
+      titleAr: c.titleAr, 
+      titleEn: c.titleEn, 
+      descAr: c.descAr ?? '', 
+      category: c.category, 
+      price: c.price ?? 0, 
+      duration: c.duration ?? 0, 
+      students: c.students ?? '0', 
+      status: c.status, 
+      gradient: c.gradient ?? '', 
+      imageUrl: c.imageUrl ?? '' 
+    });
     setModal({ mode: 'edit', id: c.id });
   }
 
   async function handleSave() {
     if (!form.titleAr.trim()) return;
-    if (modal?.mode === 'add') {
-      const response = await fetch('/api/courses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      if (!response.ok) return;
-      const created = (await response.json()) as AdminCourse;
-      setCourses((current) => [...current, created]);
-    } else if (modal?.id) {
-      const response = await fetch(`/api/courses/${modal.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      if (!response.ok) return;
-      const updated = (await response.json()) as AdminCourse;
-      setCourses((current) => current.map((course) => (course.id === modal.id ? updated : course)));
+    try {
+      if (modal?.mode === 'add') {
+        const created = await apiJson<AdminCourse>('/courses', {
+          method: 'POST',
+          body: JSON.stringify(form),
+        });
+        setCourses((current) => [...current, created]);
+      } else if (modal?.id) {
+        const updated = await apiJson<AdminCourse>(`/courses/${modal.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(form),
+        });
+        setCourses((current) => current.map((course) => (course.id === modal.id ? updated : course)));
+      }
+      setModal(null);
+    } catch {
+      // error handle
     }
-    setModal(null);
   }
 
   async function toggleStatus(id: string) {
     const course = courses.find((item) => item.id === id);
     if (!course) return;
     const nextStatus = course.status === 'active' ? 'hidden' : 'active';
-    const response = await fetch(`/api/courses/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: nextStatus }),
-    });
-    if (!response.ok) return;
-    const updated = (await response.json()) as AdminCourse;
-    setCourses((current) => current.map((item) => (item.id === id ? updated : item)));
+    try {
+      const updated = await apiJson<AdminCourse>(`/courses/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      setCourses((current) => current.map((item) => (item.id === id ? updated : item)));
+    } catch {
+      // error handle
+    }
   }
 
   async function confirmDelete() {
     if (!deleteId) return;
-    const response = await fetch(`/api/courses/${deleteId}`, { method: 'DELETE' });
-    if (!response.ok) return;
-    setCourses((current) => current.filter((course) => course.id !== deleteId));
-    setDeleteId(null);
+    try {
+      await apiJson(`/courses/${deleteId}`, { method: 'DELETE' });
+      setCourses((current) => current.filter((course) => course.id !== deleteId));
+      setDeleteId(null);
+    } catch {
+      // error handle
+    }
   }
 
   return (
@@ -139,7 +150,8 @@ export function AdminCourses() {
                     {c.imageUrl ? (
                       <img src={c.imageUrl} alt={c.titleAr} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
                     ) : (
-                      <div className="w-8 h-8 rounded-lg flex-shrink-0" style={{ background: c.gradient }} />
+                      /* 🌟 استخدام undefined بدلاً من النص الفاضي لإرضاء الـ CSS Background Type */
+                      <div className="w-8 h-8 rounded-lg flex-shrink-0" style={{ background: c.gradient ?? undefined }} />
                     )}
                     <div>
                       <p className="font-medium" style={{ color: 'var(--text-dark)' }}>{c.titleAr}</p>
@@ -172,7 +184,7 @@ export function AdminCourses() {
 
       {/* Add/Edit Modal */}
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(45,74,69,0.5)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(45,74,69,0.45)' }}>
           <div className="rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" style={{ background: 'white' }}>
             <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: 'var(--cream-dark)' }}>
               <h2 className="font-bold text-lg" style={{ color: 'var(--text-dark)' }}>{modal.mode === 'add' ? 'إضافة دورة جديدة' : 'تعديل الدورة'}</h2>
@@ -183,10 +195,10 @@ export function AdminCourses() {
                 <FormField label="اسم الدورة (AR)" value={form.titleAr} onChange={(v) => setForm({ ...form, titleAr: v })} />
                 <FormField label="اسم الدورة (EN)" value={form.titleEn} onChange={(v) => setForm({ ...form, titleEn: v })} />
               </div>
-              <FormField label="الوصف (AR)" value={form.descAr} onChange={(v) => setForm({ ...form, descAr: v })} multiline />
+              <FormField label="الوصف (AR)" value={form.descAr ?? ''} onChange={(v) => setForm({ ...form, descAr: v })} multiline />
               <div className="grid grid-cols-2 gap-4">
-                <FormField label="السعر" value={form.price} onChange={(v) => setForm({ ...form, price: v })} />
-                <FormField label="المدة" value={form.duration} onChange={(v) => setForm({ ...form, duration: v })} />
+                <FormField label="السعر" value={String(form.price)} onChange={(v) => setForm({ ...form, price: Number(v) || 0 })} />
+                <FormField label="المدة (بالدقائق أو الأسابيع)" value={String(form.duration ?? '')} onChange={(v) => setForm({ ...form, duration: Number(v) || 0 })} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -197,7 +209,7 @@ export function AdminCourses() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-dark)' }}>الحالة</label>
-                  <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as AdminCourse['status'] })} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' }}>
+                  <select value={form.status ?? 'active'} onChange={(e) => setForm({ ...form, status: e.target.value as AdminCourse['status'] })} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' }}>
                     <option value="active">نشط</option><option value="hidden">مخفي</option>
                   </select>
                 </div>
@@ -212,7 +224,7 @@ export function AdminCourses() {
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-dark)' }}>صورة الغلاف (رابط)</label>
-                <input type="text" value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' }} />
+                <input type="text" value={form.imageUrl ?? ''} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' }} />
               </div>
             </div>
             <div className="flex gap-3 px-6 pb-6">
@@ -223,7 +235,6 @@ export function AdminCourses() {
         </div>
       )}
 
-      {/* Delete confirm */}
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(45,74,69,0.5)' }}>
           <div className="rounded-2xl p-8 max-w-sm w-full text-center space-y-4" style={{ background: 'white' }}>

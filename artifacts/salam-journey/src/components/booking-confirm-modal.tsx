@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Calendar, Clock, User as UserIcon, Check } from "lucide-react";
+import { Calendar, Clock, User as UserIcon, Check, CalendarPlus } from "lucide-react";
 import { Modal, ModalBody } from "@/components/ui/modal";
 import { useLanguage, tx, type Bilingual } from "@/lib/i18n";
 import { Confetti } from "@/components/confetti";
@@ -35,6 +35,26 @@ export function BookingConfirmModal({ booking, isOpen, onClose }: Props) {
     year: "numeric",
   }).format(dateObj);
 
+  // ✨ دالة توليد الرابط السحري لتقويم جوجل للعميل
+  const generateGoogleCalendarLink = () => {
+    const title = `${t(tx("رحلة سلام - ", "Salam Journey - "))}${t(booking.sessionType)}`;
+    
+    // تنظيف التاريخ والوقت (تحويل 2026-06-12 لـ 20260612)
+    const cleanDate = booking.date.replace(/-/g, "");
+    const cleanTime = booking.slot.replace(/:/g, "") + "00";
+    
+    // حساب وقت النهاية (إضافة ساعة واحدة تلقائياً للجلسة)
+    const [hours, minutes] = booking.slot.split(":");
+    const endHours = String(Number(hours) + 1).padStart(2, "0");
+    const cleanEndTime = `${endHours}${minutes}00`;
+
+    const datesParam = `${cleanDate}T${cleanTime}/${cleanDate}T${cleanEndTime}`;
+    
+    const details = `${t(tx("مرحباً بكِ في رحلة سلام.", "Welcome to Salam Journey."))} \n${t(tx("تفاصيل الموعد:", "Appointment Details:"))} ${formattedDate} - ${booking.slotLabel}`;
+
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${datesParam}&details=${encodeURIComponent(details)}&sf=true&output=xml`;
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth={460}>
       <ModalBody className="text-center relative overflow-hidden">
@@ -58,7 +78,7 @@ export function BookingConfirmModal({ booking, isOpen, onClose }: Props) {
         </p>
 
         <div
-          className="rounded-2xl p-4 mb-6 space-y-2 text-start"
+          className="rounded-2xl p-4 mb-4 space-y-2 text-start"
           style={{ background: "var(--cream)" }}
         >
           <Row Icon={Calendar} label={formattedDate} />
@@ -68,6 +88,34 @@ export function BookingConfirmModal({ booking, isOpen, onClose }: Props) {
             <Row Icon={Check} label={t(tx("باقة ٣ جلسات", "3-session package"))} />
           )}
         </div>
+
+{/* 📅 زرار الإضافة لتقويم جوجل */}
+<div className="space-y-2 mb-6">
+  <a
+    href={generateGoogleCalendarLink()}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-medium transition-all text-sm hover:opacity-90"
+    style={{ 
+      background: "rgba(66, 133, 244, 0.1)", 
+      color: "#1a73e8",
+      border: "1px dashed rgba(66, 133, 244, 0.4)" 
+    }}
+  >
+    <CalendarPlus size={18} />
+    {t(tx("إضافة الموعد إلى تقويم جوجل الخاص بكِ", "Add to my Google Calendar"))}
+  </a>
+  
+  {/* ⚠️ التنبيه الذكي للأمهات */}
+  <p className="text-xs font-medium text-center animate-pulse" style={{ color: "#d93025" }}>
+    {t(
+      tx(
+        "* تنبيه: يرجى الضغط على زر 'حفظ' (Save) داخل صفحة جوجل لتثبيت الموعد على موبايلك.",
+        "* Note: Please click the 'Save' button inside the Google page to fix the appointment on your phone."
+      )
+    )}
+  </p>
+</div>
 
         <div className="flex flex-col-reverse sm:flex-row gap-3 justify-center">
           <button

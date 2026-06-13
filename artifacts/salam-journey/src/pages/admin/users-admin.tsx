@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Search, Trash2, Eye, X } from 'lucide-react';
+import { apiJson } from '@/lib/api'; // 🌟
 import type { SalamUser, BookingRecord } from './types';
 
 export function AdminUsers() {
@@ -17,11 +18,8 @@ export function AdminUsers() {
       setLoading(true);
       setError('');
       try {
-        const response = await fetch('/api/admin/users');
-        if (!response.ok) {
-          throw new Error('failed');
-        }
-        const data = await response.json() as SalamUser[];
+        // 🌟 استهداف المسار الموحد المأمن في الباكيند
+        const data = await apiJson<SalamUser[]>('/admin/users');
         if (!cancelled) {
           setUsers(data);
         }
@@ -44,12 +42,8 @@ export function AdminUsers() {
 
   async function confirmDelete() {
     if (!deleteId) return;
-
     try {
-      const response = await fetch(`/api/users/${deleteId}`, { method: 'DELETE' });
-      if (!response.ok) {
-        throw new Error('failed');
-      }
+      await apiJson(`/users/${deleteId}`, { method: 'DELETE' });
       setUsers((current) => current.filter((u) => u.id !== deleteId));
       setDeleteId(null);
       if (viewUser?.id === deleteId) {
@@ -208,7 +202,7 @@ export function AdminUsers() {
             <p className="text-lg font-bold" style={{ color: 'var(--text-dark)' }}>حذف المستخدم؟</p>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>سيتم حذف حساب المستخدم نهائياً.</p>
             <div className="flex gap-3 justify-center">
-                <button type="button" onClick={() => { void confirmDelete(); }} className="px-5 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#B5524A' }}>حذف</button>
+              <button type="button" onClick={() => { void confirmDelete(); }} className="px-5 py-2 rounded-xl text-sm font-semibold text-white" style={{ background: '#B5524A' }}>حذف</button>
               <button type="button" onClick={() => setDeleteId(null)} className="px-5 py-2 rounded-xl text-sm font-semibold" style={{ background: 'var(--cream)', color: 'var(--text-dark)' }}>إلغاء</button>
             </div>
           </div>

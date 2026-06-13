@@ -1,37 +1,16 @@
-import { Router } from "express";
-import bcrypt from "bcryptjs";
-import crypto from "crypto";
-import { eq, gt } from "drizzle-orm";
+import { Router, Request, Response, NextFunction } from "express";
+import { eq } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
-  adminsTable,
-  adminSessionsTable,
   bookingsTable,
   coursesTable,
   enrollmentsTable,
   usersTable,
 } from "@workspace/db";
+import jwt from "jsonwebtoken";
+import { mapBookingToFrontend, mapBookingsToFrontend, asIsoString } from "../utils/booking-mapper";
 
 const router = Router();
-
-const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
-
-type AdminBookingSummary = {
-  id: string;
-  date: string;
-  slot: string | null;
-  sessionType: string | null;
-  bookingKind: string;
-  packageSessionsTotal: number | null;
-  packageSessionsRemaining: number | null;
-  topic: string | null;
-  notes: string | null;
-  name: string | null;
-  email: string | null;
-  whatsapp: string | null;
-  status: string | null;
-  createdAt: string;
-};
 
 type AdminUserSummary = {
   id: string;
@@ -39,56 +18,79 @@ type AdminUserSummary = {
   email: string;
   phone: string | null;
   createdAt: string;
-  bookings: AdminBookingSummary[];
+  bookings: any[];
   enrolledCourses: { id: string; title: string; enrolledAt: string; progress: number }[];
 };
 
-function asIsoString(value: string | Date): string {
-  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
-}
-
-router.post("/admin/login", async (req, res) => {
+// 🛡️ الميدل وير الموحد الجديد: بيفحص التوكن الحي ويشيك على رتبة الأدمن من جدول الـ usersTable
+// 🛡️ الميدل وير الموحد بعد تزويده بكشافات إضاءة للـ Debugging الحتمي
+async function isAdminAuthenticated(req: Request, res: Response, next: NextFunction) {
   try {
-    const { email, password } = req.body as { email?: string; password?: string };
+    const auth = req.headers.authorization ?? "";
+    
+    console.log("\n=== 🛡️ [DEBUG AUTH] جاري فحص صلاحيات مسار الآدمن ===");
+    console.log("الـ Authorization Header القادم من الفرونت:", auth);
 
-    if (!email || !password) {
-      res.status(400).json({ error: "Email and password are required" });
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+
+    if (!token) {
+      console.log("❌ الرفض: لم يتم إرسال توكن نهائياً من الفرونت إند (Token is missing)");
+      res.status(401).json({ error: "No token provided. يرجى تسجيل الدخول أولاً" });
       return;
     }
 
-    const [admin] = await db
+    // فحص فك التوكن والـ Secret Key المكتوم
+    let decoded: any;
+    try {
+      const secret = process.env.JWT_SECRET || "secret";
+      decoded = jwt.verify(token, secret);
+      console.log("✅ نجاح فك التوكن بنجاح! الـ Payload الناتج هو:", decoded);
+    } catch (jwtError: any) {
+      console.log("❌ فشل jwt.verify والسبب الصريح:", jwtError.message);
+      console.log("الـ Secret Key المستخدم حالياً في السيرفر:", process.env.JWT_SECRET ? "قادم من الـ .env سليم" : "مش قاري الـ .env وبيستخدم الـ fallback 'secret'");
+      res.status(401).json({ error: "Unauthorized. التوكن غير صالح أو منتهي" });
+      return;
+    }
+
+    const userId = decoded.userId || decoded.id || decoded.sub; // 🌟 ضفنا || decoded.sub عشان يلقط الـ ID من توكن جوجل الموحد
+
+    if (!userId) {
+      console.log("❌ الرفض: التوكن سليم بس مفيش جواه userId أو id");
+      res.status(401).json({ error: "Invalid token payload. توكن غير صالح" });
+      return;
+    }
+
+    // 2. التحقق المباشر من الداتابيز
+    const [user] = await db
       .select()
-      .from(adminsTable)
-      .where(eq(adminsTable.email, email.toLowerCase().trim()))
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
       .limit(1);
 
-    if (!admin) {
-      res.status(401).json({ error: "Invalid credentials" });
+    if (!user) {
+      console.log("❌ الرفض: التوكن سليم والـ ID فك، بس المستخدم ده ملوش وجود في الـ usersTable!");
+      res.status(403).json({ error: "Forbidden. المستخدم غير موجود" });
       return;
     }
 
-    const valid = await bcrypt.compare(password, admin.passwordHash);
-    if (!valid) {
-      res.status(401).json({ error: "Invalid credentials" });
+    if ((user as any).role !== "admin") {
+      console.log(`❌ الرفض: الشخص ده مستخدم عادي برتبة "${(user as any).role}" وليس admin`);
+      res.status(403).json({ error: "Forbidden. عذراً، لا تمتلك صلاحيات آدمن لدخول هذه الصفحة" });
       return;
     }
 
-    const token = crypto.randomBytes(48).toString("hex");
-    const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-
-    await db.insert(adminSessionsTable).values({
-      token,
-      adminId: admin.id,
-      expiresAt,
-    });
-
-    res.json({ token, email: admin.email });
-  } catch {
-    res.status(503).json({ error: "Admin database is unavailable" });
+    console.log("🎯 [AUTH SUCCESS] الحساب آدمن وسليم ١٠٠٪، مرر الطلب للـ Database!");
+    next();
+  } catch (globalError: any) {
+    console.log("💥 خطأ غير متوقع تماماً في الميدل وير:", globalError.message);
+    res.status(401).json({ error: "Unauthorized. الجلسة منتهية أو التوكن غير صالح" });
   }
-});
+}
 
-router.get("/admin/users", async (_req, res) => {
+// -------------------------------------------------------------
+// 🔒 الرابط الرئيسي: جلب بيانات الأمهات والحجوزات مأمن بالكامل بالميدل وير الموحد
+// -------------------------------------------------------------
+router.get("/admin/users", isAdminAuthenticated, async (_req, res) => {
   try {
     const [users, bookings, enrollments, courses] = await Promise.all([
       db.select().from(usersTable),
@@ -116,26 +118,11 @@ router.get("/admin/users", async (_req, res) => {
     }>;
 
     const courseTitleById = new Map(courses.map((course) => [course.id, course.titleAr || course.titleEn]));
-    const bookingsByUser = new Map<string, AdminBookingSummary[]>();
+    const bookingsByUser = new Map<string, any[]>();
     for (const booking of typedBookings) {
       if (!booking.userId) continue;
       const next = bookingsByUser.get(booking.userId) ?? [];
-      next.push({
-        id: booking.id,
-        date: booking.date,
-        slot: booking.slot,
-        sessionType: booking.sessionType,
-        bookingKind: booking.bookingKind,
-        packageSessionsTotal: booking.packageSessionsTotal,
-        packageSessionsRemaining: booking.packageSessionsRemaining,
-        topic: booking.topic,
-        notes: booking.notes,
-        name: booking.guestName,
-        email: booking.guestEmail,
-        whatsapp: booking.guestWhatsapp,
-        status: booking.status,
-        createdAt: asIsoString(booking.createdAt),
-      });
+      next.push(mapBookingToFrontend(booking));
       bookingsByUser.set(booking.userId, next);
     }
 
@@ -167,63 +154,6 @@ router.get("/admin/users", async (_req, res) => {
     }));
 
     res.json(payload);
-  } catch {
-    res.status(503).json({ error: "Admin database is unavailable" });
-  }
-});
-
-router.get("/admin/verify", async (req, res) => {
-  try {
-    const auth = req.headers.authorization ?? "";
-    const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-
-    if (!token) {
-      res.status(401).json({ error: "No token provided" });
-      return;
-    }
-
-    const now = new Date();
-
-    const [session] = await db
-      .select()
-      .from(adminSessionsTable)
-      .where(eq(adminSessionsTable.token, token))
-      .limit(1);
-
-    if (!session || session.expiresAt < now) {
-      res.status(401).json({ error: "Invalid or expired session" });
-      return;
-    }
-
-    const [admin] = await db
-      .select()
-      .from(adminsTable)
-      .where(eq(adminsTable.id, session.adminId))
-      .limit(1);
-
-    if (!admin) {
-      res.status(401).json({ error: "Admin not found" });
-      return;
-    }
-
-    res.json({ email: admin.email });
-  } catch {
-    res.status(503).json({ error: "Admin database is unavailable" });
-  }
-});
-
-router.post("/admin/logout", async (req, res) => {
-  try {
-    const auth = req.headers.authorization ?? "";
-    const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-
-    if (token) {
-      await db
-        .delete(adminSessionsTable)
-        .where(eq(adminSessionsTable.token, token));
-    }
-
-    res.json({ ok: true });
   } catch {
     res.status(503).json({ error: "Admin database is unavailable" });
   }

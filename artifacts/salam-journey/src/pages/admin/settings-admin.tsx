@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Save, Eye, EyeOff } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { loadJson, saveJson, SETTINGS_KEY, DEFAULT_SETTINGS } from './types';
 import type { AdminSettings } from './types';
 
@@ -9,9 +9,6 @@ const DAYS_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأرب
 export function AdminSettings() {
   const [settings, setSettings] = useState<AdminSettings>(() => loadJson<AdminSettings>(SETTINGS_KEY, DEFAULT_SETTINGS));
   const [saved, setSaved] = useState(false);
-  const [showPwd, setShowPwd] = useState(false);
-  const [pwdForm, setPwdForm] = useState({ current: '', next: '', confirm: '' });
-  const [pwdError, setPwdError] = useState('');
 
   function set<K extends keyof AdminSettings>(key: K, value: AdminSettings[K]) {
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -33,19 +30,6 @@ export function AdminSettings() {
 
   function handleSave() {
     saveJson(SETTINGS_KEY, settings);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
-  }
-
-  function handlePasswordChange() {
-    setPwdError('');
-    if (pwdForm.current !== settings.adminPassword) { setPwdError('كلمة المرور الحالية غير صحيحة'); return; }
-    if (!pwdForm.next || pwdForm.next.length < 6) { setPwdError('كلمة المرور الجديدة يجب أن تكون ٦ أحرف على الأقل'); return; }
-    if (pwdForm.next !== pwdForm.confirm) { setPwdError('كلمتا المرور غير متطابقتين'); return; }
-    const updated = { ...settings, adminPassword: pwdForm.next };
-    setSettings(updated);
-    saveJson(SETTINGS_KEY, updated);
-    setPwdForm({ current: '', next: '', confirm: '' });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   }
@@ -117,19 +101,6 @@ export function AdminSettings() {
           </div>
         </div>
       </Card>
-
-      {/* Password change */}
-      <Card title="تغيير كلمة مرور المسؤول">
-        <div className="space-y-4">
-          {pwdError && (
-            <p className="text-sm px-3 py-2 rounded-xl" style={{ background: 'rgba(181,82,74,0.1)', color: '#B5524A' }}>{pwdError}</p>
-          )}
-          <PwdField label="كلمة المرور الحالية" value={pwdForm.current} onChange={(v) => setPwdForm({ ...pwdForm, current: v })} show={showPwd} onToggle={() => setShowPwd(!showPwd)} />
-          <PwdField label="كلمة المرور الجديدة" value={pwdForm.next} onChange={(v) => setPwdForm({ ...pwdForm, next: v })} show={showPwd} onToggle={() => setShowPwd(!showPwd)} />
-          <PwdField label="تأكيد كلمة المرور" value={pwdForm.confirm} onChange={(v) => setPwdForm({ ...pwdForm, confirm: v })} show={showPwd} onToggle={() => setShowPwd(!showPwd)} />
-          <button type="button" onClick={handlePasswordChange} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: 'var(--sage)' }}>تغيير كلمة المرور</button>
-        </div>
-      </Card>
     </div>
   );
 }
@@ -148,20 +119,6 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
     <div>
       <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-dark)' }}>{label}</label>
       <input type="text" value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' }} />
-    </div>
-  );
-}
-
-function PwdField({ label, value, onChange, show, onToggle }: { label: string; value: string; onChange: (v: string) => void; show: boolean; onToggle: () => void }) {
-  return (
-    <div>
-      <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-dark)' }}>{label}</label>
-      <div className="relative">
-        <input type={show ? 'text' : 'password'} value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-xl px-3 py-2.5 pe-10 text-sm outline-none" style={{ background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' }} />
-        <button type="button" onClick={onToggle} className="absolute top-1/2 -translate-y-1/2 end-3">
-          {show ? <EyeOff size={15} style={{ color: 'var(--text-muted)' }} /> : <Eye size={15} style={{ color: 'var(--text-muted)' }} />}
-        </button>
-      </div>
     </div>
   );
 }

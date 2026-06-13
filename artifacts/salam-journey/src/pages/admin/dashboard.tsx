@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Calendar, Users, BookOpen, ShoppingBag, TrendingUp } from 'lucide-react';
+import { apiJson } from '@/lib/api';
 import type { BookingRecord, AdminCourse, AdminProduct, SalamUser } from './types';
 
+// 🌟 إضافة الثوابت هنا لحل مشاكل التي سكريبت بالكامل جوه الجدول والـ Badges
 const STATUS_LABELS: Record<string, string> = { confirmed: 'مؤكد', pending: 'معلق', cancelled: 'ملغي' };
 const STATUS_COLORS: Record<string, string> = { confirmed: '#5A8A80', pending: '#D4A435', cancelled: '#B5524A' };
 const STATUS_BG: Record<string, string> = { confirmed: 'rgba(90,138,128,0.12)', pending: 'rgba(212,164,53,0.12)', cancelled: 'rgba(181,82,74,0.12)' };
@@ -17,27 +19,18 @@ export function AdminDashboard() {
 
     async function loadDashboardData() {
       try {
-        const [usersResponse, bookingsResponse, coursesResponse, productsResponse] = await Promise.all([
-          fetch('/api/users'),
-          fetch('/api/bookings'),
-          fetch('/api/courses'),
-          fetch('/api/products'),
-        ]);
-
-        if (!usersResponse.ok || !bookingsResponse.ok) {
-          throw new Error('failed');
-        }
-
-        const [usersData, bookingsData, coursesData, productsData] = await Promise.all([
-          usersResponse.json() as Promise<SalamUser[]>,
-          bookingsResponse.json() as Promise<BookingRecord[]>,
-          coursesResponse.json() as Promise<AdminCourse[]>,
-          productsResponse.json() as Promise<AdminProduct[]>,
+        const [usersData, coursesData, productsData] = await Promise.all([
+          apiJson<any[]>('/admin/users'),
+          apiJson<AdminCourse[]>('/courses'),
+          apiJson<AdminProduct[]>('/products'),
         ]);
 
         if (!cancelled) {
+          // جلب وفرد الحجوزات القادمة حية من الداتابيز
+          const allBookings = usersData.flatMap((u) => u.bookings || []) as BookingRecord[];
+          
           setUsers(usersData);
-          setBookings(bookingsData);
+          setBookings(allBookings);
           setCourses(coursesData);
           setProducts(productsData);
         }
@@ -59,7 +52,6 @@ export function AdminDashboard() {
 
   const activeCourses = courses.filter((c) => c.status === 'active').length;
   const activeProducts = products.filter((p) => p.status === 'active').length;
-
   const recent = [...bookings].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 10);
 
   /* Simple bar chart: last 7 days */
@@ -69,11 +61,9 @@ export function AdminDashboard() {
     const d = new Date(today);
     d.setDate(today.getDate() - (6 - i));
     const key = d.toISOString().split('T')[0];
-    const dayNum = d.getDate();
-    const dayName = DAY_SHORT[d.getDay()];
     return {
-      label: dayName,
-      sublabel: String(dayNum),
+      label: DAY_SHORT[d.getDay()],
+      sublabel: String(d.getDate()),
       count: bookings.filter((b) => b.date === key).length,
     };
   });
@@ -90,10 +80,9 @@ export function AdminDashboard() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-dark)' }}>الإحصائيات</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>نظرة عامة على نشاط الموقع</p>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>نظرة عامة على نشاط الموقع حياً</p>
       </div>
 
-      {/* Stats cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map(({ label, value, Icon, color }) => (
           <div key={label} className="rounded-2xl p-6" style={{ background: 'white', border: '1px solid rgba(127,169,155,0.15)', boxShadow: '0 4px 20px rgba(90,138,128,0.08)' }}>
@@ -110,28 +99,17 @@ export function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Bar chart */}
         <div className="rounded-2xl p-6" style={{ background: 'white', border: '1px solid rgba(127,169,155,0.15)', boxShadow: '0 2px 12px rgba(90,138,128,0.08)' }}>
           <h2 className="font-bold text-base mb-4" style={{ color: 'var(--text-dark)' }}>الحجوزات – آخر ٧ أيام</h2>
           <div className="space-y-2">
-            {/* Bars */}
             <div className="flex items-end gap-2" style={{ height: 96 }}>
               {last7.map(({ label, count }) => (
                 <div key={label} className="flex-1 flex flex-col items-center justify-end gap-1">
-                  {count > 0 && (
-                    <span className="text-xs font-bold leading-none" style={{ color: 'var(--sage-dark)' }}>{count}</span>
-                  )}
-                  <div
-                    className="w-full rounded-t-lg transition-all"
-                    style={{
-                      height: `${Math.max((count / maxCount) * 80, count > 0 ? 8 : 3)}px`,
-                      background: count > 0 ? 'var(--sage)' : 'var(--cream-dark)',
-                    }}
-                  />
+                  {count > 0 && <span className="text-xs font-bold leading-none" style={{ color: 'var(--sage-dark)' }}>{count}</span>}
+                  <div className="w-full rounded-t-lg transition-all" style={{ height: `${Math.max((count / maxCount) * 80, count > 0 ? 8 : 3)}px`, background: count > 0 ? 'var(--sage)' : 'var(--cream-dark)' }} />
                 </div>
               ))}
             </div>
-            {/* Day labels */}
             <div className="flex gap-2">
               {last7.map(({ label, sublabel }) => (
                 <div key={sublabel} className="flex-1 flex flex-col items-center gap-0.5">
@@ -143,7 +121,6 @@ export function AdminDashboard() {
           </div>
         </div>
 
-        {/* Recent activity */}
         <div className="lg:col-span-2 rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid rgba(127,169,155,0.15)', boxShadow: '0 2px 12px rgba(90,138,128,0.08)' }}>
           <div className="px-6 py-4 border-b" style={{ borderColor: 'rgba(127,169,155,0.1)' }}>
             <h2 className="font-bold text-base" style={{ color: 'var(--text-dark)' }}>آخر الحجوزات</h2>
@@ -164,8 +141,9 @@ export function AdminDashboard() {
                 <tbody>
                   {recent.map((b) => (
                     <tr key={b.id} className="border-t" style={{ borderColor: 'rgba(127,169,155,0.08)' }}>
-                      <td className="px-4 py-3 font-medium" style={{ color: 'var(--text-dark)' }}>{b.name || '—'}</td>
-                      <td className="px-4 py-3" style={{ color: 'var(--text-body)' }}>{b.sessionType || '—'}</td>
+                      {/* قراءة مرنة تقبل الإسم المباشر أو اسم الضيف من الـ SQL */}
+                      <td className="px-4 py-3 font-medium" style={{ color: 'var(--text-dark)' }}>{b.name || (b as any).guestName || '—'}</td>
+                      <td className="px-4 py-3" style={{ color: 'var(--text-body)' }}>{b.sessionType}</td>
                       <td className="px-4 py-3" style={{ color: 'var(--text-body)' }}>{b.date} {b.slot}</td>
                       <td className="px-4 py-3">
                         <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: STATUS_BG[b.status] ?? STATUS_BG.pending, color: STATUS_COLORS[b.status] ?? STATUS_COLORS.pending }}>

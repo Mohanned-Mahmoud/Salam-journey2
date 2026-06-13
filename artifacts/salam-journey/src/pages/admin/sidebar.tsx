@@ -1,12 +1,10 @@
-import { BarChart2, Calendar, BookOpen, ShoppingBag, Users, MessageSquare, Settings, LogOut, LayoutDashboard } from 'lucide-react';
+import { Calendar, BookOpen, ShoppingBag, Users, MessageSquare, Settings, LogOut, LayoutDashboard } from 'lucide-react';
 import type { AdminSection } from './types';
-
-const ADMIN_SESSION_KEY = "salam_admin_session";
 
 type Props = {
   active: AdminSection;
   onChange: (s: AdminSection) => void;
-  onLogout?: () => void;
+  onLogout: () => void; // 🌟 أصبحت إجبارية وموحدة
 };
 
 const ITEMS: { id: AdminSection; label: string; Icon: React.ComponentType<{ size?: number }> }[] = [
@@ -20,12 +18,6 @@ const ITEMS: { id: AdminSection; label: string; Icon: React.ComponentType<{ size
 ];
 
 export function AdminSidebar({ active, onChange, onLogout }: Props) {
-  function handleLogout() {
-    if (onLogout) { onLogout(); return; }
-    localStorage.removeItem(ADMIN_SESSION_KEY);
-    window.location.reload();
-  }
-
   return (
     <aside
       className="flex flex-col h-full"
@@ -70,7 +62,7 @@ export function AdminSidebar({ active, onChange, onLogout }: Props) {
       <div className="px-3 pb-6 border-t pt-4" style={{ borderColor: 'rgba(250,245,232,0.1)' }}>
         <button
           type="button"
-          onClick={handleLogout}
+          onClick={onLogout}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-right transition-all"
           style={{ color: 'rgba(250,245,232,0.6)' }}
         >

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Star, Eye, EyeOff, X } from 'lucide-react';
+import { apiJson } from '@/lib/api'; 
 import type { AdminTestimonial } from './types';
 
 type FormState = Omit<AdminTestimonial, 'id'>;
@@ -19,9 +20,7 @@ export function AdminTestimonials() {
     async function loadTestimonials() {
       try {
         setLoading(true);
-        const response = await fetch('/api/testimonials');
-        if (!response.ok) throw new Error('failed');
-        const data = (await response.json()) as AdminTestimonial[];
+        const data = await apiJson<AdminTestimonial[]>('/testimonials');
         if (!cancelled) setItems(data);
       } catch {
         if (!cancelled) {
@@ -41,54 +40,64 @@ export function AdminTestimonials() {
 
   function openAdd() { setForm(EMPTY); setModal({ mode: 'add' }); }
   function openEdit(t: AdminTestimonial) {
-    setForm({ nameAr: t.nameAr, roleAr: t.roleAr, quoteAr: t.quoteAr, rating: t.rating, status: t.status });
+    // 🌟 حماية المدخلات أثناء التعديل لضمان عدم تمرير قيم null للـ form state
+    setForm({ 
+      nameAr: t.nameAr ?? '', 
+      roleAr: t.roleAr ?? '', 
+      quoteAr: t.quoteAr, 
+      rating: t.rating ?? 5, 
+      status: t.status 
+    });
     setModal({ mode: 'edit', id: t.id });
   }
 
   async function handleSave() {
-    if (!form.nameAr.trim()) return;
-    if (modal?.mode === 'add') {
-      const response = await fetch('/api/testimonials', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      if (!response.ok) return;
-      const created = (await response.json()) as AdminTestimonial;
-      setItems((current) => [...current, created]);
-    } else if (modal?.id) {
-      const response = await fetch(`/api/testimonials/${modal.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      if (!response.ok) return;
-      const updated = (await response.json()) as AdminTestimonial;
-      setItems((current) => current.map((t) => (t.id === modal.id ? updated : t)));
+    // 🌟 تأمين الـ Null Check باستخدام السهم الاختياري للتأكد من وجود النص قبل عمل .trim()
+    if (!form.nameAr?.trim()) return;
+    try {
+      if (modal?.mode === 'add') {
+        const created = await apiJson<AdminTestimonial>('/testimonials', {
+          method: 'POST',
+          body: JSON.stringify(form),
+        });
+        setItems((current) => [...current, created]);
+      } else if (modal?.id) {
+        const updated = await apiJson<AdminTestimonial>(`/testimonials/${modal.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(form),
+        });
+        setItems((current) => current.map((t) => (t.id === modal.id ? updated : t)));
+      }
+      setModal(null);
+    } catch {
+      // Handle error
     }
-    setModal(null);
   }
 
   async function toggleStatus(id: string) {
     const testimonial = items.find((t) => t.id === id);
     if (!testimonial) return;
     const nextStatus = testimonial.status === 'active' ? 'hidden' : 'active';
-    const response = await fetch(`/api/testimonials/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: nextStatus }),
-    });
-    if (!response.ok) return;
-    const updated = (await response.json()) as AdminTestimonial;
-    setItems((current) => current.map((t) => (t.id === id ? updated : t)));
+    try {
+      const updated = await apiJson<AdminTestimonial>(`/testimonials/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      setItems((current) => current.map((t) => (t.id === id ? updated : t)));
+    } catch {
+      // Handle error
+    }
   }
 
   async function confirmDelete() {
     if (!deleteId) return;
-    const response = await fetch(`/api/testimonials/${deleteId}`, { method: 'DELETE' });
-    if (!response.ok) return;
-    setItems((current) => current.filter((t) => t.id !== deleteId));
-    setDeleteId(null);
+    try {
+      await apiJson(`/testimonials/${deleteId}`, { method: 'DELETE' });
+      setItems((current) => current.filter((t) => t.id !== deleteId));
+      setDeleteId(null);
+    } catch {
+      // Handle error
+    }
   }
 
   return (
@@ -125,9 +134,13 @@ export function AdminTestimonials() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-0.5">
-                    {Array.from({ length: 5 }).map((_, j) => (
-                      <Star key={j} size={13} fill={j < t.rating ? 'var(--blush)' : 'transparent'} stroke={j < t.rating ? 'var(--blush)' : 'var(--text-muted)'} />
-                    ))}
+                    {Array.from({ length: 5 }).map((_, j) => {
+                      // 🌟 حماية حساب النجوم داخل الجدول عبر وضع قيمة افتراضية للتقييم لمنع الـ null check warning
+                      const currentRating = t.rating ?? 5;
+                      return (
+                        <Star key={j} size={13} fill={j < currentRating ? 'var(--blush)' : 'transparent'} stroke={j < currentRating ? 'var(--blush)' : 'var(--text-muted)'} />
+                      );
+                    })}
                   </div>
                 </td>
                 <td className="px-4 py-3 max-w-xs">
@@ -163,23 +176,28 @@ export function AdminTestimonials() {
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <Field label="الاسم" value={form.nameAr} onChange={(v) => setForm({ ...form, nameAr: v })} />
-                <Field label="الوصف (أم لطفلين، إلخ)" value={form.roleAr} onChange={(v) => setForm({ ...form, roleAr: v })} />
+                {/* 🌟 معالجة الـ Null Check لحقول الإدخال عبر تحويلها لنصوص فارغة عند الحاجة */}
+                <Field label="الاسم" value={form.nameAr ?? ''} onChange={(v) => setForm({ ...form, nameAr: v })} />
+                <Field label="الوصف (أم لطفلين، إلخ)" value={form.roleAr ?? ''} onChange={(v) => setForm({ ...form, roleAr: v })} />
               </div>
               <Field label="نص الشهادة" value={form.quoteAr} onChange={(v) => setForm({ ...form, quoteAr: v })} multiline />
               <div>
                 <label className="block text-xs font-semibold mb-2" style={{ color: 'var(--text-dark)' }}>التقييم</label>
                 <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <button key={n} type="button" onClick={() => setForm({ ...form, rating: n })}>
-                      <Star size={24} fill={n <= form.rating ? 'var(--blush)' : 'transparent'} stroke={n <= form.rating ? 'var(--blush)' : 'var(--text-muted)'} />
-                    </button>
-                  ))}
+                  {[1, 2, 3, 4, 5].map((n) => {
+                    // 🌟 حماية الـ rating داخل الـ Modal ليكون رقماً صريحاً دائماً
+                    const formRating = form.rating ?? 5;
+                    return (
+                      <button key={n} type="button" onClick={() => setForm({ ...form, rating: n })}>
+                        <Star size={24} fill={n <= formRating ? 'var(--blush)' : 'transparent'} stroke={n <= formRating ? 'var(--blush)' : 'var(--text-muted)'} />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-dark)' }}>الحالة</label>
-                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as AdminTestimonial['status'] })} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' }}>
+                <select value={form.status ?? 'active'} onChange={(e) => setForm({ ...form, status: e.target.value as AdminTestimonial['status'] })} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' }}>
                   <option value="active">نشط</option><option value="hidden">مخفي</option>
                 </select>
               </div>

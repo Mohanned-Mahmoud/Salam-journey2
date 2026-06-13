@@ -1,59 +1,58 @@
 import { useState, useEffect } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { useLocation } from 'wouter';
-import { ADMIN_SESSION_KEY } from './types';
-
-function getToken(): string {
-  return localStorage.getItem(ADMIN_SESSION_KEY) ?? '';
-}
+import { useAuth } from '@/hooks/use-auth'; // 🌟 استيراد الهوك الموحد للسيستم
 
 export default function AdminLoginPage() {
   const [, navigate] = useLocation();
+  const { user, isAuthenticated, isLoading, login } = useAuth(); // 🌟 سحب الصلاحيات والدوال الموحدة
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [checking, setChecking] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     document.title = 'دخول المسؤول — رحلة سلام';
     return () => { document.title = 'رحلة سلام'; };
   }, []);
 
+  // 🛡️ جدار حماية عكسي: لو المسؤول مسجل دخول أصلاً ورتبته admin، حوله فوراً للوحة التحكم
   useEffect(() => {
-    const token = getToken();
-    if (!token) { setChecking(false); return; }
-    fetch('/api/admin/verify', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => { if (r.ok) navigate('/admin'); else setChecking(false); })
-      .catch(() => setChecking(false));
-  }, [navigate]);
+    if (!isLoading && isAuthenticated && (user as any)?.role === 'admin') {
+      navigate('/admin');
+    }
+  }, [isAuthenticated, user, isLoading, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    setLoading(true);
+    setSubmitting(true);
+    
     try {
-      const res = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
-      if (!res.ok) {
-        setError('البريد الإلكتروني أو كلمة المرور غير صحيحة');
-        return;
+      // 🌟 بننادي على دالة الـ login الموحدة للسيستم اللي بتبص في جدول usersTable الحقيقي
+      const res = await login(email.trim().toLowerCase(), password);
+      
+      if (res.ok) {
+        // الهوك لوحده هيعمل hydrate للبيانات ويحدث الـ State
+        navigate('/admin');
+      } else {
+        if (res.error === 'not_found' || res.error === 'wrong_password') {
+          setError('البريد الإلكتروني أو كلمة المرور غير صحيحة، أو الحساب لا يمتلك صلاحيات مسؤول');
+        } else {
+          setError('حدث خطأ أثناء تسجيل الدخول، يرجى المحاولة مجدداً');
+        }
       }
-      const data = await res.json() as { token: string };
-      localStorage.setItem(ADMIN_SESSION_KEY, data.token);
-      navigate('/admin');
     } catch {
       setError('تعذّر الاتصال بالخادم، يرجى المحاولة مجدداً');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   }
 
-  if (checking) {
+  // طالما السيستم بيتحقق من التوكن الموحد في الخلفية، اظهر شاشة التحميل
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--cream)' }}>
         <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--sage)' }} />
@@ -82,9 +81,10 @@ export default function AdminLoginPage() {
               {error}
             </div>
           )}
+          
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-dark)' }}>البريد الإلكتروني</label>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-dark)' }}>البريد الإلكتروني للمسؤول</label>
               <input
                 type="email"
                 value={email}
@@ -112,13 +112,14 @@ export default function AdminLoginPage() {
                 </button>
               </div>
             </div>
+            
             <button
               type="submit"
-              disabled={loading}
+              disabled={submitting}
               className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-60"
               style={{ background: 'var(--sage-dark)' }}
             >
-              {loading ? 'جاري التحقق...' : 'دخول'}
+              {submitting ? 'جاري التحقق من الصلاحيات...' : 'دخول اللوحة'}
             </button>
           </form>
         </div>

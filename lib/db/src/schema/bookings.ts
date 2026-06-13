@@ -18,7 +18,8 @@ export const bookingsTable = pgTable("bookings", {
   sessionType: varchar("session_type", { length: 100 }),
   packageSessionsTotal: integer("package_sessions_total"),
   packageSessionsRemaining: integer("package_sessions_remaining"),
-  topic: varchar("topic", { length: 255 }),
+  // تم تحويل هذا الحقل إلى text ليستقبل النبذة النصية الطويلة من الـ textarea بأمان
+  topic: text("topic"), 
   notes: text("notes"),
   guestName: varchar("guest_name", { length: 255 }),
   guestEmail: varchar("guest_email", { length: 255 }),

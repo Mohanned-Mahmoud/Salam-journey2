@@ -1,17 +1,18 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
-import { db, usersTable, insertUserSchema, type User } from "@workspace/db";
+// تم استيراد coachesTable هنا لربط وحفظ توكن الكوتش
+import { db, usersTable, insertUserSchema, type User, coachesTable } from "@workspace/db";
 import admin from "firebase-admin";
 import { createAccessToken } from "../lib/jwt";
 import path from "path";
 import fs from "fs";
+import { google } from "googleapis"; // استيراد مكتبة جوجل
 
 let firebaseInitialized = false;
 function tryInitFirebase() {
   if (firebaseInitialized) return;
 
-  // Most reliable option: explicit file path from env
   const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
   if (serviceAccountPath) {
     try {
@@ -30,7 +31,6 @@ function tryInitFirebase() {
     }
   }
 
-  // Try to load from environment variable first
   const key = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
   if (key) {
     try {
@@ -44,7 +44,6 @@ function tryInitFirebase() {
     }
   }
 
-  // Try to load from file in project root (for local development)
   const serviceAccountFiles = [
     "salam-jourey-firebase-adminsdk-fbsvc-2a397888cd.json",
     "firebase-adminsdk.json",
@@ -75,7 +74,6 @@ function tryInitFirebase() {
     }
   }
 
-  // Try to load from artifacts/api-server directory
   const apiServerPath = path.resolve(process.cwd(), "firebase-adminsdk.json");
   if (fs.existsSync(apiServerPath)) {
     try {
@@ -95,12 +93,79 @@ function tryInitFirebase() {
   );
 }
 
+// دالة مساعدة لتهيئة عميل الـ OAuth2 الخاص بجوجل كاليندر
+function getOAuth2Client() {
+  return new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI // مثال: http://localhost:5000/api/auth/google/calendar-callback
+  );
+}
+
 const router: IRouter = Router();
 
 function sanitizeUser(user: User) {
   const { passwordHash: _passwordHash, ...rest } = user;
   return rest;
 }
+
+/* ──────────────────────────────────────────────────────────── */
+/* طرق ربط تقويم جوجل الجديدة المخصصة للآدمن (الكوتش)         */
+/* ──────────────────────────────────────────────────────────── */
+
+// 1. إنشاء رابط طلب الصلاحيات للمدرّبة
+router.get("/auth/google/calendar-url", (req, res) => {
+  try {
+    const oauth2Client = getOAuth2Client();
+    const url = oauth2Client.generateAuthUrl({
+      access_type: "offline", // إجباري للحصول على المفتاح الدائم الـ refresh_token
+      prompt: "consent",      // إجباري لإظهار شاشة الموافقة دائماً لتحديث التوكن بأمان
+      scope: ["https://www.googleapis.com/auth/calendar.events"],
+    });
+    return res.json({ url });
+  } catch (error) {
+    return res.status(500).json({ error: "Failed to generate auth URL" });
+  }
+});
+
+// 2. استقبال رد جوجل وتبديل الكود بالمفتاح السحري الدائم وحفظه
+router.get("/auth/google/calendar-callback", async (req, res) => {
+  try {
+    const code = typeof req.query.code === "string" ? req.query.code : "";
+    if (!code) {
+      return res.status(400).send("Missing authorization code");
+    }
+
+    const oauth2Client = getOAuth2Client();
+    const { tokens } = await oauth2Client.getToken(code);
+
+    if (tokens.refresh_token) {
+      // جلب أول كوتش مسجل (المدرّبة إيمان) لتحديث بياناتها
+      const coaches = await db.select().from(coachesTable).limit(1);
+      
+      if (coaches.length > 0) {
+        await db
+          .update(coachesTable)
+          .set({
+            googleRefreshToken: tokens.refresh_token,
+          } as any)
+          .where(eq(coachesTable.id, coaches[0].id));
+        console.log("✅ تم حفظ مفتاح تقويم جوجل الدائم للكوتش بنجاح في قاعدة البيانات.");
+      }
+    }
+
+    // إعادة توجيه الآدمن تلقائياً لصفحة الإعدادات في الـ Frontend بعد نجاح الربط
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    return res.redirect(`${frontendUrl}/admin/settings?calendar=success`);
+  } catch (error) {
+    console.error("فشل تبديل كود الصلاحية من جوجل:", error);
+    return res.status(500).send("Google Calendar Authentication Failed");
+  }
+});
+
+/* ──────────────────────────────────────────────────────────── */
+/* الطرق الأساسية القديمة (بدون أي تعديل لتجنب كسر السيستم)    */
+/* ──────────────────────────────────────────────────────────── */
 
 router.post("/auth/login", async (req, res) => {
   try {
@@ -183,7 +248,6 @@ router.post("/auth/google", async (req, res) => {
       return res.status(400).json({ error: "Invalid Google credential" });
     }
 
-    // Prefer Firebase Admin verification when service account key is provided
     tryInitFirebase();
     let email: string | undefined;
     let name: string | undefined;
@@ -262,11 +326,6 @@ router.post("/auth/google", async (req, res) => {
   }
 });
 
-/**
- * POST /auth/firebase
- * Accepts a Firebase ID token, verifies it, finds or creates the user,
- * and returns a custom JWT for subsequent requests.
- */
 router.post("/auth/firebase", async (req, res) => {
   try {
     const idToken = typeof req.body?.idToken === "string" ? req.body.idToken : "";
@@ -275,14 +334,12 @@ router.post("/auth/firebase", async (req, res) => {
       return res.status(400).json({ error: "Missing idToken" });
     }
 
-    // Initialize Firebase Admin if not already done
     tryInitFirebase();
 
     if (!firebaseInitialized) {
       return res.status(500).json({ error: "Firebase Admin not configured" });
     }
 
-    // Verify the Firebase ID token
     let decodedToken;
     try {
       decodedToken = await admin.auth().verifyIdToken(idToken);
@@ -298,7 +355,6 @@ router.post("/auth/firebase", async (req, res) => {
       return res.status(400).json({ error: "Firebase token missing email" });
     }
 
-    // Find existing user or create new one
     const existingUsers = await db
       .select()
       .from(usersTable)
@@ -308,12 +364,9 @@ router.post("/auth/firebase", async (req, res) => {
     let user = existingUsers[0];
 
     if (!user) {
-      // Generate a unique username from email
       const baseUsername = email.split("@")[0];
       let username = baseUsername;
-      let counter = 1;
 
-      // Check if username is already taken
       while (true) {
         const taken = await db
           .select()
@@ -326,37 +379,27 @@ router.post("/auth/firebase", async (req, res) => {
         }
         
         username = `${baseUsername}${Math.floor(Math.random() * 10000)}`;
-        counter++;
       }
 
-      // Create new user
       const insertedUsers = await db
         .insert(usersTable)
         .values({
           name: username,
           email: email,
           phone: null,
-          passwordHash: null, // No password for Firebase auth
+          passwordHash: null,
         })
         .returning();
 
       user = insertedUsers[0];
-    } else {
-      // Update picture if not set
-      if (picture && !user.phone) {
-        // Note: We don't have a picture field in the schema, so we'll just update the user
-        // You may want to add a profile_picture field to the users table later
-      }
     }
 
-    // Generate custom JWT
     const accessToken = createAccessToken({ sub: user.id });
 
-    // Return response with access token and user data
     return res.json({
       access_token: accessToken,
       token_type: "Bearer",
-      expires_in: 7 * 24 * 60 * 60, // 7 days in seconds
+      expires_in: 7 * 24 * 60 * 60,
       user: sanitizeUser(user),
     });
   } catch (error) {
