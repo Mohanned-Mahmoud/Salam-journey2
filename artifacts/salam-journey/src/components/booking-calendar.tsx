@@ -383,7 +383,7 @@ export function BookingCalendar({ onConfirmed }: Props) {
       <div className="lg:col-span-7 space-y-6 w-full">
         {/* Step 2: Pick a day */}
         <div
-          className="rounded-3xl p-5 md:p-7 w-full"
+          className="rounded-3xl p-4 sm:p-5 md:p-7 w-full"
           style={{
             background: "var(--white)",
             border: "1px solid rgba(127,169,155,0.2)",
@@ -425,13 +425,13 @@ export function BookingCalendar({ onConfirmed }: Props) {
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 md:gap-2 mb-2 text-center text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
+          <div className="grid grid-cols-7 gap-0.5 sm:gap-1 md:gap-2 mb-1 text-center text-xs font-semibold" style={{ color: "var(--text-muted)" }}>
             {dayShort.map((d) => (
               <div key={d} className="py-1">{d}</div>
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-1 md:gap-2">
+          <div className="grid grid-cols-7 gap-0.5 sm:gap-1 md:gap-2">
             {cells.map((day, idx) => {
               if (day === null) return <div key={`b-${idx}`} aria-hidden />;
               const dayDate = new Date(viewYear, viewMonth, day);

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+﻿﻿import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, ShoppingBag, Star, Sparkles, Users, Award, Globe, Quote } from "lucide-react";
 import { useLanguage, tx } from "@/lib/i18n";
@@ -402,7 +402,7 @@ export default function Home() {
       <section style={{ background: "var(--cream)" }} className="pb-24 md:pb-32">
         <div className="container mx-auto px-5 md:px-8">
           <div
-            className="reveal relative rounded-[2.5rem] overflow-hidden p-10 md:p-16"
+            className="reveal relative rounded-[2rem] md:rounded-[2.5rem] overflow-hidden p-7 md:p-16"
             style={{
               background:
                 "linear-gradient(135deg, var(--sage-dark) 0%, var(--sage) 60%, var(--sage-light) 100%)",
@@ -503,7 +503,7 @@ export default function Home() {
               {[...activeTestimonials, ...activeTestimonials].map((tst, i) => (
                 <article
                   key={`${tst.name.ar}-${i}`}
-                  className="glass-card p-7 w-[320px] md:w-[380px] shrink-0 mx-4"
+                  className="glass-card p-6 md:p-7 w-[280px] sm:w-[320px] md:w-[380px] shrink-0 mx-3 md:mx-4"
                   style={{ background: "var(--white)" }}
                 >
                   <div className="flex gap-1 mb-4">
@@ -533,7 +533,7 @@ export default function Home() {
       <section style={{ background: "var(--cream)" }} className="py-24">
         <div className="container mx-auto px-5 md:px-8">
           <div
-            className="reveal relative rounded-[2.5rem] p-10 md:p-14 text-center overflow-hidden"
+            className="reveal relative rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-14 text-center overflow-hidden"
             style={{ background: "var(--blush-light)" }}
           >
             <SoftBlob

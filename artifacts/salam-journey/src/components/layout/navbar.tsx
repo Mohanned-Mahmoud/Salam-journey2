@@ -89,12 +89,13 @@ const isAdmin = isAuthenticated && user?.role === "admin";
   ];
 
   return (
+    <>
     <header className="sticky top-0 z-50 w-full glass-navbar">
       <div className="container mx-auto px-5 md:px-8 h-20 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 group">
+        <Link href="/" className="flex items-center gap-2 sm:gap-3 group">
           <Logo />
           <span
-            className="font-bold text-xl tracking-tight"
+            className="font-bold text-lg sm:text-xl tracking-tight"
             style={{ color: "var(--text-dark)", fontFamily: "var(--font-display)" }}
           >
             {t(tx("رحلة سلام", "Salam Journey"))}
@@ -246,10 +247,11 @@ const isAdmin = isAuthenticated && user?.role === "admin";
           {open ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
+    </header>
 
       {/* Mobile drawer */}
       <div
-        className={`lg:hidden fixed inset-0 z-40 transition-opacity ${
+        className={`lg:hidden fixed inset-0 z-[60] transition-opacity ${
           open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         style={{ background: "rgba(45,74,69,0.45)" }}
@@ -257,7 +259,7 @@ const isAdmin = isAuthenticated && user?.role === "admin";
         aria-hidden
       />
       <aside
-        className={`lg:hidden fixed top-0 z-50 h-full w-[85%] max-w-sm flex flex-col p-6 transition-transform duration-300 ease-out ${
+        className={`lg:hidden fixed top-0 z-[70] h-full w-[85%] max-w-sm flex flex-col p-6 transition-transform duration-300 ease-out ${
           lang === "ar" ? "right-0" : "left-0"
         } ${
           open
@@ -266,7 +268,12 @@ const isAdmin = isAuthenticated && user?.role === "admin";
               ? "translate-x-full"
               : "-translate-x-full"
         }`}
-        style={{ background: "var(--cream)", boxShadow: "0 0 40px rgba(45,74,69,0.2)" }}
+        style={{
+          background: "#FAF5E8",
+          backdropFilter: "none",
+          WebkitBackdropFilter: "none",
+          boxShadow: "-8px 0 40px rgba(45,74,69,0.18)",
+        }}
       >
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
@@ -395,6 +402,6 @@ const isAdmin = isAuthenticated && user?.role === "admin";
           )}
         </div>
       </aside>
-    </header>
+    </>
   );
 }

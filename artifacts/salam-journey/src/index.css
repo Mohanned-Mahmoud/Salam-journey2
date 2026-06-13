@@ -350,6 +350,15 @@ html.lang-en {
 ::-webkit-scrollbar-thumb { background: var(--sage-light); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--sage); }
 
+/* Hide scrollbar utility (used for mobile tab strips) */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 /* ─────────── Modals & auth animations ─────────── */
 @keyframes modal-in {
   from { opacity: 0; transform: scale(0.92); }

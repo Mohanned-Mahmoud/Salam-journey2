@@ -110,10 +110,36 @@ export default function Account() {
 
       {/* Body */}
       <section style={{ background: "var(--cream-dark)" }}>
-        <div className="container mx-auto px-5 md:px-8 py-12 md:py-16">
+        <div className="container mx-auto px-5 md:px-8 py-8 md:py-16">
+          {/* Mobile horizontal tabs */}
+          <div className="lg:hidden flex overflow-x-auto gap-2 pb-3 mb-6 -mx-5 px-5 scrollbar-none">
+            {TABS.map(({ id, label, Icon }) => {
+              const active = tab === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => {
+                    setTab(id);
+                    navigate(`/account?tab=${id}`);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-all whitespace-nowrap shrink-0"
+                  style={{
+                    background: active ? "var(--sage-dark)" : "var(--white)",
+                    color: active ? "white" : "var(--text-body)",
+                    border: "1px solid rgba(127,169,155,0.25)",
+                  }}
+                >
+                  <Icon size={15} />
+                  {t(label)}
+                </button>
+              );
+            })}
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
-            {/* Sidebar */}
-            <aside className="lg:col-span-4 xl:col-span-3">
+            {/* Sidebar — desktop only */}
+            <aside className="hidden lg:block lg:col-span-4 xl:col-span-3">
               <nav
                 className="rounded-3xl p-2 sticky top-24"
                 style={{
