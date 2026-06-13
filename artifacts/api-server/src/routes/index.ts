@@ -8,6 +8,7 @@ import coursesRouter from "./courses";
 import bookingsRouter from "./bookings";
 import productsRouter from "./products";
 import testimonialsRouter from "./testimonials";
+import aiRouter from "./ai";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(coursesRouter);
 router.use(bookingsRouter);
 router.use(productsRouter);
 router.use(testimonialsRouter);
+router.use(aiRouter);
 
 export default router;

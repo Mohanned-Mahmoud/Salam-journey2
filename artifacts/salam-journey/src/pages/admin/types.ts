@@ -5,6 +5,7 @@ export type AdminSection =
   | 'products'
   | 'users'
   | 'testimonials'
+  | 'ai-knowledge'
   | 'settings';
 
 export type BookingStatus = 'confirmed' | 'pending' | 'cancelled';

@@ -9,6 +9,7 @@ import { AdminProducts } from './products-admin';
 import { AdminUsers } from './users-admin';
 import { AdminTestimonials } from './testimonials-admin';
 import { AdminSettings } from './settings-admin';
+import { AdminAiKnowledge } from './ai-knowledge-admin';
 import { useAuth } from '@/hooks/use-auth'; // 🌟 استيراد الهوك الموحد
 import type { AdminSection } from './types';
 
@@ -36,6 +37,7 @@ export default function AdminPage() {
     products: <AdminProducts />,
     users: <AdminUsers />,
     testimonials: <AdminTestimonials />,
+    'ai-knowledge': <AdminAiKnowledge />,
     settings: <AdminSettings />,
   };
 

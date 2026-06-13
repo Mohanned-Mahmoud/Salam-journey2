@@ -67,3 +67,5 @@ ui-debug.log*
 
 .claude/
 .agents/ 
+artifacts/salam-journey/src/old
+artifacts/api-server/src/routes/old

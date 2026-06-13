@@ -1,10 +1,11 @@
-﻿﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, ShoppingBag, Star, Sparkles, Users, Award, Globe, Quote } from "lucide-react";
 import { useLanguage, tx } from "@/lib/i18n";
 import { useReveal } from "@/lib/use-reveal";
 import { SoftBlob, SectionDivider } from "@/components/section-divider";
 import { apiJson } from "@/lib/api";
+import { AiChat } from "@/components/ai-chat";
 
 const SERVICES = [
   {
@@ -125,7 +126,8 @@ export default function Home() {
   }, []);
 
   return (
-    <div ref={ref} key={lang} className="lang-fade">
+    <>
+      <div ref={ref} key={lang} className="lang-fade">
       {/* ─── Hero ─── */}
       <section className="relative overflow-hidden">
         {/* Decorative blobs */}
@@ -566,5 +568,7 @@ export default function Home() {
         </div>
       </section>
     </div>
+    <AiChat />
+  </>
   );
 }

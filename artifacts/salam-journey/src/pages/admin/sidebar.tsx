@@ -1,4 +1,4 @@
-import { Calendar, BookOpen, ShoppingBag, Users, MessageSquare, Settings, LogOut, LayoutDashboard } from 'lucide-react';
+import { Calendar, BookOpen, ShoppingBag, Users, MessageSquare, Settings, LogOut, LayoutDashboard, Brain } from 'lucide-react';
 import type { AdminSection } from './types';
 
 type Props = {
@@ -14,6 +14,7 @@ const ITEMS: { id: AdminSection; label: string; Icon: React.ComponentType<{ size
   { id: 'products',     label: 'المنتجات',    Icon: ShoppingBag },
   { id: 'users',        label: 'المستخدمون',  Icon: Users },
   { id: 'testimonials', label: 'الشهادات',    Icon: MessageSquare },
+  { id: 'ai-knowledge', label: 'المساعد الذكي', Icon: Brain },
   { id: 'settings',     label: 'الإعدادات',   Icon: Settings },
 ];
 
