@@ -2,34 +2,32 @@ import { useState, useEffect } from 'react';
 import { Save } from 'lucide-react';
 import { DEFAULT_SETTINGS } from './types';
 import type { AdminSettings } from './types';
-import { apiJson } from '@/lib/api'; // استيراد دالة الـ API الرسمية للمشروع
+import { apiJson } from '@/lib/api';
 
 const TIMES = ['10:00', '12:00', '14:00', '16:00', '18:00'];
 const DAYS_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
-// خريطة لربط أسماء الـ state بـ الـ keys في قاعدة البيانات (Snake Case)
-const KEYS_MAP = {
+// خريطة لربط أسماء الـ state بالمفاتيح (Keys) كـ Rows في قاعدة البيانات
+const KEYS_MAP: Record<string, string> = {
   siteName: 'site_name',
   contactEmail: 'contact_email',
   whatsappNumber: 'whatsapp_number',
   instagramUrl: 'instagram_url',
   youtubeUrl: 'youtube_url',
-  facebookUrl: 'facebook_url', // المفاتيح الجديدة اللي طلبتها
-  tiktokUrl: 'tiktok_url',     // المفاتيح الجديدة اللي طلبتها
+  facebookUrl: 'facebook_url', 
+  tiktokUrl: 'tiktok_url',     
   availableTimes: 'available_times',
   offDays: 'off_days',
   advanceDays: 'advance_days',
   confirmationMessage: 'confirmation_message',
 };
 
-// تعريف الـ Type الجديد ليشمل الفيسبوك والتيك توك
 interface ExtendedAdminSettings extends AdminSettings {
   facebookUrl?: string;
   tiktokUrl?: string;
 }
 
 export function AdminSettings() {
-  // 1. القيمة المبدئية تأتي من الـ DEFAULT_SETTINGS
   const [settings, setSettings] = useState<ExtendedAdminSettings>({
     ...DEFAULT_SETTINGS,
     facebookUrl: '',
@@ -38,7 +36,7 @@ export function AdminSettings() {
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // 2. قراءة كل الإعدادات من قاعدة البيانات عند فتح الصفحة
+  // قراءة الإعدادات من قاعدة البيانات (كل مفتاح عبارة عن صف Row)
   useEffect(() => {
     async function fetchAllSettings() {
       try {
@@ -54,25 +52,25 @@ export function AdminSettings() {
         const results = await Promise.all(promises);
         
         setSettings((prev) => {
-          const updated = { ...prev };
+          // حل مشكلة الـ TypeScript عن طريق تعريف الـ accumulator كـ Record مرن
+          const updated: Record<string, any> = { ...prev };
+          
           results.forEach(({ stateKey, value }) => {
             if (value !== null && value !== undefined && value !== "") {
-              // استخدام (updated as any) هنا بيقفل اعتراض الـ TypeScript تماماً
               if (stateKey === 'availableTimes' || stateKey === 'offDays') {
                 try {
-                  (updated as any)[stateKey] = JSON.parse(value);
+                  updated[stateKey] = JSON.parse(value);
                 } catch {
-                  (updated as any)[stateKey] = value.split(',').filter(Boolean);
+                  updated[stateKey] = value.split(',').filter(Boolean);
                 }
               } else if (stateKey === 'advanceDays') {
-                (updated as any)[stateKey] = Number(value) || prev.advanceDays;
+                updated[stateKey] = Number(value) || prev.advanceDays;
               } else {
-                // النصوص العادية والروابط
-                (updated as any)[stateKey] = value;
+                updated[stateKey] = value;
               }
             }
           });
-          return updated;
+          return updated as ExtendedAdminSettings;
         });
       } catch (err) {
         console.error("Failed to load settings from DB:", err);
@@ -84,7 +82,7 @@ export function AdminSettings() {
     fetchAllSettings();
   }, []);
 
-  function set<K extends keyof ExtendedAdminSettings>(key: K, value: ExtendedAdminSettings[K]) {
+  function set(key: keyof ExtendedAdminSettings, value: any) {
     setSettings((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -102,7 +100,7 @@ export function AdminSettings() {
     set('offDays', arr);
   }
 
-  // 3. حفظ كل الإعدادات في قاعدة البيانات دفعة واحدة عند الضغط على زر حفظ
+  // حفظ الإعدادات في قاعدة البيانات (تحديث أو إنشاء صف لكل Key)
   async function handleSave() {
     try {
       const promises = Object.entries(KEYS_MAP).map(([stateKey, dbKey]) => {
@@ -110,12 +108,11 @@ export function AdminSettings() {
         const rawValue = settings[stateKey as keyof ExtendedAdminSettings];
 
         if (Array.isArray(rawValue)) {
-          valueToSave = JSON.stringify(rawValue); // تحويل المصفوفات لنصوص للحفظ في الـ DB
+          valueToSave = JSON.stringify(rawValue);
         } else {
           valueToSave = String(rawValue ?? "");
         }
 
-        // إرسال PUT request لكل مفتاح على المسار الرسمي للباك إند
         return apiJson(`/admin/site-settings/${dbKey}`, {
           method: 'PUT',
           body: JSON.stringify({ value: valueToSave }),
@@ -158,11 +155,10 @@ export function AdminSettings() {
         </button>
       </div>
 
-      {/* General */}
-      <Card title="الإعدادات العامة">
+      <Card title="الإعدادات العامة للموقع والبراند">
         <div className="grid grid-cols-1 gap-4">
-          <Field label="اسم الموقع" value={settings.siteName} onChange={(v) => set('siteName', v)} />
-          <Field label="البريد الإلكتروني" value={settings.contactEmail} onChange={(v) => set('contactEmail', v)} />
+          <Field label="اسم الموقع / البراند" value={settings.siteName} onChange={(v) => set('siteName', v)} />
+          <Field label="البريد الإلكتروني للاتصال" value={settings.contactEmail} onChange={(v) => set('contactEmail', v)} />
           <Field label="رقم الواتساب" value={settings.whatsappNumber} onChange={(v) => set('whatsappNumber', v)} />
           <Field label="رابط الإنستغرام" value={settings.instagramUrl ?? ''} onChange={(v) => set('instagramUrl', v)} />
           <Field label="رابط اليوتيوب" value={settings.youtubeUrl ?? ''} onChange={(v) => set('youtubeUrl', v)} />
@@ -171,11 +167,10 @@ export function AdminSettings() {
         </div>
       </Card>
 
-      {/* Booking */}
       <Card title="إعدادات الحجز">
         <div className="space-y-5">
           <div>
-            <p className="text-sm font-semibold mb-3" style={{ color: 'var(--text-dark)' }}>أوقات العمل المتاحة</p>
+            <p className="text-sm font-semibold mb-3" style={{ color: 'var(--text-dark)' }}>أوقات Work المتاحة</p>
             <div className="flex flex-wrap gap-2">
               {TIMES.map((t) => (
                 <button key={t} type="button" onClick={() => toggleTime(t)} className="px-4 py-2 rounded-xl text-sm font-medium transition-all" style={{ background: settings.availableTimes.includes(t) ? 'var(--sage)' : 'var(--cream)', color: settings.availableTimes.includes(t) ? 'white' : 'var(--text-body)', border: '1px solid rgba(127,169,155,0.2)' }}>
@@ -224,7 +219,7 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
   return (
     <div>
       <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-dark)' }}>{label}</label>
-      <input type="text" value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' }} />
+      <input type="text" value={value || ''} onChange={(e) => onChange(e.target.value)} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' }} />
     </div>
   );
 }
