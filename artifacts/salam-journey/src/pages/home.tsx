@@ -88,22 +88,23 @@ export default function Home() {
   const Arrow = lang === "ar" ? ArrowLeft : ArrowRight;
   const [activeTestimonials, setActiveTestimonials] = useState(TESTIMONIALS);
 
-  // 🌟 خطاف تخزين البيانات المقترن بوحدة الوقت ونوع العرض المختار
+  // 🌟 خطاف تخزين البيانات المحدث ومزود بخصائص وحدة الوقت ونوع العرض والوصف المترجم الافتراضي
   const [featuredCourse, setFeaturedCourse] = useState({
     titleAr: "وأصبحتُ أُمّاً هادئة",
     titleEn: "Becoming a Calm Mother",
     descAr: "برنامج ٤ أسابيع لتتعلمي كيف تتعاملين مع نوبات الغضب، وتبني علاقة هادئة وآمنة مع أطفالك.",
+    descEn: "A 4-week program to learn how to navigate tantrums and build a calm, secure connection with your children.",
     duration: 4,
-    durationUnit: "weeks", // 'weeks' أو 'minutes'
+    durationUnit: "weeks", 
     mode: "most_loved" 
   });
 
-  // 🌟 خطاف تخزين النقاط الأربعة للمميزات ديناميكياً بقيمها الافتراضية
-  const [features, setFeatures] = useState<string[]>([
-    "١٢ درس فيديو عالي الجودة",
-    "ملفات عمل قابلة للتحميل",
-    "جلسات أسئلة وأجوبة شهرية",
-    "مجتمع خاص للأمهات"
+  // 🌟 خطاف تخزين المميزات الأربعة كمصفوفة كائنات تحتوي على (ar و en) لترجمتها فوراً
+  const [features, setFeatures] = useState<{ ar: string; en: string }[]>([
+    { ar: "١٢ درس فيديو عالي الجودة", en: "12 high-quality video lessons" },
+    { ar: "ملفات عمل قابلة للتحميل", en: "Downloadable workbooks" },
+    { ar: "جلسات أسئلة وأجوبة شهرية", en: "Monthly Q&A sessions" },
+    { ar: "مجتمع خاص للأمهات", en: "A private mothers' community" }
   ]);
 
   useEffect(() => {
@@ -136,25 +137,29 @@ export default function Home() {
       }
     }
 
-    // 🌟 جلب وضع العرض والمميزات الأربعة بالإضافة لبيانات الدورة المحددة
+    // 🌟 جلب وضع العرض والمميزات الثمانية (العربي والإنجليزي) بالتوازي من السيرفر
     async function loadFeaturedCourseData() {
       try {
-        const [modeRes, feat1, feat2, feat3, feat4] = await Promise.all([
+        const [modeRes, f1Ar, f1En, f2Ar, f2En, f3Ar, f3En, f4Ar, f4En] = await Promise.all([
           apiJson<{ value: string }>("/site-settings/featured_course_mode").catch(() => ({ value: "most_loved" })),
-          apiJson<{ value: string }>("/site-settings/featured_feature_1").catch(() => null),
-          apiJson<{ value: string }>("/site-settings/featured_feature_2").catch(() => null),
-          apiJson<{ value: string }>("/site-settings/featured_feature_3").catch(() => null),
-          apiJson<{ value: string }>("/site-settings/featured_feature_4").catch(() => null)
+          apiJson<{ value: string }>("/site-settings/featured_feature_1_ar").catch(() => null),
+          apiJson<{ value: string }>("/site-settings/featured_feature_1_en").catch(() => null),
+          apiJson<{ value: string }>("/site-settings/featured_feature_2_ar").catch(() => null),
+          apiJson<{ value: string }>("/site-settings/featured_feature_2_en").catch(() => null),
+          apiJson<{ value: string }>("/site-settings/featured_feature_3_ar").catch(() => null),
+          apiJson<{ value: string }>("/site-settings/featured_feature_3_en").catch(() => null),
+          apiJson<{ value: string }>("/site-settings/featured_feature_4_ar").catch(() => null),
+          apiJson<{ value: string }>("/site-settings/featured_feature_4_en").catch(() => null),
         ]);
 
         const currentMode = modeRes?.value || "most_loved";
         
         if (!cancelled) {
           setFeatures([
-            feat1?.value || "١٢ درس فيديو عالي الجودة",
-            feat2?.value || "ملفات عمل قابلة للتحميل",
-            feat3?.value || "جلسات أسئلة وأجوبة شهرية",
-            feat4?.value || "مجتمع خاص للأمهات"
+            { ar: f1Ar?.value || "١٢ درس فيديو عالي الجودة", en: f1En?.value || "12 high-quality video lessons" },
+            { ar: f2Ar?.value || "ملفات عمل قابلة للتحميل", en: f2En?.value || "Downloadable workbooks" },
+            { ar: f3Ar?.value || "جلسات أسئلة وأجوبة شهرية", en: f3En?.value || "Monthly Q&A sessions" },
+            { ar: f4Ar?.value || "مجتمع خاص للأمهات", en: f4En?.value || "A private mothers' community" }
           ]);
         }
 
@@ -165,12 +170,31 @@ export default function Home() {
           const allCourses = await apiJson<any[]>("/courses");
           const matched = allCourses.find(c => c.id === res.value);
           if (matched && !cancelled) {
+            // 🌟 المنطق الذكي لفك الوصف:
+            let parsed = { ar: matched.descAr || matched.desc_ar || "", en: matched.descEn || matched.desc_en || "" };
+            
+            // لو النص بيبدأ بـ { يعني داتا قديمة JSON، فكها
+            if (parsed.ar.startsWith('{')) {
+              try {
+                const jsonParsed = JSON.parse(parsed.ar);
+                parsed.ar = jsonParsed.ar || "";
+                parsed.en = jsonParsed.en || "";
+              } catch (e) {}
+            }
+            // لو النص جواه فاصل الـ ||| اللي عملناه، فكه
+            else if (parsed.ar.includes('|||')) {
+              const [ar, en] = parsed.ar.split('|||');
+              parsed.ar = ar;
+              parsed.en = en || "";
+            }
+
             setFeaturedCourse({
-              titleAr: matched.titleAr,
-              titleEn: matched.titleEn,
-              descAr: matched.descAr || "",
+              titleAr: matched.titleAr || matched.title_ar,
+              titleEn: matched.titleEn || matched.title_en,
+              descAr: parsed.ar,
+              descEn: parsed.en,
               duration: matched.duration || 4,
-              durationUnit: matched.durationUnit || matched.duration_unit || "weeks", // لقط وحدة الوقت (دقائق / أسابيع)
+              durationUnit: matched.durationUnit || matched.duration_unit || "weeks",
               mode: currentMode
             });
           }
@@ -490,7 +514,6 @@ export default function Home() {
                   style={{ background: "rgba(255,255,255,0.18)", color: "var(--cream)" }}
                 >
                   <Sparkles size={13} />
-                  {/* 🌟 التبديل الصافي لنص الـ Badge بناءً على الاختيار الفعلي في الأدمن */}
                   {featuredCourse.mode === "upcoming"
                     ? t(tx("دورة قادمة قريباً", "Upcoming course"))
                     : t(tx("الدورة الأكثر طلباً", "Most loved course"))
@@ -502,9 +525,9 @@ export default function Home() {
                   {t(tx(featuredCourse.titleAr, featuredCourse.titleEn))}
                 </h2>
                 
-                {/* وصف الدورة ديناميكي تماماً */}
+                {/* 🌟 التعديل المترجم: تبديل وصف الدورة ديناميكياً للغتين بدون تغيير في مظهر السكشن */}
                 <p className="text-lg leading-relaxed mb-6 opacity-90 max-w-xl">
-                  {featuredCourse.descAr ? t(tx(featuredCourse.descAr, featuredCourse.descAr)) : ""}
+                  {t(tx(featuredCourse.descAr, featuredCourse.descEn))}
                 </p>
                 
                 <div className="flex flex-wrap gap-4 items-center">
@@ -514,7 +537,6 @@ export default function Home() {
                   </Link>
                   
                   <span className="text-sm opacity-90">
-                    {/* 🌟 التعديل هنا: طباعة الكلمة بناءً على وحدة الوقت المخزنة (دقائق أو أسابيع) */}
                     {featuredCourse.duration}{" "}
                     {featuredCourse.durationUnit === "minutes"
                       ? t(tx("دقائق · مجتمع خاص", "minutes · Private community"))
@@ -524,9 +546,8 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 🌟 التعديل هنا: تكرار القائمة بناءً على الـ features الديناميكية الجاية من قاعدة البيانات */}
               <ul className="space-y-3">
-                {features.map((item, index) => (
+                {features.map((item: any, index) => (
                   <li key={index} className="flex items-start gap-3 text-base">
                     <span
                       className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5"
@@ -534,7 +555,7 @@ export default function Home() {
                     >
                       <Sparkles size={14} />
                     </span>
-                    <span className="opacity-95">{t(tx(item, item))}</span>
+                    <span className="opacity-95">{t(tx(item.ar, item.en))}</span>
                   </li>
                 ))}
               </ul>

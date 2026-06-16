@@ -3,11 +3,11 @@ import { Plus, Pencil, Trash2, Eye, EyeOff, X, Sparkles, ListPlus } from 'lucide
 import { apiJson } from '@/lib/api'; 
 import type { AdminCourse } from './types';
 
-type FormState = Omit<AdminCourse, 'id'> & { durationUnit?: string };
+type FormState = Omit<AdminCourse, 'id'> & { durationUnit?: string; descEn?: string };
 
 const EMPTY_FORM: FormState = {
   coachId: '00000000-0000-0000-0000-000000000000', 
-  titleAr: '', titleEn: '', descAr: '', category: 'course',
+  titleAr: '', titleEn: '', descAr: '', descEn: '', category: 'course',
   price: 0, duration: 0, status: 'active',
   gradient: 'linear-gradient(135deg, var(--sage-dark), var(--sage))',
   imageUrl: '',
@@ -38,10 +38,14 @@ export function AdminCourses() {
   const [upcomingCourseId, setUpcomingCourseId] = useState('');
   const [savingFeatured, setSavingFeatured] = useState(false);
 
-  const [f1, setF1] = useState('١٢ درس فيديو عالي الجودة');
-  const [f2, setF2] = useState('ملفات عمل قابلة للتحميل');
-  const [f3, setF3] = useState('جلسات أسئلة وأجوبة شهرية');
-  const [f4, setF4] = useState('مجتمع خاص للأمهات');
+  const [f1Ar, setF1Ar] = useState('١٢ درس فيديو عالي الجودة');
+  const [f1En, setF1En] = useState('12 high-quality video lessons');
+  const [f2Ar, setF2Ar] = useState('ملفات عمل قابلة للتحميل');
+  const [f2En, setF2En] = useState('Downloadable workbooks');
+  const [f3Ar, setF3Ar] = useState('جلسات أسئلة وأجوبة شهرية');
+  const [f3En, setF3En] = useState('Monthly Q&A sessions');
+  const [f4Ar, setF4Ar] = useState('مجتمع خاص للأمهات');
+  const [f4En, setF4En] = useState('A private mothers\' community');
 
   useEffect(() => {
     let cancelled = false;
@@ -49,16 +53,23 @@ export function AdminCourses() {
       try {
         setLoading(true);
         
-        const [coursesData, coachesData, modeRes, featuredRes, upcomingRes, feat1, feat2, feat3, feat4] = await Promise.all([
+        const [
+          coursesData, coachesData, modeRes, featuredRes, upcomingRes, 
+          feat1Ar, feat1En, feat2Ar, feat2En, feat3Ar, feat3En, feat4Ar, feat4En
+        ] = await Promise.all([
           apiJson<any[]>('/courses'),
           apiJson<any>('/coaches').catch(() => []), 
           apiJson<{ value: string }>('/site-settings/featured_course_mode').catch(() => ({ value: "most_loved" })),
           apiJson<{ value: string }>('/site-settings/featured_course_id').catch(() => ({ value: "" })),
           apiJson<{ value: string }>('/site-settings/upcoming_course_id').catch(() => ({ value: "" })),
-          apiJson<{ value: string }>('/site-settings/featured_feature_1').catch(() => ({ value: "١٢ درس فيديو عالي الجودة" })),
-          apiJson<{ value: string }>('/site-settings/featured_feature_2').catch(() => ({ value: "ملفات عمل قابلة للتحميل" })),
-          apiJson<{ value: string }>('/site-settings/featured_feature_3').catch(() => ({ value: "جلسات أسئلة وأجوبة شهرية" })),
-          apiJson<{ value: string }>('/site-settings/featured_feature_4').catch(() => ({ value: "مجتمع خاص للأمهات" })),
+          apiJson<{ value: string }>('/site-settings/featured_feature_1_ar').catch(() => ({ value: "١٢ درس فيديو عالي الجودة" })),
+          apiJson<{ value: string }>('/site-settings/featured_feature_1_en').catch(() => ({ value: "12 high-quality video lessons" })),
+          apiJson<{ value: string }>('/site-settings/featured_feature_2_ar').catch(() => ({ value: "ملفات عمل قابلة للتحميل" })),
+          apiJson<{ value: string }>('/site-settings/featured_feature_2_en').catch(() => ({ value: "Downloadable workbooks" })),
+          apiJson<{ value: string }>('/site-settings/featured_feature_3_ar').catch(() => ({ value: "جلسات أسئلة وأجوبة شهرية" })),
+          apiJson<{ value: string }>('/site-settings/featured_feature_3_en').catch(() => ({ value: "Monthly Q&A sessions" })),
+          apiJson<{ value: string }>('/site-settings/featured_feature_4_ar').catch(() => ({ value: "مجتمع خاص للأمهات" })),
+          apiJson<{ value: string }>('/site-settings/featured_feature_4_en').catch(() => ({ value: "A private mothers' community" })),
         ]);
 
         if (!cancelled) {
@@ -70,10 +81,14 @@ export function AdminCourses() {
           setFeaturedCourseId(featuredRes?.value || '');
           setUpcomingCourseId(upcomingRes?.value || '');
           
-          setF1(feat1?.value || '١٢ درس فيديو عالي الجودة');
-          setF2(feat2?.value || 'ملفات عمل قابلة للتحميل');
-          setF3(feat3?.value || 'جلسات أسئلة وأجوبة شهرية');
-          setF4(feat4?.value || 'مجتمع خاص للأمهات');
+          setF1Ar(feat1Ar?.value || '١٢ درس فيديو عالي الجودة');
+          setF1En(feat1En?.value || '12 high-quality video lessons');
+          setF2Ar(feat2Ar?.value || 'ملفات عمل قابلة للتحميل');
+          setF2En(feat2En?.value || 'Downloadable workbooks');
+          setF3Ar(feat3Ar?.value || 'جلسات أسئلة وأجوبة شهرية');
+          setF3En(feat3En?.value || 'Monthly Q&A sessions');
+          setF4Ar(feat4Ar?.value || 'مجتمع خاص للأمهات');
+          setF4En(feat4En?.value || 'A private mothers\' community');
         }
       } catch {
         if (!cancelled) setError('تعذر تحميل البيانات من قاعدة البيانات');
@@ -93,12 +108,30 @@ export function AdminCourses() {
     setModal({ mode: 'add' }); 
   }
 
+  // 1. أضف الدالة دي جوه الـ Component عشان تنظف العرض
+  function parseDescription(desc: string) {
+    if (!desc || !desc.trim()) return { ar: "", en: "" };
+    try {
+      if (desc.trim().startsWith('{')) {
+        const parsed = JSON.parse(desc);
+        return { ar: parsed.ar || "", en: parsed.en || "" };
+      }
+      return { ar: desc, en: "" }; // داتا قديمة
+    } catch {
+      return { ar: desc, en: "" };
+    }
+  }
+
+  // 2. عدل دالة openEdit لتفك الـ JSON قبل ملء الـ Form
   function openEdit(c: any) {
+    const descData = parseDescription(c.descAr || c.desc_ar || "");
+    
     setForm({ 
       coachId: c.coachId || c.coach_id, 
       titleAr: c.titleAr || c.title_ar, 
       titleEn: c.titleEn || c.title_en, 
-      descAr: c.descAr || c.desc_ar || '', 
+      descAr: descData.ar,    // 🌟 دي هتظهر في خانة العربي
+      descEn: descData.en,    // 🌟 دي هتظهر في خانة الإنجليزي
       category: c.category, 
       price: c.price ?? 0, 
       duration: c.duration ?? 0, 
@@ -111,6 +144,18 @@ export function AdminCourses() {
     setModal({ mode: 'edit', id: c.id });
   }
 
+  // 3. عدل الـ table row عشان الجدول يظهر عربي بس
+  // <td className="px-4 py-3">
+  //   <div className="flex items-center gap-3">
+  //     <div className="w-8 h-8 rounded-lg flex-shrink-0" style={{ background: c.gradient || 'var(--sage)' }} />
+  //     <div>
+  //       <p className="font-medium" style={{ color: 'var(--text-dark)' }}>
+  //          {parseDescription(c.descAr || c.desc_ar).ar} {/* 🌟 هنا بيظهر العربي بس ف الجدول */}
+  //       </p>
+  //     </div>
+  //   </div>
+  // </td>
+
   async function handleSave() {
     if (!form.titleAr.trim()) return;
     
@@ -119,11 +164,19 @@ export function AdminCourses() {
       finalCoachId = coaches[0].id;
     }
 
+    // 🌟 الخدعة: دمج الوصف العربي والإنجليزي في نص واحد (JSON string)
+    // الباك إند هيستقبله في desc_ar ويحفظه في الداتا بيز، وأحنا في الفرونت إند هنفكه تاني
+    const descData = JSON.stringify({ 
+      ar: form.descAr ? form.descAr.trim() : "", 
+      en: form.descEn ? form.descEn.trim() : "" 
+    });
+
     const cleanPayload = {
       coachId: finalCoachId,
       titleAr: form.titleAr.trim(),
       titleEn: form.titleEn.trim(),
-      descAr: form.descAr ? form.descAr.trim() : null,
+      descAr: descData,      // 🌟 بنبعت الداتا المدمجة هنا
+      desc_ar: descData,     // للضمان
       category: form.category,
       price: String(form.price || 0),           
       duration: Number(form.duration) || 0,     
@@ -156,10 +209,15 @@ export function AdminCourses() {
         apiJson('/admin/site-settings/featured_course_mode', { method: 'PUT', body: JSON.stringify({ value: featuredMode }) }),
         apiJson('/admin/site-settings/featured_course_id', { method: 'PUT', body: JSON.stringify({ value: featuredCourseId }) }),
         apiJson('/admin/site-settings/upcoming_course_id', { method: 'PUT', body: JSON.stringify({ value: upcomingCourseId }) }),
-        apiJson('/admin/site-settings/featured_feature_1', { method: 'PUT', body: JSON.stringify({ value: f1 }) }),
-        apiJson('/admin/site-settings/featured_feature_2', { method: 'PUT', body: JSON.stringify({ value: f2 }) }),
-        apiJson('/admin/site-settings/featured_feature_3', { method: 'PUT', body: JSON.stringify({ value: f3 }) }),
-        apiJson('/admin/site-settings/featured_feature_4', { method: 'PUT', body: JSON.stringify({ value: f4 }) }),
+        
+        apiJson('/admin/site-settings/featured_feature_1_ar', { method: 'PUT', body: JSON.stringify({ value: f1Ar }) }),
+        apiJson('/admin/site-settings/featured_feature_1_en', { method: 'PUT', body: JSON.stringify({ value: f1En }) }),
+        apiJson('/admin/site-settings/featured_feature_2_ar', { method: 'PUT', body: JSON.stringify({ value: f2Ar }) }),
+        apiJson('/admin/site-settings/featured_feature_2_en', { method: 'PUT', body: JSON.stringify({ value: f2En }) }),
+        apiJson('/admin/site-settings/featured_feature_3_ar', { method: 'PUT', body: JSON.stringify({ value: f3Ar }) }),
+        apiJson('/admin/site-settings/featured_feature_3_en', { method: 'PUT', body: JSON.stringify({ value: f3En }) }),
+        apiJson('/admin/site-settings/featured_feature_4_ar', { method: 'PUT', body: JSON.stringify({ value: f4Ar }) }),
+        apiJson('/admin/site-settings/featured_feature_4_en', { method: 'PUT', body: JSON.stringify({ value: f4En }) }),
       ]);
       alert('تم تحديث إعدادات ومميزات السكشن بنجاح ✓');
     } catch {
@@ -222,7 +280,6 @@ export function AdminCourses() {
                   </div>
                 </td>
                 <td className="px-4 py-3">{c.price}</td>
-                {/* 🌟 تم حل المشكلة هنا بإضافة النوع الصريح (as keyof typeof CATEGORY_LABELS) لمنع الـ compiler من الاعتراض */}
                 <td className="px-4 py-3">
                   {CATEGORY_LABELS[c.category as keyof typeof CATEGORY_LABELS] || c.category}
                 </td>
@@ -277,17 +334,33 @@ export function AdminCourses() {
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4 overflow-y-auto max-h-[380px] pr-1">
             <div className="flex items-center gap-2 text-base font-bold mb-1" style={{ color: 'var(--text-dark)' }}>
               <ListPlus size={18} style={{ color: 'var(--sage)' }} />
-              <h2>نقاط ومميزات السكشن الأساسية</h2>
+              <h2>نقاط ومميزات السكشن (باللغتين)</h2>
             </div>
-            <FormField label="الميزة الأولى" value={f1} onChange={setF1} />
-            <FormField label="الميزة الثانية" value={f2} onChange={setF2} />
-            <FormField label="الميزة الثالث" value={f3} onChange={setF3} />
-            <FormField label="الميزة الرابعة" value={f4} onChange={setF4} />
             
-            <button type="button" onClick={handleSaveFeatured} disabled={savingFeatured} className="w-full py-2.5 mt-2 rounded-xl text-sm font-semibold text-white transition-all" style={{ background: 'var(--sage)' }}>
+            <div className="p-3 rounded-xl border border-gray-100 space-y-2">
+              <FormField label="الميزة الأولى (عربي)" value={f1Ar} onChange={setF1Ar} />
+              <FormField label="الميزة الأولى (English)" value={f1En} onChange={setF1En} />
+            </div>
+
+            <div className="p-3 rounded-xl border border-gray-100 space-y-2">
+              <FormField label="الميزة الثانية (عربي)" value={f2Ar} onChange={setF2Ar} />
+              <FormField label="الميزة الثانية (English)" value={f2En} onChange={setF2En} />
+            </div>
+
+            <div className="p-3 rounded-xl border border-gray-100 space-y-2">
+              <FormField label="الميزة الثالثة (عربي)" value={f3Ar} onChange={setF3Ar} />
+              <FormField label="الميزة الثالثة (English)" value={f3En} onChange={setF3En} />
+            </div>
+
+            <div className="p-3 rounded-xl border border-gray-100 space-y-2">
+              <FormField label="الميزة الرابعة (عربي)" value={f4Ar} onChange={setF4Ar} />
+              <FormField label="الميزة الرابعة (English)" value={f4En} onChange={setF4En} />
+            </div>
+            
+            <button type="button" onClick={handleSaveFeatured} disabled={savingFeatured} className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all" style={{ background: 'var(--sage)' }}>
               {savingFeatured ? 'جاري الحفظ...' : 'حفظ إعدادات ومميزات السكشن كاملة'}
             </button>
           </div>
@@ -314,7 +387,11 @@ export function AdminCourses() {
                 <FormField label="اسم الدورة (AR)" value={form.titleAr} onChange={(v) => setForm({ ...form, titleAr: v })} />
                 <FormField label="اسم الدورة (EN)" value={form.titleEn} onChange={(v) => setForm({ ...form, titleEn: v })} />
               </div>
-              <FormField label="الوصف (AR)" value={form.descAr ?? ''} onChange={(v) => setForm({ ...form, descAr: v })} multiline />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="الوصف (AR)" value={form.descAr ?? ''} onChange={(v) => setForm({ ...form, descAr: v })} multiline />
+                <FormField label="الوصف (EN)" value={form.descEn ?? ''} onChange={(v) => setForm({ ...form, descEn: v })} multiline />
+              </div>
               
               <div className="grid grid-cols-3 gap-3 items-end">
                 <div className="col-span-2">
