@@ -51,6 +51,7 @@ export default function Courses() {
           titleAr: string;
           titleEn: string;
           descAr: string | null;
+          descEn: string | null;
           category: CourseCard["category"];
           duration: number | string | null;
           students: string | null;
@@ -68,14 +69,14 @@ export default function Courses() {
             .map((course) => ({
               id: course.id,
               title: tx(course.titleAr, course.titleEn),
-              desc: tx(course.descAr ?? "", course.descAr ?? ""),
+              desc: tx(course.descAr ?? "", course.descEn ?? course.descAr ?? ""),
               category: course.category,
               duration: tx(
-                formatCourseDuration(course.category, course.duration),
-                formatCourseDuration(course.category, course.duration),
+                formatCourseDuration(course.category, course.duration, "ar"),
+                formatCourseDuration(course.category, course.duration, "en"),
               ),
               students: course.students ?? "—",
-              price: tx(formatCoursePrice(course.price), formatCoursePrice(course.price)),
+              price: tx(formatCoursePrice(course.price, "ar"), formatCoursePrice(course.price, "en")),
               badge: course.category === "free" ? tx("مجاني", "Free") : undefined,
               gradient: course.gradient ?? getCourseGradient(course.category),
               imageUrl: course.imageUrl ?? undefined,
@@ -237,17 +238,21 @@ export default function Courses() {
   );
 }
 
-function formatCourseDuration(category: CourseCard["category"], duration: number | string | null) {
+function formatCourseDuration(category: CourseCard["category"], duration: number | string | null, lang: "ar" | "en") {
   if (category === "free") return "PDF";
   const value = typeof duration === "number" ? duration : Number(duration ?? 0);
+  if (lang === "en") {
+    if (category === "workshop") return `${value || 0} min`;
+    return `${value || 0} weeks`;
+  }
   if (category === "workshop") return `${value || 0} دقيقة`;
   return `${value || 0} أسابيع`;
 }
 
-function formatCoursePrice(price: string | number | null) {
+function formatCoursePrice(price: string | number | null, lang: "ar" | "en") {
   const value = price ?? 0;
-  if (String(value) === "0") return "مجاناً";
-  return `${value} ريال`;
+  if (String(value) === "0") return lang === "en" ? "Free" : "مجاناً";
+  return lang === "en" ? `${value} SAR` : `${value} ريال`;
 }
 
 function getCourseGradient(category: CourseCard["category"]) {

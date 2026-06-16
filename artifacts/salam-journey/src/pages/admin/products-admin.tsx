@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Eye, EyeOff, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, EyeOff, X, Wand2 } from 'lucide-react';
 import { apiJson } from '@/lib/api'; 
 import type { AdminProduct } from './types';
 
@@ -19,6 +19,23 @@ export function AdminProducts() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [translating, setTranslating] = useState<string | null>(null);
+
+  async function handleTranslate(sourceText: string, field: 'titleEn') {
+    if (!sourceText.trim()) return;
+    setTranslating(field);
+    try {
+      const result = await apiJson<{ translatedText: string }>('/translate', {
+        method: 'POST',
+        body: JSON.stringify({ text: sourceText.trim() }),
+      });
+      setForm((prev) => ({ ...prev, [field]: result.translatedText }));
+    } catch {
+      alert('تعذرت الترجمة التلقائية. تأكد من اتصالك بالإنترنت.');
+    } finally {
+      setTranslating(null);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -174,7 +191,29 @@ export function AdminProducts() {
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <Field label="اسم المنتج (AR)" value={form.titleAr} onChange={(v) => setForm({ ...form, titleAr: v })} />
-                <Field label="اسم المنتج (EN)" value={form.titleEn} onChange={(v) => setForm({ ...form, titleEn: v })} />
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold" style={{ color: 'var(--text-dark)' }}>اسم المنتج (EN)</label>
+                    <button
+                      type="button"
+                      onClick={() => void handleTranslate(form.titleAr, 'titleEn')}
+                      disabled={translating === 'titleEn' || !form.titleAr.trim()}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium transition-all disabled:opacity-40"
+                      style={{ background: 'rgba(127,169,155,0.15)', color: 'var(--sage-dark)' }}
+                      title="ترجمة تلقائية"
+                    >
+                      <Wand2 size={11} />
+                      {translating === 'titleEn' ? 'جارٍ الترجمة...' : 'ترجمة ✨'}
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={form.titleEn}
+                    onChange={(e) => setForm({ ...form, titleEn: e.target.value })}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                    style={{ background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' }}
+                  />
+                </div>
               </div>
               {/* 🌟 معالجة الـ Null Check للوصف */}
               <Field label="الوصف" value={form.descAr ?? ''} onChange={(v) => setForm({ ...form, descAr: v })} multiline />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Eye, EyeOff, X, Sparkles, ListPlus } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, EyeOff, X, Sparkles, ListPlus, Wand2 } from 'lucide-react';
 import { apiJson } from '@/lib/api'; 
 import type { AdminCourse } from './types';
 
@@ -32,6 +32,24 @@ export function AdminCourses() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [translating, setTranslating] = useState<string | null>(null);
+
+  async function handleTranslate(sourceText: string, field: 'titleEn' | 'descEn') {
+    if (!sourceText.trim()) return;
+    setTranslating(field);
+    try {
+      const result = await apiJson<{ translatedText: string }>('/translate', {
+        method: 'POST',
+        body: JSON.stringify({ text: sourceText.trim() }),
+      });
+      setForm((prev) => ({ ...prev, [field]: result.translatedText }));
+    } catch {
+      alert('تعذرت الترجمة التلقائية. تأكد من اتصالك بالإنترنت.');
+    } finally {
+      setTranslating(null);
+    }
+  }
 
   const [featuredMode, setFeaturedMode] = useState('most_loved'); 
   const [featuredCourseId, setFeaturedCourseId] = useState('');
@@ -108,30 +126,13 @@ export function AdminCourses() {
     setModal({ mode: 'add' }); 
   }
 
-  // 1. أضف الدالة دي جوه الـ Component عشان تنظف العرض
-  function parseDescription(desc: string) {
-    if (!desc || !desc.trim()) return { ar: "", en: "" };
-    try {
-      if (desc.trim().startsWith('{')) {
-        const parsed = JSON.parse(desc);
-        return { ar: parsed.ar || "", en: parsed.en || "" };
-      }
-      return { ar: desc, en: "" }; // داتا قديمة
-    } catch {
-      return { ar: desc, en: "" };
-    }
-  }
-
-  // 2. عدل دالة openEdit لتفك الـ JSON قبل ملء الـ Form
   function openEdit(c: any) {
-    const descData = parseDescription(c.descAr || c.desc_ar || "");
-    
     setForm({ 
       coachId: c.coachId || c.coach_id, 
       titleAr: c.titleAr || c.title_ar, 
       titleEn: c.titleEn || c.title_en, 
-      descAr: descData.ar,    // 🌟 دي هتظهر في خانة العربي
-      descEn: descData.en,    // 🌟 دي هتظهر في خانة الإنجليزي
+      descAr: c.descAr || c.desc_ar || '',
+      descEn: c.descEn || c.desc_en || '',
       category: c.category, 
       price: c.price ?? 0, 
       duration: c.duration ?? 0, 
@@ -144,18 +145,6 @@ export function AdminCourses() {
     setModal({ mode: 'edit', id: c.id });
   }
 
-  // 3. عدل الـ table row عشان الجدول يظهر عربي بس
-  // <td className="px-4 py-3">
-  //   <div className="flex items-center gap-3">
-  //     <div className="w-8 h-8 rounded-lg flex-shrink-0" style={{ background: c.gradient || 'var(--sage)' }} />
-  //     <div>
-  //       <p className="font-medium" style={{ color: 'var(--text-dark)' }}>
-  //          {parseDescription(c.descAr || c.desc_ar).ar} {/* 🌟 هنا بيظهر العربي بس ف الجدول */}
-  //       </p>
-  //     </div>
-  //   </div>
-  // </td>
-
   async function handleSave() {
     if (!form.titleAr.trim()) return;
     
@@ -164,19 +153,12 @@ export function AdminCourses() {
       finalCoachId = coaches[0].id;
     }
 
-    // 🌟 الخدعة: دمج الوصف العربي والإنجليزي في نص واحد (JSON string)
-    // الباك إند هيستقبله في desc_ar ويحفظه في الداتا بيز، وأحنا في الفرونت إند هنفكه تاني
-    const descData = JSON.stringify({ 
-      ar: form.descAr ? form.descAr.trim() : "", 
-      en: form.descEn ? form.descEn.trim() : "" 
-    });
-
     const cleanPayload = {
       coachId: finalCoachId,
       titleAr: form.titleAr.trim(),
       titleEn: form.titleEn.trim(),
-      descAr: descData,      // 🌟 بنبعت الداتا المدمجة هنا
-      desc_ar: descData,     // للضمان
+      descAr: form.descAr ? form.descAr.trim() : null,
+      descEn: form.descEn ? form.descEn.trim() : null,
       category: form.category,
       price: String(form.price || 0),           
       duration: Number(form.duration) || 0,     
@@ -185,7 +167,6 @@ export function AdminCourses() {
       gradient: form.gradient,
       imageUrl: form.imageUrl ? form.imageUrl.trim() : null,
       durationUnit: form.durationUnit || 'weeks',
-      duration_unit: form.durationUnit || 'weeks'
     };
 
     try {
@@ -385,12 +366,56 @@ export function AdminCourses() {
 
               <div className="grid grid-cols-2 gap-4">
                 <FormField label="اسم الدورة (AR)" value={form.titleAr} onChange={(v) => setForm({ ...form, titleAr: v })} />
-                <FormField label="اسم الدورة (EN)" value={form.titleEn} onChange={(v) => setForm({ ...form, titleEn: v })} />
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold" style={{ color: 'var(--text-dark)' }}>اسم الدورة (EN)</label>
+                    <button
+                      type="button"
+                      onClick={() => void handleTranslate(form.titleAr, 'titleEn')}
+                      disabled={translating === 'titleEn' || !form.titleAr.trim()}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium transition-all disabled:opacity-40"
+                      style={{ background: 'rgba(127,169,155,0.15)', color: 'var(--sage-dark)' }}
+                      title="ترجمة تلقائية"
+                    >
+                      <Wand2 size={11} />
+                      {translating === 'titleEn' ? 'جارٍ الترجمة...' : 'ترجمة ✨'}
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={form.titleEn}
+                    onChange={(e) => setForm({ ...form, titleEn: e.target.value })}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                    style={{ background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' }}
+                  />
+                </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <FormField label="الوصف (AR)" value={form.descAr ?? ''} onChange={(v) => setForm({ ...form, descAr: v })} multiline />
-                <FormField label="الوصف (EN)" value={form.descEn ?? ''} onChange={(v) => setForm({ ...form, descEn: v })} multiline />
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold" style={{ color: 'var(--text-dark)' }}>الوصف (EN)</label>
+                    <button
+                      type="button"
+                      onClick={() => void handleTranslate(form.descAr ?? '', 'descEn')}
+                      disabled={translating === 'descEn' || !form.descAr?.trim()}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium transition-all disabled:opacity-40"
+                      style={{ background: 'rgba(127,169,155,0.15)', color: 'var(--sage-dark)' }}
+                      title="ترجمة تلقائية"
+                    >
+                      <Wand2 size={11} />
+                      {translating === 'descEn' ? 'جارٍ الترجمة...' : 'ترجمة ✨'}
+                    </button>
+                  </div>
+                  <textarea
+                    value={form.descEn ?? ''}
+                    onChange={(e) => setForm({ ...form, descEn: e.target.value })}
+                    rows={3}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                    style={{ background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)', resize: 'none' }}
+                  />
+                </div>
               </div>
               
               <div className="grid grid-cols-3 gap-3 items-end">
