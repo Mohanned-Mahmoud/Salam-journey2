@@ -88,6 +88,24 @@ export default function Home() {
   const Arrow = lang === "ar" ? ArrowLeft : ArrowRight;
   const [activeTestimonials, setActiveTestimonials] = useState(TESTIMONIALS);
 
+  // 🌟 خطاف تخزين البيانات المقترن بوحدة الوقت ونوع العرض المختار
+  const [featuredCourse, setFeaturedCourse] = useState({
+    titleAr: "وأصبحتُ أُمّاً هادئة",
+    titleEn: "Becoming a Calm Mother",
+    descAr: "برنامج ٤ أسابيع لتتعلمي كيف تتعاملين مع نوبات الغضب، وتبني علاقة هادئة وآمنة مع أطفالك.",
+    duration: 4,
+    durationUnit: "weeks", // 'weeks' أو 'minutes'
+    mode: "most_loved" 
+  });
+
+  // 🌟 خطاف تخزين النقاط الأربعة للمميزات ديناميكياً بقيمها الافتراضية
+  const [features, setFeatures] = useState<string[]>([
+    "١٢ درس فيديو عالي الجودة",
+    "ملفات عمل قابلة للتحميل",
+    "جلسات أسئلة وأجوبة شهرية",
+    "مجتمع خاص للأمهات"
+  ]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -118,7 +136,52 @@ export default function Home() {
       }
     }
 
+    // 🌟 جلب وضع العرض والمميزات الأربعة بالإضافة لبيانات الدورة المحددة
+    async function loadFeaturedCourseData() {
+      try {
+        const [modeRes, feat1, feat2, feat3, feat4] = await Promise.all([
+          apiJson<{ value: string }>("/site-settings/featured_course_mode").catch(() => ({ value: "most_loved" })),
+          apiJson<{ value: string }>("/site-settings/featured_feature_1").catch(() => null),
+          apiJson<{ value: string }>("/site-settings/featured_feature_2").catch(() => null),
+          apiJson<{ value: string }>("/site-settings/featured_feature_3").catch(() => null),
+          apiJson<{ value: string }>("/site-settings/featured_feature_4").catch(() => null)
+        ]);
+
+        const currentMode = modeRes?.value || "most_loved";
+        
+        if (!cancelled) {
+          setFeatures([
+            feat1?.value || "١٢ درس فيديو عالي الجودة",
+            feat2?.value || "ملفات عمل قابلة للتحميل",
+            feat3?.value || "جلسات أسئلة وأجوبة شهرية",
+            feat4?.value || "مجتمع خاص للأمهات"
+          ]);
+        }
+
+        const keyToFetch = currentMode === "upcoming" ? "upcoming_course_id" : "featured_course_id";
+        const res = await apiJson<{ value: string }>(`/site-settings/${keyToFetch}`).catch(() => null);
+        
+        if (res && res.value) {
+          const allCourses = await apiJson<any[]>("/courses");
+          const matched = allCourses.find(c => c.id === res.value);
+          if (matched && !cancelled) {
+            setFeaturedCourse({
+              titleAr: matched.titleAr,
+              titleEn: matched.titleEn,
+              descAr: matched.descAr || "",
+              duration: matched.duration || 4,
+              durationUnit: matched.durationUnit || matched.duration_unit || "weeks", // لقط وحدة الوقت (دقائق / أسابيع)
+              mode: currentMode
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load featured course settings:", err);
+      }
+    }
+
     void loadTestimonials();
+    void loadFeaturedCourseData();
 
     return () => {
       cancelled = true;
@@ -427,45 +490,51 @@ export default function Home() {
                   style={{ background: "rgba(255,255,255,0.18)", color: "var(--cream)" }}
                 >
                   <Sparkles size={13} />
-                  {t(tx("الدورة الأكثر طلباً", "Most loved course"))}
+                  {/* 🌟 التبديل الصافي لنص الـ Badge بناءً على الاختيار الفعلي في الأدمن */}
+                  {featuredCourse.mode === "upcoming"
+                    ? t(tx("دورة قادمة قريباً", "Upcoming course"))
+                    : t(tx("الدورة الأكثر طلباً", "Most loved course"))
+                  }
                 </span>
+                
+                {/* اسم الدورة ديناميكي تماماً */}
                 <h2 className="text-3xl md:text-5xl leading-tight mb-4" style={{ color: "white" }}>
-                  {t(tx("وأصبحتُ أُمّاً هادئة", "Becoming a Calm Mother"))}
+                  {t(tx(featuredCourse.titleAr, featuredCourse.titleEn))}
                 </h2>
+                
+                {/* وصف الدورة ديناميكي تماماً */}
                 <p className="text-lg leading-relaxed mb-6 opacity-90 max-w-xl">
-                  {t(
-                    tx(
-                      "برنامج ٤ أسابيع لتتعلمي كيف تتعاملين مع نوبات الغضب، وتبني علاقة هادئة وآمنة مع أطفالك.",
-                      "A 4-week program to learn how to navigate tantrums and build a calm, secure connection with your children.",
-                    ),
-                  )}
+                  {featuredCourse.descAr ? t(tx(featuredCourse.descAr, featuredCourse.descAr)) : ""}
                 </p>
+                
                 <div className="flex flex-wrap gap-4 items-center">
                   <Link href="/courses" className="pill-btn pill-btn-blush">
                     {t(tx("اشتركي الآن", "Enroll now"))}
                     <Arrow size={16} />
                   </Link>
+                  
                   <span className="text-sm opacity-90">
-                    {t(tx("٤ أسابيع · مجتمع خاص", "4 weeks · Private community"))}
+                    {/* 🌟 التعديل هنا: طباعة الكلمة بناءً على وحدة الوقت المخزنة (دقائق أو أسابيع) */}
+                    {featuredCourse.duration}{" "}
+                    {featuredCourse.durationUnit === "minutes"
+                      ? t(tx("دقائق · مجتمع خاص", "minutes · Private community"))
+                      : t(tx("أسابيع · مجتمع خاص", "weeks · Private community"))
+                    }
                   </span>
                 </div>
               </div>
 
+              {/* 🌟 التعديل هنا: تكرار القائمة بناءً على الـ features الديناميكية الجاية من قاعدة البيانات */}
               <ul className="space-y-3">
-                {[
-                  tx("١٢ درس فيديو عالي الجودة", "12 high-quality video lessons"),
-                  tx("ملفات عمل قابلة للتحميل", "Downloadable workbooks"),
-                  tx("جلسات أسئلة وأجوبة شهرية", "Monthly Q&A sessions"),
-                  tx("مجتمع خاص للأمهات", "A private mothers' community"),
-                ].map((item) => (
-                  <li key={item.ar} className="flex items-start gap-3 text-base">
+                {features.map((item, index) => (
+                  <li key={index} className="flex items-start gap-3 text-base">
                     <span
                       className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5"
                       style={{ background: "rgba(255,255,255,0.2)" }}
                     >
                       <Sparkles size={14} />
                     </span>
-                    <span className="opacity-95">{t(item)}</span>
+                    <span className="opacity-95">{t(tx(item, item))}</span>
                   </li>
                 ))}
               </ul>
