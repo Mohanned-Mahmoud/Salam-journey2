@@ -1,9 +1,67 @@
+import { useEffect, useState } from "react"; // 1. استيراد الخطافات الأساسية
 import { Link } from "wouter";
-import { FaWhatsapp, FaInstagram, FaYoutube } from "react-icons/fa";
+// 2. أضفنا أيقونات الفيسبوك والتيك توك اللي طلبتهم
+import { FaWhatsapp, FaInstagram, FaYoutube, FaFacebook, FaTiktok } from "react-icons/fa";
 import { useLanguage, tx } from "@/lib/i18n";
+import { apiJson } from "@/lib/api"; // 3. استيراد دالة الـ API
 
 export function Footer() {
   const { t } = useLanguage();
+
+  // 4. الـ State اللي هيشيل البيانات الديناميكية الجاية من قاعدة البيانات
+  const [brandSettings, setBrandSettings] = useState({
+    siteName: "",
+    email: "hello@salamjourney.com",
+    whatsappUrl: "https://wa.me/",
+    instagramUrl: "#",
+    youtubeUrl: "#",
+    facebookUrl: "",
+    tiktokUrl: ""
+  });
+
+  // 5. جلب الإعدادات من قاعدة البيانات عند تحميل الـ Footer
+  useEffect(() => {
+    const keysToFetch = [
+      'site_name',
+      'contact_email',
+      'whatsapp_number',
+      'instagram_url',
+      'youtube_url',
+      'facebook_url',
+      'tiktok_url'
+    ];
+
+    // جلب كل الإعدادات بالتوازي لسرعة الأداء
+    Promise.all(
+      keysToFetch.map(key => 
+        apiJson<{ key: string; value: string }>(`/site-settings/${key}`)
+          .catch(() => ({ key, value: "" })) // fallback في حالة عدم وجود المفتاح بعد
+      )
+    ).then(([siteName, contactEmail, whatsapp, instagram, youtube, facebook, tiktok]) => {
+      // تنظيف رقم الواتساب لضمان عمل الرابط بشكل رسمي وصحيح
+      const cleanNumber = whatsapp.value.replace(/\D/g, "");
+
+      setBrandSettings({
+        siteName: siteName.value || "",
+        email: contactEmail.value || "hello@salamjourney.com",
+        whatsappUrl: cleanNumber ? `https://wa.me/${cleanNumber}` : "https://wa.me/",
+        instagramUrl: instagram.value || "#",
+        youtubeUrl: youtube.value || "#",
+        facebookUrl: facebook.value || "",
+        tiktokUrl: tiktok.value || ""
+      });
+    }).catch(err => console.error("Error loading footer settings from DB:", err));
+  }, []);
+
+  // 6. بناء مصفوفة أيقونات السوشيال ميديا ديناميكياً بناءً على ما هو مدخل
+  const socialMediaLinks = [
+    { href: brandSettings.whatsappUrl, Icon: FaWhatsapp, label: "WhatsApp", show: true },
+    { href: brandSettings.instagramUrl, Icon: FaInstagram, label: "Instagram", show: true },
+    { href: brandSettings.youtubeUrl, Icon: FaYoutube, label: "YouTube", show: true },
+    // الفيسبوك والتيك توك هيظهروا فقط لو الأدمن حط الروابط بتاعتهم
+    { href: brandSettings.facebookUrl, Icon: FaFacebook, label: "Facebook", show: !!brandSettings.facebookUrl },
+    { href: brandSettings.tiktokUrl, Icon: FaTiktok, label: "TikTok", show: !!brandSettings.tiktokUrl },
+  ];
 
   return (
     <footer
@@ -23,7 +81,8 @@ export function Footer() {
                 className="font-bold text-2xl"
                 style={{ color: "var(--cream)", fontFamily: "var(--font-display)" }}
               >
-                {t(tx("رحلة سلام", "Salam Journey"))}
+                {/* إذا كان الاسم موجود في قاعدة البيانات يعرضه، وإلا يرجع للاسم الافتراضي */}
+                {brandSettings.siteName ? brandSettings.siteName : t(tx("رحلة سلام", "Salam Journey"))}
               </span>
             </Link>
             <p className="max-w-md leading-relaxed opacity-85">
@@ -34,27 +93,27 @@ export function Footer() {
                 ),
               )}
             </p>
+            
+            {/* عرض أزرار السوشيال ميديا المتصلة بقاعدة البيانات */}
             <div className="flex items-center gap-3 mt-6">
-              {[
-                { href: "https://wa.me/", Icon: FaWhatsapp, label: "WhatsApp" },
-                { href: "#", Icon: FaInstagram, label: "Instagram" },
-                { href: "#", Icon: FaYoutube, label: "YouTube" },
-              ].map(({ href, Icon, label }) => (
-                <a
-                  key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:-translate-y-1"
-                  style={{
-                    background: "rgba(255,255,255,0.08)",
-                    color: "var(--cream)",
-                  }}
-                  aria-label={label}
-                >
-                  <Icon size={18} />
-                </a>
-              ))}
+              {socialMediaLinks
+                .filter(link => link.show)
+                .map(({ href, Icon, label }) => (
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:-translate-y-1"
+                    style={{
+                      background: "rgba(255,255,255,0.08)",
+                      color: "var(--cream)",
+                    }}
+                    aria-label={label}
+                  >
+                    <Icon size={18} />
+                  </a>
+                ))}
             </div>
           </div>
 
@@ -93,7 +152,8 @@ export function Footer() {
               {t(tx("تواصل معنا", "Get in touch"))}
             </h3>
             <ul className="flex flex-col gap-3 text-[15px] opacity-85">
-              <li>hello@salamjourney.com</li>
+              {/* عرض الإيميل الديناميكي المستدعى من الـ DB */}
+              <li>{brandSettings.email}</li>
               <li>{t(tx("لندن، المملكة المتحدة", "London, United Kingdom"))}</li>
               <li>{t(tx("مسجلة في بريطانيا", "Registered in the UK"))}</li>
             </ul>

@@ -1,13 +1,33 @@
+import { useEffect, useState } from "react";
 import { FaWhatsapp } from "react-icons/fa";
 import { useLanguage, tx } from "@/lib/i18n";
+import { apiJson } from "@/lib/api"; // 1. استيراد دالة الـ API الرسمية للمشروع
 
 export function WhatsAppButton() {
   const { t, lang } = useLanguage();
   const positionClass = lang === "ar" ? "left-6" : "right-6";
+  
+  // 2. الـ state اللي هيشيل اللينك النهائي
+  const [whatsappUrl, setWhatsappUrl] = useState("https://wa.me/");
+
+  useEffect(() => {
+    // 3. طلب رقم الواتساب من قاعدة البيانات مباشرة باستخدام المفتاح 'whatsapp_number'
+    apiJson<{ key: string; value: string }>("/site-settings/whatsapp_number")
+      .then((data) => {
+        if (data && data.value) {
+          // تنظيف الرقم من أي رموز أو مسافات أو علامة + لضمان عمل اللينك
+          const cleanNumber = data.value.replace(/\D/g, "");
+          setWhatsappUrl(`https://wa.me/${cleanNumber}`);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch whatsapp number from database:", err);
+      });
+  }, []);
 
   return (
     <a
-      href="https://wa.me/"
+      href={whatsappUrl} // 4. ربط اللينك بالـ state الديناميكي
       target="_blank"
       rel="noreferrer"
       className={`fixed bottom-6 ${positionClass} z-50 group flex items-center gap-3`}

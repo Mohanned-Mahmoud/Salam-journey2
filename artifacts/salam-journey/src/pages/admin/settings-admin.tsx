@@ -1,16 +1,90 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Save } from 'lucide-react';
-import { loadJson, saveJson, SETTINGS_KEY, DEFAULT_SETTINGS } from './types';
+import { DEFAULT_SETTINGS } from './types';
 import type { AdminSettings } from './types';
+import { apiJson } from '@/lib/api'; // استيراد دالة الـ API الرسمية للمشروع
 
 const TIMES = ['10:00', '12:00', '14:00', '16:00', '18:00'];
 const DAYS_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
-export function AdminSettings() {
-  const [settings, setSettings] = useState<AdminSettings>(() => loadJson<AdminSettings>(SETTINGS_KEY, DEFAULT_SETTINGS));
-  const [saved, setSaved] = useState(false);
+// خريطة لربط أسماء الـ state بـ الـ keys في قاعدة البيانات (Snake Case)
+const KEYS_MAP = {
+  siteName: 'site_name',
+  contactEmail: 'contact_email',
+  whatsappNumber: 'whatsapp_number',
+  instagramUrl: 'instagram_url',
+  youtubeUrl: 'youtube_url',
+  facebookUrl: 'facebook_url', // المفاتيح الجديدة اللي طلبتها
+  tiktokUrl: 'tiktok_url',     // المفاتيح الجديدة اللي طلبتها
+  availableTimes: 'available_times',
+  offDays: 'off_days',
+  advanceDays: 'advance_days',
+  confirmationMessage: 'confirmation_message',
+};
 
-  function set<K extends keyof AdminSettings>(key: K, value: AdminSettings[K]) {
+// تعريف الـ Type الجديد ليشمل الفيسبوك والتيك توك
+interface ExtendedAdminSettings extends AdminSettings {
+  facebookUrl?: string;
+  tiktokUrl?: string;
+}
+
+export function AdminSettings() {
+  // 1. القيمة المبدئية تأتي من الـ DEFAULT_SETTINGS
+  const [settings, setSettings] = useState<ExtendedAdminSettings>({
+    ...DEFAULT_SETTINGS,
+    facebookUrl: '',
+    tiktokUrl: '',
+  });
+  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // 2. قراءة كل الإعدادات من قاعدة البيانات عند فتح الصفحة
+  useEffect(() => {
+    async function fetchAllSettings() {
+      try {
+        const promises = Object.entries(KEYS_MAP).map(async ([stateKey, dbKey]) => {
+          try {
+            const res = await apiJson<{ value: string }>(`/site-settings/${dbKey}`);
+            return { stateKey, value: res.value };
+          } catch {
+            return { stateKey, value: null };
+          }
+        });
+
+        const results = await Promise.all(promises);
+        
+        setSettings((prev) => {
+          const updated = { ...prev };
+          results.forEach(({ stateKey, value }) => {
+            if (value !== null && value !== undefined && value !== "") {
+              // استخدام (updated as any) هنا بيقفل اعتراض الـ TypeScript تماماً
+              if (stateKey === 'availableTimes' || stateKey === 'offDays') {
+                try {
+                  (updated as any)[stateKey] = JSON.parse(value);
+                } catch {
+                  (updated as any)[stateKey] = value.split(',').filter(Boolean);
+                }
+              } else if (stateKey === 'advanceDays') {
+                (updated as any)[stateKey] = Number(value) || prev.advanceDays;
+              } else {
+                // النصوص العادية والروابط
+                (updated as any)[stateKey] = value;
+              }
+            }
+          });
+          return updated;
+        });
+      } catch (err) {
+        console.error("Failed to load settings from DB:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchAllSettings();
+  }, []);
+
+  function set<K extends keyof ExtendedAdminSettings>(key: K, value: ExtendedAdminSettings[K]) {
     setSettings((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -28,14 +102,44 @@ export function AdminSettings() {
     set('offDays', arr);
   }
 
-  function handleSave() {
-    saveJson(SETTINGS_KEY, settings);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+  // 3. حفظ كل الإعدادات في قاعدة البيانات دفعة واحدة عند الضغط على زر حفظ
+  async function handleSave() {
+    try {
+      const promises = Object.entries(KEYS_MAP).map(([stateKey, dbKey]) => {
+        let valueToSave = "";
+        const rawValue = settings[stateKey as keyof ExtendedAdminSettings];
+
+        if (Array.isArray(rawValue)) {
+          valueToSave = JSON.stringify(rawValue); // تحويل المصفوفات لنصوص للحفظ في الـ DB
+        } else {
+          valueToSave = String(rawValue ?? "");
+        }
+
+        // إرسال PUT request لكل مفتاح على المسار الرسمي للباك إند
+        return apiJson(`/admin/site-settings/${dbKey}`, {
+          method: 'PUT',
+          body: JSON.stringify({ value: valueToSave }),
+        });
+      });
+
+      await Promise.all(promises);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      console.error("Failed to save settings to DB:", err);
+    }
   }
 
   const inputCls = "w-full rounded-xl px-3 py-2.5 text-sm outline-none";
   const inputStyle = { background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <p className="text-sm animate-pulse" style={{ color: 'var(--text-muted)' }}>جاري تحميل الإعدادات من قاعدة البيانات...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 max-w-2xl">
@@ -60,8 +164,10 @@ export function AdminSettings() {
           <Field label="اسم الموقع" value={settings.siteName} onChange={(v) => set('siteName', v)} />
           <Field label="البريد الإلكتروني" value={settings.contactEmail} onChange={(v) => set('contactEmail', v)} />
           <Field label="رقم الواتساب" value={settings.whatsappNumber} onChange={(v) => set('whatsappNumber', v)} />
-          <Field label="رابط الإنستغرام" value={settings.instagramUrl} onChange={(v) => set('instagramUrl', v)} />
-          <Field label="رابط اليوتيوب" value={settings.youtubeUrl} onChange={(v) => set('youtubeUrl', v)} />
+          <Field label="رابط الإنستغرام" value={settings.instagramUrl ?? ''} onChange={(v) => set('instagramUrl', v)} />
+          <Field label="رابط اليوتيوب" value={settings.youtubeUrl ?? ''} onChange={(v) => set('youtubeUrl', v)} />
+          <Field label="رابط الفيسبوك" value={settings.facebookUrl ?? ''} onChange={(v) => set('facebookUrl', v)} />
+          <Field label="رابط التيك توك" value={settings.tiktokUrl ?? ''} onChange={(v) => set('tiktokUrl', v)} />
         </div>
       </Card>
 
