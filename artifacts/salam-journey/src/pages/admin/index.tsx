@@ -10,7 +10,8 @@ import { AdminUsers } from './users-admin';
 import { AdminTestimonials } from './testimonials-admin';
 import { AdminSettings } from './settings-admin';
 import { AdminAiKnowledge } from './ai-knowledge-admin';
-import { useAuth } from '@/hooks/use-auth'; // 🌟 استيراد الهوك الموحد
+import { AdminFunnelBuilder } from './funnel-builder-admin';
+import { useAuth } from '@/hooks/use-auth';
 import type { AdminSection } from './types';
 
 export default function AdminPage() {
@@ -38,6 +39,7 @@ export default function AdminPage() {
     users: <AdminUsers />,
     testimonials: <AdminTestimonials />,
     'ai-knowledge': <AdminAiKnowledge />,
+    'funnel-builder': <AdminFunnelBuilder />,
     settings: <AdminSettings />,
   };
 

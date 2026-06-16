@@ -6,7 +6,31 @@ export type AdminSection =
   | 'users'
   | 'testimonials'
   | 'ai-knowledge'
-  | 'settings';
+  | 'settings'
+  | 'funnel-builder';
+
+export type FunnelBlockType =
+  | 'hero'
+  | 'headline'
+  | 'countdown'
+  | 'image'
+  | 'video'
+  | 'cta'
+  | 'qualifier'
+  | 'bio'
+  | 'speakers'
+  | 'curriculum'
+  | 'stats'
+  | 'testimonials'
+  | 'bonus'
+  | 'faq'
+  | 'guarantee';
+
+export interface FunnelBlock {
+  id: string;
+  type: FunnelBlockType;
+  data: Record<string, any>;
+}
 
 export type BookingStatus = 'confirmed' | 'pending' | 'cancelled';
 

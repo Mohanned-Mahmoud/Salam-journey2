@@ -1,21 +1,22 @@
-import { Calendar, BookOpen, ShoppingBag, Users, MessageSquare, Settings, LogOut, LayoutDashboard, Brain } from 'lucide-react';
+import { Calendar, BookOpen, ShoppingBag, Users, MessageSquare, Settings, LogOut, LayoutDashboard, Brain, Layers } from 'lucide-react';
 import type { AdminSection } from './types';
 
 type Props = {
   active: AdminSection;
   onChange: (s: AdminSection) => void;
-  onLogout: () => void; // 🌟 أصبحت إجبارية وموحدة
+  onLogout: () => void;
 };
 
 const ITEMS: { id: AdminSection; label: string; Icon: React.ComponentType<{ size?: number }> }[] = [
-  { id: 'dashboard',    label: 'الإحصائيات',  Icon: LayoutDashboard },
-  { id: 'bookings',     label: 'الحجوزات',    Icon: Calendar },
-  { id: 'courses',      label: 'الدورات',     Icon: BookOpen },
-  { id: 'products',     label: 'المنتجات',    Icon: ShoppingBag },
-  { id: 'users',        label: 'المستخدمون',  Icon: Users },
-  { id: 'testimonials', label: 'الشهادات',    Icon: MessageSquare },
-  { id: 'ai-knowledge', label: 'المساعد الذكي', Icon: Brain },
-  { id: 'settings',     label: 'الإعدادات',   Icon: Settings },
+  { id: 'dashboard',       label: 'الإحصائيات',       Icon: LayoutDashboard },
+  { id: 'bookings',        label: 'الحجوزات',         Icon: Calendar },
+  { id: 'courses',         label: 'الدورات',          Icon: BookOpen },
+  { id: 'products',        label: 'المنتجات',         Icon: ShoppingBag },
+  { id: 'users',           label: 'المستخدمون',       Icon: Users },
+  { id: 'testimonials',    label: 'الشهادات',         Icon: MessageSquare },
+  { id: 'ai-knowledge',    label: 'المساعد الذكي',    Icon: Brain },
+  { id: 'funnel-builder',  label: 'الصفحة التسويقية', Icon: Layers },
+  { id: 'settings',        label: 'الإعدادات',        Icon: Settings },
 ];
 
 export function AdminSidebar({ active, onChange, onLogout }: Props) {

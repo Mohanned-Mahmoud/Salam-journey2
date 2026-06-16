@@ -9,3 +9,5 @@ export * from "./bookings";
 export * from "./products";
 export * from "./testimonials";
 export * from "./ai-knowledge";
+export * from "./funnel-page";
+export * from "./site-settings";

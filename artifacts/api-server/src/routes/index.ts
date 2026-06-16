@@ -9,6 +9,8 @@ import bookingsRouter from "./bookings";
 import productsRouter from "./products";
 import testimonialsRouter from "./testimonials";
 import aiRouter from "./ai";
+import funnelRouter from "./funnel";
+import siteSettingsRouter from "./site-settings";
 
 const router: IRouter = Router();
 
@@ -22,5 +24,7 @@ router.use(bookingsRouter);
 router.use(productsRouter);
 router.use(testimonialsRouter);
 router.use(aiRouter);
+router.use(funnelRouter);
+router.use(siteSettingsRouter);
 
 export default router;
