@@ -1,4 +1,5 @@
 import { Calendar, BookOpen, ShoppingBag, Users, MessageSquare, Settings, LogOut, LayoutDashboard, Brain, Layers } from 'lucide-react';
+import { useLocation } from "wouter"; // 1. استيراد خطاف التنقل من wouter
 import type { AdminSection } from './types';
 
 type Props = {
@@ -20,6 +21,8 @@ const ITEMS: { id: AdminSection; label: string; Icon: React.ComponentType<{ size
 ];
 
 export function AdminSidebar({ active, onChange, onLogout }: Props) {
+  const [, setLocation] = useLocation(); // 2. تعريف خطاف التنقل داخلياً
+
   return (
     <aside
       className="flex flex-col h-full"
@@ -64,12 +67,12 @@ export function AdminSidebar({ active, onChange, onLogout }: Props) {
       <div className="px-3 pb-6 border-t pt-4" style={{ borderColor: 'rgba(250,245,232,0.1)' }}>
         <button
           type="button"
-          onClick={onLogout}
+          onClick={() => setLocation('/')} // 3. التعديل هنا: يوجهك للموقع الرئيسي فوراً بدلاً من تدمير الـ Session
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-right transition-all"
           style={{ color: 'rgba(250,245,232,0.6)' }}
         >
           <LogOut size={17} />
-          <span>تسجيل الخروج</span>
+          <span>العودة للموقع</span> {/* 4. غيّرنا النص عشان يعبر عن الوظيفة الجديدة بدقة */}
         </button>
       </div>
     </aside>
