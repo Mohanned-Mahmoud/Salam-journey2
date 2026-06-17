@@ -9,6 +9,7 @@ export const productsTable = pgTable("products", {
   titleAr: varchar("title_ar", { length: 255 }).notNull(),
   titleEn: varchar("title_en", { length: 255 }).notNull(),
   descAr: text("desc_ar"),
+  descEn: text("desc_en"),
   price: numeric("price", { precision: 10, scale: 2 }),
   isFree: boolean("is_free").default(false),
   type: productTypeEnum("type").notNull(),

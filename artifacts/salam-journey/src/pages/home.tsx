@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+﻿﻿import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, ShoppingBag, Star, Sparkles, Users, Award, Globe, Quote } from "lucide-react";
 import { useLanguage, tx } from "@/lib/i18n";
@@ -115,8 +115,11 @@ export default function Home() {
         const data = await apiJson<Array<{
           id: string;
           nameAr: string | null;
+          nameEn: string | null;
           roleAr: string | null;
+          roleEn: string | null;
           quoteAr: string;
+          quoteEn: string | null;
           rating: number | null;
           status: string | null;
         }>>("/testimonials");
@@ -126,9 +129,9 @@ export default function Home() {
         const next = data
           .filter((ts) => ts.status !== "hidden")
           .map((ts) => ({
-            quote: tx(ts.quoteAr, ts.quoteAr),
-            name: tx(ts.nameAr ?? "", ts.nameAr ?? ""),
-            role: tx(ts.roleAr ?? "", ts.roleAr ?? ""),
+            quote: tx(ts.quoteAr, ts.quoteEn ?? ts.quoteAr),
+            name: tx(ts.nameAr ?? "", ts.nameEn ?? ts.nameAr ?? ""),
+            role: tx(ts.roleAr ?? "", ts.roleEn ?? ts.roleAr ?? ""),
           }));
 
         setActiveTestimonials(next.length > 0 ? next : TESTIMONIALS);

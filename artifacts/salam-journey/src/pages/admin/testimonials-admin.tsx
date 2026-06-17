@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Star, Eye, EyeOff, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Star, Eye, EyeOff, X, Wand2 } from 'lucide-react';
 import { apiJson } from '@/lib/api'; 
 import type { AdminTestimonial } from './types';
 
 type FormState = Omit<AdminTestimonial, 'id'>;
-const EMPTY: FormState = { nameAr: '', roleAr: '', quoteAr: '', rating: 5, status: 'active' };
+const EMPTY: FormState = { nameAr: '', nameEn: '', roleAr: '', roleEn: '', quoteAr: '', quoteEn: '', rating: 5, status: 'active' };
 
 export function AdminTestimonials() {
   const [items, setItems] = useState<AdminTestimonial[]>([]);
@@ -13,6 +13,23 @@ export function AdminTestimonials() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [translating, setTranslating] = useState<string | null>(null);
+
+  async function handleTranslate(sourceText: string, field: 'nameEn' | 'roleEn' | 'quoteEn') {
+    if (!sourceText.trim()) return;
+    setTranslating(field);
+    try {
+      const result = await apiJson<{ translatedText: string }>('/translate', {
+        method: 'POST',
+        body: JSON.stringify({ text: sourceText.trim() }),
+      });
+      setForm((prev) => ({ ...prev, [field]: result.translatedText }));
+    } catch {
+      alert('تعذرت الترجمة التلقائية.');
+    } finally {
+      setTranslating(null);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -40,11 +57,13 @@ export function AdminTestimonials() {
 
   function openAdd() { setForm(EMPTY); setModal({ mode: 'add' }); }
   function openEdit(t: AdminTestimonial) {
-    // 🌟 حماية المدخلات أثناء التعديل لضمان عدم تمرير قيم null للـ form state
     setForm({ 
       nameAr: t.nameAr ?? '', 
+      nameEn: t.nameEn ?? '',
       roleAr: t.roleAr ?? '', 
+      roleEn: t.roleEn ?? '',
       quoteAr: t.quoteAr, 
+      quoteEn: t.quoteEn ?? '',
       rating: t.rating ?? 5, 
       status: t.status 
     });
@@ -52,7 +71,6 @@ export function AdminTestimonials() {
   }
 
   async function handleSave() {
-    // 🌟 تأمين الـ Null Check باستخدام السهم الاختياري للتأكد من وجود النص قبل عمل .trim()
     if (!form.nameAr?.trim()) return;
     try {
       if (modal?.mode === 'add') {
@@ -130,12 +148,11 @@ export function AdminTestimonials() {
                 <td className="px-4 py-3 text-sm" style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
                 <td className="px-4 py-3">
                   <p className="font-medium" style={{ color: 'var(--text-dark)' }}>{t.nameAr}</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t.roleAr}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t.nameEn ?? t.roleAr}</p>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-0.5">
                     {Array.from({ length: 5 }).map((_, j) => {
-                      // 🌟 حماية حساب النجوم داخل الجدول عبر وضع قيمة افتراضية للتقييم لمنع الـ null check warning
                       const currentRating = t.rating ?? 5;
                       return (
                         <Star key={j} size={13} fill={j < currentRating ? 'var(--blush)' : 'transparent'} stroke={j < currentRating ? 'var(--blush)' : 'var(--text-muted)'} />
@@ -169,23 +186,57 @@ export function AdminTestimonials() {
       {/* Add/Edit Modal */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(45,74,69,0.5)' }}>
-          <div className="rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" style={{ background: 'white' }}>
+          <div className="rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" style={{ background: 'white' }}>
             <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: 'var(--cream-dark)' }}>
               <h2 className="font-bold text-lg" style={{ color: 'var(--text-dark)' }}>{modal.mode === 'add' ? 'إضافة شهادة' : 'تعديل الشهادة'}</h2>
               <button type="button" onClick={() => setModal(null)}><X size={20} style={{ color: 'var(--text-muted)' }} /></button>
             </div>
             <div className="p-6 space-y-4">
+
+              {/* Name */}
               <div className="grid grid-cols-2 gap-4">
-                {/* 🌟 معالجة الـ Null Check لحقول الإدخال عبر تحويلها لنصوص فارغة عند الحاجة */}
-                <Field label="الاسم" value={form.nameAr ?? ''} onChange={(v) => setForm({ ...form, nameAr: v })} />
-                <Field label="الوصف (أم لطفلين، إلخ)" value={form.roleAr ?? ''} onChange={(v) => setForm({ ...form, roleAr: v })} />
+                <Field label="الاسم (AR) 🇸🇦" value={form.nameAr ?? ''} onChange={(v) => setForm({ ...form, nameAr: v })} />
+                <TranslateField
+                  label="الاسم (EN) 🇬🇧"
+                  value={form.nameEn ?? ''}
+                  onChange={(v) => setForm({ ...form, nameEn: v })}
+                  onTranslate={() => void handleTranslate(form.nameAr ?? '', 'nameEn')}
+                  translating={translating === 'nameEn'}
+                  disabled={!form.nameAr?.trim()}
+                />
               </div>
-              <Field label="نص الشهادة" value={form.quoteAr} onChange={(v) => setForm({ ...form, quoteAr: v })} multiline />
+
+              {/* Role */}
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="الوصف (AR) 🇸🇦" value={form.roleAr ?? ''} onChange={(v) => setForm({ ...form, roleAr: v })} placeholder="أم لطفلين، أم عاملة..." />
+                <TranslateField
+                  label="الوصف (EN) 🇬🇧"
+                  value={form.roleEn ?? ''}
+                  onChange={(v) => setForm({ ...form, roleEn: v })}
+                  onTranslate={() => void handleTranslate(form.roleAr ?? '', 'roleEn')}
+                  translating={translating === 'roleEn'}
+                  disabled={!form.roleAr?.trim()}
+                />
+              </div>
+
+              {/* Quote */}
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="نص الشهادة (AR) 🇸🇦" value={form.quoteAr} onChange={(v) => setForm({ ...form, quoteAr: v })} multiline />
+                <TranslateField
+                  label="نص الشهادة (EN) 🇬🇧"
+                  value={form.quoteEn ?? ''}
+                  onChange={(v) => setForm({ ...form, quoteEn: v })}
+                  onTranslate={() => void handleTranslate(form.quoteAr, 'quoteEn')}
+                  translating={translating === 'quoteEn'}
+                  disabled={!form.quoteAr?.trim()}
+                  multiline
+                />
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold mb-2" style={{ color: 'var(--text-dark)' }}>التقييم</label>
                 <div className="flex gap-2">
                   {[1, 2, 3, 4, 5].map((n) => {
-                    // 🌟 حماية الـ rating داخل الـ Modal ليكون رقماً صريحاً دائماً
                     const formRating = form.rating ?? 5;
                     return (
                       <button key={n} type="button" onClick={() => setForm({ ...form, rating: n })}>
@@ -225,13 +276,43 @@ export function AdminTestimonials() {
   );
 }
 
-function Field({ label, value, onChange, multiline }: { label: string; value: string; onChange: (v: string) => void; multiline?: boolean }) {
+function Field({ label, value, onChange, multiline, placeholder }: { label: string; value: string; onChange: (v: string) => void; multiline?: boolean; placeholder?: string }) {
   const cls = "w-full rounded-xl px-3 py-2.5 text-sm outline-none";
   const style = { background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' };
   return (
     <div>
       <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-dark)' }}>{label}</label>
-      {multiline ? <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className={cls} style={{ ...style, resize: 'none' }} /> : <input type="text" value={value} onChange={(e) => onChange(e.target.value)} className={cls} style={style} />}
+      {multiline
+        ? <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} placeholder={placeholder} className={cls} style={{ ...style, resize: 'none' }} />
+        : <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={cls} style={style} />}
+    </div>
+  );
+}
+
+function TranslateField({ label, value, onChange, onTranslate, translating, disabled, multiline }: {
+  label: string; value: string; onChange: (v: string) => void;
+  onTranslate: () => void; translating: boolean; disabled: boolean; multiline?: boolean;
+}) {
+  const cls = "w-full rounded-xl px-3 py-2.5 text-sm outline-none";
+  const style = { background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' };
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="text-xs font-semibold" style={{ color: 'var(--text-dark)' }}>{label}</label>
+        <button
+          type="button"
+          onClick={onTranslate}
+          disabled={translating || disabled}
+          className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium transition-all disabled:opacity-40"
+          style={{ background: 'rgba(127,169,155,0.15)', color: 'var(--sage-dark)' }}
+        >
+          <Wand2 size={11} />
+          {translating ? 'جارٍ...' : 'ترجمة ✨'}
+        </button>
+      </div>
+      {multiline
+        ? <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className={cls} style={{ ...style, resize: 'none' }} />
+        : <input type="text" value={value} onChange={(e) => onChange(e.target.value)} className={cls} style={style} />}
     </div>
   );
 }

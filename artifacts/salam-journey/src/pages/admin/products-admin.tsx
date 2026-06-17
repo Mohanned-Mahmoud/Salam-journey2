@@ -6,7 +6,7 @@ import type { AdminProduct } from './types';
 type FormState = Omit<AdminProduct, 'id'>;
 
 const EMPTY_FORM: FormState = {
-  titleAr: '', titleEn: '', descAr: '', price: '', free: false,
+  titleAr: '', titleEn: '', descAr: '', descEn: '', price: '', free: false,
   type: 'pdf', downloadUrl: '', status: 'active',
 };
 
@@ -21,7 +21,7 @@ export function AdminProducts() {
   const [error, setError] = useState('');
   const [translating, setTranslating] = useState<string | null>(null);
 
-  async function handleTranslate(sourceText: string, field: 'titleEn') {
+  async function handleTranslate(sourceText: string, field: 'titleEn' | 'descEn') {
     if (!sourceText.trim()) return;
     setTranslating(field);
     try {
@@ -45,7 +45,7 @@ export function AdminProducts() {
         setLoading(true);
         const data = await apiJson<Array<Omit<AdminProduct, 'free'> & { isFree?: boolean }>>('/products');
         if (!cancelled) {
-          setProducts(data.map((product) => ({ ...product, free: Boolean(product.isFree) })));
+          setProducts(data.map((product) => ({ ...product, free: Boolean(product.isFree), descEn: product.descEn ?? null })));
         }
       } catch {
         if (!cancelled) {
@@ -69,6 +69,7 @@ export function AdminProducts() {
       titleAr: p.titleAr, 
       titleEn: p.titleEn, 
       descAr: p.descAr ?? '', 
+      descEn: p.descEn ?? '',
       price: p.price ?? '', 
       free: p.free, 
       type: p.type, 
@@ -86,13 +87,13 @@ export function AdminProducts() {
           method: 'POST',
           body: JSON.stringify({ ...form, isFree: form.free }),
         });
-        setProducts((current) => [...current, { ...created, free: Boolean(created.isFree) }]);
+        setProducts((current) => [...current, { ...created, free: Boolean(created.isFree), descEn: created.descEn ?? null }]);
       } else if (modal?.id) {
         const updated = await apiJson<Omit<AdminProduct, 'free'> & { isFree?: boolean }>(`/products/${modal.id}`, {
           method: 'PUT',
           body: JSON.stringify({ ...form, isFree: form.free }),
         });
-        setProducts((current) => current.map((product) => (product.id === modal.id ? { ...updated, free: Boolean(updated.isFree) } : product)));
+        setProducts((current) => current.map((product) => (product.id === modal.id ? { ...updated, free: Boolean(updated.isFree), descEn: updated.descEn ?? null } : product)));
       }
       setModal(null);
     } catch {
@@ -109,7 +110,7 @@ export function AdminProducts() {
         method: 'PUT',
         body: JSON.stringify({ status: nextStatus, isFree: product.free }),
       });
-      setProducts((current) => current.map((item) => (item.id === id ? { ...updated, free: Boolean(updated.isFree) } : item)));
+      setProducts((current) => current.map((item) => (item.id === id ? { ...updated, free: Boolean(updated.isFree), descEn: updated.descEn ?? null } : item)));
     } catch {
       // error handle
     }
@@ -183,44 +184,42 @@ export function AdminProducts() {
       {/* Add/Edit Modal */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(45,74,69,0.5)' }}>
-          <div className="rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" style={{ background: 'white' }}>
+          <div className="rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto" style={{ background: 'white' }}>
             <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: 'var(--cream-dark)' }}>
               <h2 className="font-bold text-lg" style={{ color: 'var(--text-dark)' }}>{modal.mode === 'add' ? 'إضافة منتج جديد' : 'تعديل المنتج'}</h2>
               <button type="button" onClick={() => setModal(null)}><X size={20} style={{ color: 'var(--text-muted)' }} /></button>
             </div>
             <div className="p-6 space-y-4">
+
+              {/* Title AR + EN */}
               <div className="grid grid-cols-2 gap-4">
-                <Field label="اسم المنتج (AR)" value={form.titleAr} onChange={(v) => setForm({ ...form, titleAr: v })} />
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold" style={{ color: 'var(--text-dark)' }}>اسم المنتج (EN)</label>
-                    <button
-                      type="button"
-                      onClick={() => void handleTranslate(form.titleAr, 'titleEn')}
-                      disabled={translating === 'titleEn' || !form.titleAr.trim()}
-                      className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium transition-all disabled:opacity-40"
-                      style={{ background: 'rgba(127,169,155,0.15)', color: 'var(--sage-dark)' }}
-                      title="ترجمة تلقائية"
-                    >
-                      <Wand2 size={11} />
-                      {translating === 'titleEn' ? 'جارٍ الترجمة...' : 'ترجمة ✨'}
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    value={form.titleEn}
-                    onChange={(e) => setForm({ ...form, titleEn: e.target.value })}
-                    className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                    style={{ background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' }}
-                  />
-                </div>
+                <Field label="اسم المنتج (AR) 🇸🇦" value={form.titleAr} onChange={(v) => setForm({ ...form, titleAr: v })} />
+                <TranslateField
+                  label="اسم المنتج (EN) 🇬🇧"
+                  value={form.titleEn}
+                  onChange={(v) => setForm({ ...form, titleEn: v })}
+                  onTranslate={() => void handleTranslate(form.titleAr, 'titleEn')}
+                  translating={translating === 'titleEn'}
+                  disabled={!form.titleAr.trim()}
+                />
               </div>
-              {/* 🌟 معالجة الـ Null Check للوصف */}
-              <Field label="الوصف" value={form.descAr ?? ''} onChange={(v) => setForm({ ...form, descAr: v })} multiline />
+
+              {/* Desc AR + EN */}
               <div className="grid grid-cols-2 gap-4">
-                {/* 🌟 تحويل السعر الصادر من الداتابيز لنص صريح متوافق مع المدخلات */}
+                <Field label="الوصف (AR) 🇸🇦" value={form.descAr ?? ''} onChange={(v) => setForm({ ...form, descAr: v })} multiline />
+                <TranslateField
+                  label="الوصف (EN) 🇬🇧"
+                  value={form.descEn ?? ''}
+                  onChange={(v) => setForm({ ...form, descEn: v })}
+                  onTranslate={() => void handleTranslate(form.descAr ?? '', 'descEn')}
+                  translating={translating === 'descEn'}
+                  disabled={!form.descAr?.trim()}
+                  multiline
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <Field label="السعر" value={String(form.price ?? '')} onChange={(v) => setForm({ ...form, price: v })} />
-                {/* 🌟 معالجة الـ Null Check لرابط التحميل */}
                 <Field label="رابط التحميل" value={form.downloadUrl ?? ''} onChange={(v) => setForm({ ...form, downloadUrl: v })} />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -273,6 +272,34 @@ function Field({ label, value, onChange, multiline }: { label: string; value: st
     <div>
       <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-dark)' }}>{label}</label>
       {multiline ? <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className={cls} style={{ ...style, resize: 'none' }} /> : <input type="text" value={value} onChange={(e) => onChange(e.target.value)} className={cls} style={style} />}
+    </div>
+  );
+}
+
+function TranslateField({ label, value, onChange, onTranslate, translating, disabled, multiline }: {
+  label: string; value: string; onChange: (v: string) => void;
+  onTranslate: () => void; translating: boolean; disabled: boolean; multiline?: boolean;
+}) {
+  const cls = "w-full rounded-xl px-3 py-2.5 text-sm outline-none";
+  const style = { background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' };
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="text-xs font-semibold" style={{ color: 'var(--text-dark)' }}>{label}</label>
+        <button
+          type="button"
+          onClick={onTranslate}
+          disabled={translating || disabled}
+          className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium transition-all disabled:opacity-40"
+          style={{ background: 'rgba(127,169,155,0.15)', color: 'var(--sage-dark)' }}
+        >
+          <Wand2 size={11} />
+          {translating ? 'جارٍ...' : 'ترجمة ✨'}
+        </button>
+      </div>
+      {multiline
+        ? <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className={cls} style={{ ...style, resize: 'none' }} />
+        : <input type="text" value={value} onChange={(e) => onChange(e.target.value)} className={cls} style={style} />}
     </div>
   );
 }

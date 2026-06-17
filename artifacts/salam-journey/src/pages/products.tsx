@@ -34,6 +34,7 @@ export default function Products() {
           titleAr: string;
           titleEn: string;
           descAr: string | null;
+          descEn: string | null;
           price: string | number | null;
           isFree: boolean | null;
           type: ProductType;
@@ -48,8 +49,8 @@ export default function Products() {
             .map((product) => ({
               id: product.id,
               title: tx(product.titleAr, product.titleEn),
-              desc: tx(product.descAr ?? "", product.descAr ?? ""),
-              price: tx(formatProductPrice(product.price, product.isFree), formatProductPrice(product.price, product.isFree)),
+              desc: tx(product.descAr ?? "", product.descEn ?? product.descAr ?? ""),
+              price: tx(formatProductPrice(product.price, product.isFree, "ar"), formatProductPrice(product.price, product.isFree, "en")),
               free: Boolean(product.isFree),
               Icon: getProductIcon(product.type),
               gradient: getProductGradient(product.type),
@@ -177,10 +178,10 @@ export default function Products() {
   );
 }
 
-function formatProductPrice(price: string | number | null, free: boolean | null) {
-  if (free) return "مجاناً";
+function formatProductPrice(price: string | number | null, free: boolean | null, lang: "ar" | "en") {
+  if (free) return lang === "en" ? "Free" : "مجاناً";
   const value = price ?? 0;
-  return `${value} ريال`;
+  return lang === "en" ? `${value} SAR` : `${value} ريال`;
 }
 
 function getProductGradient(type: ProductType) {
