@@ -34,10 +34,8 @@ export function AiChat() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // 🌟 مراجع طابور الأنيميشن والتحكم بالتدفق السلس (كلمة كلمة)
-  const wordQueueRef = useRef<string[]>([]);
-  const animationIntervalRef = useRef<any>(null);
-  const isStreamingRef = useRef(false);
+  // typing animation
+  const animationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -110,37 +108,52 @@ export function AiChat() {
     });
   }
 
-  // 🌟 محرك أنيميشن الكتابة الموحد (يسحب كلمة أو مسافة كل 35 مللي ثانية)
-  const startAnimationLoop = () => {
-    if (animationIntervalRef.current) return;
+  // Typing animation: reveals the reply word-by-word after receiving it
+  const startTypingAnimation = (fullText: string) => {
+  const chars = Array.from(fullText);
+  let idx = 0;
 
-    animationIntervalRef.current = setInterval(() => {
-      if (wordQueueRef.current.length > 0) {
-        const nextToken = wordQueueRef.current.shift();
-        if (nextToken !== undefined) {
-          setMessages((prev) => {
-            const updated = [...prev];
-            const last = updated[updated.length - 1];
-            if (last && last.role === "assistant") {
-              last.content += nextToken;
-            }
-            return updated;
-          });
+  setMessages((prev) => [
+    ...prev,
+    {
+      role: "assistant",
+      content: "",
+    },
+  ]);
+
+  animationIntervalRef.current = setInterval(() => {
+    if (idx < chars.length) {
+      const char = chars[idx++];
+
+      setMessages((prev) => {
+        const updated = [...prev];
+        const last = updated[updated.length - 1];
+
+        if (last && last.role === "assistant") {
+          return [
+            ...updated.slice(0, -1),
+            {
+              ...last,
+              content: last.content + char,
+            },
+          ];
         }
-      } else if (!isStreamingRef.current) {
-        // الطابور فضي والنتورك خلصت بث كلياً، اقفل المحرك بسلام
-        clearInterval(animationIntervalRef.current);
-        animationIntervalRef.current = null;
-        setLoading(false);
-      }
-    }, 35); 
-  };
+
+        return updated;
+      });
+    } else {
+      clearInterval(animationIntervalRef.current!);
+      animationIntervalRef.current = null;
+      setLoading(false);
+    }
+  }, 8);
+};
 
   async function send(text?: string) {
     const content = (text ?? input).trim();
     if (!content || loading) return;
     setInput("");
-    
+
     if (inputRef.current) {
       inputRef.current.style.height = "auto";
     }
@@ -150,9 +163,11 @@ export function AiChat() {
     setMessages(nextMessages);
     setLoading(true);
 
-    // تجهيز طابور الكلمات الجديد
-    wordQueueRef.current = [];
-    isStreamingRef.current = true;
+    // cancel any running animation
+    if (animationIntervalRef.current) {
+      clearInterval(animationIntervalRef.current);
+      animationIntervalRef.current = null;
+    }
 
     try {
       const res = await fetch("/api/ai/chat", {
@@ -161,51 +176,16 @@ export function AiChat() {
         body: JSON.stringify({ messages: nextMessages }),
       });
 
-      if (!res.ok || !res.body) throw new Error("Network error");
+      if (!res.ok) throw new Error("Network error");
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      const data = await res.json() as { reply?: string; error?: string };
 
-      let clientBuffer = "";
-
-      const parseAndQueue = (line: string) => {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith("data: ")) return;
-
-        const data = trimmed.slice(6).trim();
-        if (!data || data === "[DONE]") return;
-
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.done) return;
-          if (parsed.content) {
-            // 🌟 تفكيك النص القادم لكلمات ومسافات للحفاظ على الهيكل ومطابقتها للتأثير السطري
-            const tokens = parsed.content.split(/(\s+)/);
-            wordQueueRef.current.push(...tokens);
-            startAnimationLoop();
-          }
-        } catch {}
-      };
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        clientBuffer += decoder.decode(value, { stream: true });
-        const lines = clientBuffer.split("\n");
-        clientBuffer = lines.pop() || "";
-
-        for (const line of lines) {
-          parseAndQueue(line);
-        }
+      if (data.error || !data.reply) {
+        throw new Error(data.error ?? "Empty reply");
       }
-
-      // 🌟 حصاد الباقي الأخير في بافر العميل لضمان اكتمال السلسلة كلياً
-      if (clientBuffer.trim()) {
-        parseAndQueue(clientBuffer);
-      }
-
+      console.log("AI Reply Length:", data.reply.length);
+      console.log(data.reply);
+      startTypingAnimation(data.reply);
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -218,13 +198,6 @@ export function AiChat() {
         },
       ]);
       setLoading(false);
-    } finally {
-      // إعلام المحرك أن استقبال النتورك انتهى، وباقي تفريغ الطابور فقط
-      isStreamingRef.current = false;
-      // في حالة عدم وجود نصوص، أغلق اللودر فوراً
-      if (wordQueueRef.current.length === 0) {
-        setLoading(false);
-      }
     }
   }
 

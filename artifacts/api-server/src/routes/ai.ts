@@ -1,8 +1,11 @@
 import { Router } from "express";
 import { db, aiKnowledgeTable } from "@workspace/db";
+import { createEmbedding } from "../lib/embeddings";
+import { sql } from "drizzle-orm"; // تم إضافة sql لعمل استعلام الـ Vector
 
 const router = Router();
 
+// هذه المعلومات الأساسية للمنصة والتي يجب أن تظل ثابتة دائماً ليعرفها البوت
 const DEFAULT_KNOWLEDGE = `
 # رحلة سلام - معلومات المساعد الذكي
 
@@ -34,13 +37,32 @@ const DEFAULT_KNOWLEDGE = `
 التربية الواعية تقوم على: الهدوء، الحدود بالحب, فهم مشاعر الطفل، العناية بالأم أولاً.
 `;
 
-async function getKnowledge(): Promise<string> {
+// دالة الـ RAG الجديدة لجلب النصوص المتعلقة بسؤال المستخدم فقط
+async function getRelevantKnowledge(userQuery: string): Promise<string> {
   try {
-    const rows = await db.select().from(aiKnowledgeTable).orderBy(aiKnowledgeTable.updatedAt);
-    if (rows.length === 0) return DEFAULT_KNOWLEDGE;
+    if (!userQuery) return "";
+
+    // 1. توليد الـ Embedding الخاص بسؤال المستخدم الحالي
+    const queryEmbedding = await createEmbedding(userQuery);
+    const embeddingString = `[${queryEmbedding.join(",")}]`;
+
+    // 2. البحث في الداتابيز عن أقرب 3 نصوص باستخدام Cosine Distance (<=>)
+    const rows = await db
+      .select({
+        title: aiKnowledgeTable.title,
+        content: aiKnowledgeTable.content,
+      })
+      .from(aiKnowledgeTable)
+      .orderBy(sql`${aiKnowledgeTable.embedding} <=> ${embeddingString}`) // حساب التشابه الجيبي
+      .limit(3); // جلب أفضل 3 نتائج متعلقة بالسؤال فقط
+
+    if (rows.length === 0) return "";
+
+    // 3. دمج النتائج المسترجعة وتنسيقها
     return rows.map((r) => `## ${r.title}\n${r.content}`).join("\n\n");
-  } catch {
-    return DEFAULT_KNOWLEDGE;
+  } catch (error) {
+    console.error("RAG Error, returning empty dynamic knowledge:", error);
+    return "";
   }
 }
 
@@ -54,29 +76,66 @@ router.post("/ai/chat", async (req, res) => {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      res.status(500).json({ error: "Gemini API key is missing in .env" });
+      res.status(500).json({ error: "Gemini API key is missing" });
       return;
     }
 
-    const knowledge = await getKnowledge();
+    // استخراج آخر رسالة أرسلتها الأم (المستخدم) للبحث بها في الـ RAG
+    const userMessages = messages.filter((m) => m.role === "user");
+    const lastUserMessage = userMessages[userMessages.length - 1]?.content || "";
+
+    // جلب المعرفة الديناميكية المرتبطة بالسؤال فقط
+    const dynamicKnowledge = await getRelevantKnowledge(lastUserMessage);
+
+    // دمج معلومات المنصة الثابتة مع المقالات/المعلومات المسترجعة من الـ RAG
+    const fullKnowledge = `${DEFAULT_KNOWLEDGE}\n\n${dynamicKnowledge}`;
+
+    console.log("Knowledge Length:", fullKnowledge.length);
 
     const systemPrompt = `أنتِ مساعدة ذكية لمنصة "رحلة سلام" للتربية الواعية.
+
 مهمتكِ مساعدة الأمهات في فهم مشاكلهن التربوية وتوجيههن إلى الحل المناسب (جلسة فردية، دورة، أو منتج رقمي).
 
 قواعد مهمة ومقدسة:
-1. أجيبي فقط بناءً على المعلومات المقدمة أدناه - لا تخترعي معلومات غير موجودة.
-2. إذا لم تجدي إجابة في المعلومات المتاحة، قولي بوضوح أنك ستوجهين السؤال للكوتش.
-3. تحدثي بأسلوب دافئ وحنون يليق بأم تحتاج للدعم والاحتواء.
-4. 🌟 وجهي الأمهات دائماً لاتخاذ خطوة عملية، وعند اقتراح صفحة، استخدمي روابط الـ Markdown التالية [اسم الزر أو الرابط](المسار) حرفياً ليتم تفعيلها كأزرار تفاعلية:
-   - لحجز الجلسات والاستشارات الفردية استخدمي المسار: [حجز جلسة استشارية](/sessions)
-   - لتصفح ورش العمل والدورات التربوية استخدمي المسار: [تصفح الدورات والورش](/courses)
-   - لتنزيل الأدلة الرقمية والمنتجات المجانية استخدمي المسار: [تصفح المنتجات الرقمية](/products)
-5. إذا كانت المعلومات المتاحة في قاعدة البيانات تحتوي على روابط خارجية (مثل روابط كتب أو ملفات PDF)، اذكرريها بصيغة الـ Markdown الافتراضية [اسم الرابط](الرابط) كما هي دون تعديل.
-6. أجيبي باللغة التي تتحدث بها المستخدمة (عربي أو إنجليزي).
-7. اجعلي إجاباتكِ مختصرة وعملية جداً (3-5 جمل كحد أقصى).
+
+1. أجيبي فقط بناءً على المعلومات الموجودة في "المعلومات المتاحة" أدناه.
+2. لا تخترعي أي معلومة غير موجودة في قاعدة المعرفة.
+3. إذا لم تجدي إجابة واضحة في المعلومات المتاحة فقولي:
+   "لا أملك معلومات كافية حالياً وسأقوم بتوجيه سؤالكِ للكوتش المختص."
+
+4. تحدثي دائماً بأسلوب دافئ وحنون ومطمئن.
+
+5. اجعلي الإجابات مختصرة وعملية قدر الإمكان (3-7 جمل غالباً).
+
+6. إذا كانت المعلومات المتاحة تحتوي على:
+   - روابط مواقع
+   - روابط فيديوهات
+   - روابط كتب
+   - ملفات PDF
+   - ملفات قابلة للتحميل
+   - أي رابط خارجي
+
+   فيجب إظهار الرابط داخل الإجابة وعدم تجاهله.
+
+7. عند ذكر أي رابط استخدمي صيغة Markdown التالية فقط:
+   [اسم الرابط](الرابط)
+
+8. لا تحذفي أي رابط موجود في المعلومات المتاحة إذا كان مرتبطاً بالإجابة.
+
+9. إذا كان السؤال متعلقاً بمقال أو منشور أو فيديو موجود في قاعدة المعرفة، قومي بتلخيص المعلومة ثم أضيفي الرابط الأصلي في نهاية الإجابة.
+
+10. عند اقتراح خدمات المنصة استخدمي الروابط التالية حرفياً:
+
+   - [حجز جلسة استشارية](/sessions)
+   - [تصفح الدورات والورش](/courses)
+   - [تصفح المنتجات الرقمية](/products)
+
+11. إذا كانت المستخدمة تتحدث العربية فأجيبي بالعربية.
+12. إذا كانت المستخدمة تتحدث الإنجليزية فأجيبي بالإنجليزية.
 
 المعلومات المتاحة:
-${knowledge}`;
+
+${fullKnowledge}`;
 
     const geminiContents = messages
       .filter((m) => m.role !== "system")
@@ -85,17 +144,8 @@ ${knowledge}`;
         parts: [{ text: m.content }],
       }));
 
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("X-Accel-Buffering", "no");
-    if (typeof (res as any).flushHeaders === "function") {
-      (res as any).flushHeaders();
-    }
-
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:streamGenerateContent?alt=sse",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
       {
         method: "POST",
         headers: {
@@ -108,65 +158,41 @@ ${knowledge}`;
             parts: [{ text: systemPrompt }],
           },
           generationConfig: {
-            maxOutputTokens: 1000,
+            maxOutputTokens: 4096,
             temperature: 0.7,
           },
         }),
       }
     );
 
-    if (!response.ok || !response.body) {
-      const errText = !response.ok ? await response.text() : "Response body is null";
-      res.write(`data: ${JSON.stringify({ error: `Gemini Error: ${errText}` })}\n\n`);
-      res.end();
+    if (!response.ok) {
+      const errText = await response.text();
+      console.log("============== GEMINI ERROR ==============");
+      console.log(errText);
+      console.log("=========================================");
+      res.status(502).json({ error: `Gemini error: ${errText}` });
       return;
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let backendBuffer = "";
+    const data = (await response.json()) as any;
 
-    // دالة داخلية لمعالجة وتمرير السطور بانتظام
-    const processLine = (line: string) => {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("data: ")) return;
+    const reply =
+      data?.candidates?.[0]?.content?.parts
+        ?.map((p: any) => p.text || "")
+        .join("")
+        .trim() ?? "";
 
-      const jsonStart = trimmed.indexOf("{");
-      if (jsonStart === -1) return;
-      const cleanJsonStr = trimmed.substring(jsonStart);
+    console.log("Reply Length:", reply.length);
 
-      try {
-        const parsed = JSON.parse(cleanJsonStr);
-        const textToken = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (textToken) {
-          res.write(`data: ${JSON.stringify({ content: textToken })}\n\n`);
-        }
-      } catch {}
-    };
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      backendBuffer += decoder.decode(value, { stream: true });
-      const lines = backendBuffer.split("\n");
-      backendBuffer = lines.pop() || ""; // عزل السطر غير المكتمل مؤقتاً
-
-      for (const line of lines) {
-        processLine(line);
-      }
+    if (!reply) {
+      console.error("Gemini Response:", JSON.stringify(data, null, 2));
+      res.status(502).json({ error: "Empty response from Gemini" });
+      return;
     }
 
-    // 🌟 خطوة الإنقاذ الحاسمة: معالجة بواقي البافر الأخيرة لو متبقي فيها داتا بعد انتهاء اللوب
-    if (backendBuffer.trim()) {
-      processLine(backendBuffer);
-    }
-
-    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-    res.end();
+    res.json({ reply });
   } catch (err: any) {
-    res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
-    res.end();
+    res.status(500).json({ error: err.message ?? "AI chat failed" });
   }
 });
 
@@ -183,14 +209,28 @@ router.get("/ai/knowledge", async (_req, res) => {
 router.post("/ai/knowledge", async (req, res) => {
   try {
     const { title, content } = req.body as { title: string; content: string };
+
     if (!title || !content) {
-      res.status(400).json({ error: "title and content required" });
-      return;
+      return res.status(400).json({ error: "title and content required" });
     }
-    const [row] = await db.insert(aiKnowledgeTable).values({ title, content }).returning();
-    res.json(row);
-  } catch {
-    res.status(500).json({ error: "Failed to create knowledge entry" });
+
+    const embedding = await createEmbedding(`${title}\n\n${content}`);
+
+    const [row] = await db
+      .insert(aiKnowledgeTable)
+      .values({
+        title,
+        content,
+        embedding: `[${embedding.join(",")}]`,
+      } as any)
+      .returning();
+
+    return res.json(row);
+  } catch (err: any) {
+    console.error("========== CREATE KNOWLEDGE ERROR ==========");
+    console.error(err);
+    console.error("============================================");
+    return res.status(500).json({ error: err?.message || String(err) });
   }
 });
 
