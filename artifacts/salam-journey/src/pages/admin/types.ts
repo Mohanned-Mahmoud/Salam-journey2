@@ -16,6 +16,7 @@ export type FunnelBlockType =
   | 'image'
   | 'video'
   | 'cta'
+  | 'registration_form'
   | 'qualifier'
   | 'bio'
   | 'speakers'
@@ -152,7 +153,7 @@ export const DEFAULT_SETTINGS: AdminSettings = {
   whatsappNumber: '+447700000000',
   instagramUrl: 'https://instagram.com/salamjourney',
   youtubeUrl: 'https://youtube.com/@salamjourney',
-  availableTimes: ['10:00', '12:00', '14:00', '16:00', '18:00'],
+  availableTimes: ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'],
   offDays: ['الجمعة', 'السبت'],
   advanceDays: 30,
   confirmationMessage: 'شكراً لحجزك! سيتم التواصل معك عبر الواتساب خلال 24 ساعة.',

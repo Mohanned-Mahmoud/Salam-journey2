@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Check, CalendarDays, Clock, CheckCircle } from "lucide-react";
 import { useLanguage, tx, type Bilingual } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
+import { apiJson } from "@/lib/api";
 
 /* ──────────────────────────────────────────────────────────── */
 /* Types & data                                                 */
@@ -38,10 +39,7 @@ const SESSION_TYPES: SessionType[] = [
   },
 ];
 
-const TIME_SLOTS_AR = ["10:00 ص", "12:00 م", "2:00 م", "4:00 م", "6:00 م"];
-const TIME_SLOTS_EN = ["10:00 AM", "12:00 PM", "2:00 PM", "4:00 PM", "6:00 PM"];
-/** Canonical slot key used for storage/uniqueness. */
-const TIME_SLOT_KEYS = ["10:00", "12:00", "14:00", "16:00", "18:00"];
+const DEFAULT_TIME_SLOT_KEYS = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
 
 /* ──────────────────────────────────────────────────────────── */
 /* Utilities                                                    */
@@ -113,15 +111,15 @@ function startOfDay(d: Date) {
   return x;
 }
 
-function buildSeedBooked(today: Date): BookedMap {
+function buildSeedBooked(today: Date, slotKeys: string[]): BookedMap {
   const seed: BookedMap = {};
   const dayOffsets = [2, 5, 9, 14, 20];
   const slotPicks = [
-    ["10:00", "14:00"],
-    ["12:00"],
-    ["10:00", "12:00", "16:00"],
-    ["18:00"],
-    ["14:00", "16:00"],
+    [slotKeys[0], slotKeys[4] ?? slotKeys[0]].filter(Boolean),
+    [slotKeys[2] ?? slotKeys[0]].filter(Boolean),
+    [slotKeys[0], slotKeys[2] ?? slotKeys[0], slotKeys[6] ?? slotKeys[0]].filter(Boolean),
+    [slotKeys[slotKeys.length - 1] ?? slotKeys[0]].filter(Boolean),
+    [slotKeys[4] ?? slotKeys[0], slotKeys[6] ?? slotKeys[0]].filter(Boolean),
   ];
   dayOffsets.forEach((offset, idx) => {
     const d = new Date(today);
@@ -175,6 +173,7 @@ export function BookingCalendar({ onConfirmed }: Props) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [bookedMap, setBookedMap] = useState<BookedMap>({});
+  const [timeSlotKeys, setTimeSlotKeys] = useState<string[]>(DEFAULT_TIME_SLOT_KEYS);
 
   // جلب تكلفة الجلسات ديناميكياً من لوحة تحكم الآدمن
   const sessionPrices = (user as any)?.adminConfig?.prices || {
@@ -209,19 +208,57 @@ export function BookingCalendar({ onConfirmed }: Props) {
 
   /* Hydrate booked map from localStorage + seed on mount. */
   useEffect(() => {
+    let cancelled = false;
+
+    async function loadSlotConfig() {
+      try {
+        const res = await apiJson<{ key: string; value: string }>("/site-settings/available_times");
+        const parsed = (() => {
+          try {
+            const value = JSON.parse(res.value);
+            return Array.isArray(value) ? value.map(String).filter(Boolean) : DEFAULT_TIME_SLOT_KEYS;
+          } catch {
+            return res.value.split(",").map((item) => item.trim()).filter(Boolean);
+          }
+        })();
+        if (!cancelled && parsed.length > 0) {
+          setTimeSlotKeys(parsed);
+        }
+      } catch {
+        if (!cancelled) setTimeSlotKeys(DEFAULT_TIME_SLOT_KEYS);
+      }
+    }
+
+    void loadSlotConfig();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     const stored = loadBooked();
-    const seed = buildSeedBooked(today);
+    const seed = buildSeedBooked(today, timeSlotKeys);
     const merged: BookedMap = { ...seed };
     for (const [k, v] of Object.entries(stored)) {
       const set = new Set([...(merged[k] ?? []), ...v]);
       merged[k] = Array.from(set);
     }
     setBookedMap(merged);
-  }, [today]);
+  }, [today, timeSlotKeys]);
 
   const monthNames = lang === "ar" ? MONTH_NAMES_AR : MONTH_NAMES_EN;
   const dayShort   = lang === "ar" ? DAY_SHORT_AR  : DAY_SHORT_EN;
-  const slotLabels = lang === "ar" ? TIME_SLOTS_AR : TIME_SLOTS_EN;
+  const slotLabels = timeSlotKeys.map((slot) => {
+    const [hourText, minuteText = "0"] = slot.split(":");
+    const hour = Number(hourText);
+    const minute = Number(minuteText);
+    const sample = new Date();
+    sample.setHours(hour, minute, 0, 0);
+    return new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", {
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(sample);
+  });
 
   const firstOfMonth = new Date(viewYear, viewMonth, 1);
   const daysInMonth  = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -260,7 +297,7 @@ export function BookingCalendar({ onConfirmed }: Props) {
       selectedDate.getMonth(),
       selectedDate.getDate(),
     );
-    const slotIdx = TIME_SLOT_KEYS.indexOf(selectedSlot);
+    const slotIdx = timeSlotKeys.indexOf(selectedSlot);
     const slotLabel = slotLabels[slotIdx] ?? selectedSlot;
     
     const sessionTypeBilingual = tx(form.sessionType.ar, form.sessionType.en);
@@ -438,7 +475,7 @@ export function BookingCalendar({ onConfirmed }: Props) {
               const key = fmtKey(viewYear, viewMonth, day);
               const isPast = dayDate < today;
               const dayBookedSlots = bookedMap[key] ?? [];
-              const fullyBooked = dayBookedSlots.length >= TIME_SLOT_KEYS.length;
+              const fullyBooked = dayBookedSlots.length >= timeSlotKeys.length;
               const disabled = isPast || fullyBooked;
               const isSelected = selectedDate ? isSameDay(selectedDate, dayDate) : false;
               const isToday = isSameDay(dayDate, today);
@@ -502,7 +539,7 @@ export function BookingCalendar({ onConfirmed }: Props) {
               {formattedSelectedDate}
             </h4>
             <div className="flex flex-wrap gap-3">
-              {TIME_SLOT_KEYS.map((key, idx) => {
+              {timeSlotKeys.map((key, idx) => {
                 const isBooked = bookedSlotsForSelected.includes(key);
                 const isSelected = selectedSlot === key;
                 return (

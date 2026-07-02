@@ -1,10 +1,11 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { eq } from "drizzle-orm";
-import { db, funnelPageTable, usersTable } from "@workspace/db";
+import { db, funnelPageTable, funnelRegistrationsTable, usersTable } from "@workspace/db";
 import jwt from "jsonwebtoken";
 
 const router = Router();
 
+// ممر الحماية للأدمن
 async function isAdminAuthenticated(req: Request, res: Response, next: NextFunction) {
   try {
     const auth = req.headers.authorization ?? "";
@@ -50,73 +51,6 @@ const DEFAULT_BLOCKS = [
     },
   },
   {
-    id: "b2",
-    type: "countdown",
-    data: {
-      title: "ينتهي العرض خلال",
-      targetDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
-      subtitle: "لا تفوّتي الفرصة",
-    },
-  },
-  {
-    id: "b3",
-    type: "stats",
-    data: {
-      items: [
-        { number: "+2000", label: "أم استفادت" },
-        { number: "98%", label: "معدل الرضا" },
-        { number: "+50", label: "جلسة تعليمية" },
-      ],
-    },
-  },
-  {
-    id: "b4",
-    type: "qualifier",
-    data: {
-      title: "هذا البرنامج مناسب لكِ إذا...",
-      items: [
-        "تشعرين بالإرهاق في التعامل مع أطفالك",
-        "تريدين التوقف عن الصراخ والغضب",
-        "تبحثين عن أدوات عملية للتربية الواعية",
-        "تحتاجين إلى دعم من أم تفهمك وتشاركك تجربتها",
-      ],
-    },
-  },
-  {
-    id: "b5",
-    type: "bio",
-    data: {
-      name: "الكوتش إيمان",
-      title: "مختصة في التربية الواعية",
-      bio: "كوتش معتمدة في التربية الواعية مع خبرة أكثر من ٧ سنوات في مساعدة الأمهات على بناء علاقات أكثر هدوءاً وانسجاماً مع أطفالهن. ساعدت أكثر من ٢٠٠٠ أم في تحويل طريقة تعاملهن مع أطفالهن.",
-      imageUrl: "",
-    },
-  },
-  {
-    id: "b6",
-    type: "testimonials",
-    data: {
-      title: "ماذا قالت الأمهات؟",
-      items: [
-        { name: "سارة العتيبي", role: "أم لطفلين", quote: "غيّرت طريقة تعاملي مع طفلي تماماً. المحتوى عملي ومن قلب أم تفهمنا." },
-        { name: "نورة الشهري", role: "أم جديدة", quote: "الجلسات كانت نقطة تحوّل. شعرت لأول مرة أن صوتي مسموع." },
-        { name: "مها القحطاني", role: "أم لثلاثة", quote: "محتوى راقٍ يجمع بين الجانب التربوي والروحي. أنصح به كل أم." },
-      ],
-    },
-  },
-  {
-    id: "b7",
-    type: "faq",
-    data: {
-      title: "أسئلة شائعة",
-      items: [
-        { question: "متى يبدأ البرنامج؟", answer: "يبدأ البرنامج فور تسجيلك ويمكنك الوصول إليه في أي وقت." },
-        { question: "هل البرنامج مسجّل أم مباشر؟", answer: "البرنامج يشمل محاضرات مسجّلة وجلسات مباشرة أسبوعية." },
-        { question: "كيف أتواصل مع الكوتش؟", answer: "عبر مجموعة الدعم الخاصة بالبرنامج والجلسات المباشرة الأسبوعية." },
-      ],
-    },
-  },
-  {
     id: "b8",
     type: "cta",
     data: {
@@ -129,49 +63,93 @@ const DEFAULT_BLOCKS = [
   },
 ];
 
-async function getOrCreateFunnelPage() {
-  const rows = await db.select().from(funnelPageTable).limit(1);
-  if (rows.length > 0) return rows[0];
-  const [created] = await db
-    .insert(funnelPageTable)
-    .values({ blocks: DEFAULT_BLOCKS })
-    .returning();
-  return created;
-}
-
-router.get("/funnel-page", async (_req, res) => {
+// جلب كل الصفحات (مفيد للأدمن لعرض القائمة)
+router.get("/admin/funnel-pages", isAdminAuthenticated, async (_req, res) => {
   try {
-    const page = await getOrCreateFunnelPage();
+    const pages = await db.select().from(funnelPageTable);
+    res.json(pages);
+  } catch {
+    res.status(500).json({ error: "Failed to fetch funnel pages" });
+  }
+});
+
+// جلب صفحة معينة بناءً على الـ slug (للعرض في الموقع)
+router.get("/funnel-page/:slug", async (req, res) => {
+  try {
+    const slug = req.params.slug || "main";
+    let [page] = await db.select().from(funnelPageTable).where(eq(funnelPageTable.slug, slug)).limit(1);
+    
+    // لو الصفحة الرئيسية مش موجودة ننشئها افتراضياً
+    if (!page && slug === "main") {
+      [page] = await db.insert(funnelPageTable).values({ title: "الصفحة الرئيسية", slug: "main", blocks: DEFAULT_BLOCKS }).returning();
+    }
+
+    if (!page) {
+      res.status(404).json({ error: "Page not found" });
+      return;
+    }
     res.json(page);
   } catch {
     res.status(503).json({ error: "Failed to fetch funnel page" });
   }
 });
 
+// حفظ أو إنشاء صفحة تسويقية (للأدمن)
 router.put("/admin/funnel-page", isAdminAuthenticated, async (req, res) => {
   try {
-    const { blocks } = req.body as { blocks: unknown[] };
+    const { id, title, slug, blocks } = req.body as { id?: string; title: string; slug: string; blocks: unknown[] };
     if (!Array.isArray(blocks)) {
       res.status(400).json({ error: "blocks must be an array" });
       return;
     }
-    const existing = await db.select().from(funnelPageTable).limit(1);
-    if (existing.length === 0) {
-      const [created] = await db
-        .insert(funnelPageTable)
-        .values({ blocks, updatedAt: new Date() })
-        .returning();
-      res.json(created);
-    } else {
+
+    if (id) {
+      // تعديل صفحة موجودة
       const [updated] = await db
         .update(funnelPageTable)
-        .set({ blocks, updatedAt: new Date() })
-        .where(eq(funnelPageTable.id, existing[0].id))
+        .set({ title, slug, blocks, updatedAt: new Date() })
+        .where(eq(funnelPageTable.id, id))
         .returning();
       res.json(updated);
+    } else {
+      // إنشاء صفحة جديدة تماماً
+      const [created] = await db
+        .insert(funnelPageTable)
+        .values({ title, slug, blocks, updatedAt: new Date() })
+        .returning();
+      res.json(created);
     }
   } catch {
     res.status(503).json({ error: "Failed to save funnel page" });
+  }
+});
+
+// حذف صفحة تسويقية (للأدمن)
+router.delete("/admin/funnel-page/:id", isAdminAuthenticated, async (req, res) => {
+  try {
+    const pageId = req.params.id as string; // تحويل صريح لمنع خطأ الـ TypeScript
+    await db.delete(funnelPageTable).where(eq(funnelPageTable.id, pageId));
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: "Failed to delete page" });
+  }
+});
+
+// Endpoint جديد لتسجيل بيانات العملاء من الفورم التسويقي
+router.post("/funnel/register", async (req, res) => {
+  try {
+    const { pageId, name, email, phone } = req.body;
+    if (!pageId || !name || !email) {
+      res.status(400).json({ error: "Missing required fields" });
+      return;
+    }
+    const [registration] = await db
+      .insert(funnelRegistrationsTable)
+      .values({ pageId, name, email, phone })
+      .returning();
+    res.json({ success: true, registration });
+  } catch {
+    res.status(500).json({ error: "Failed to register data" });
   }
 });
 

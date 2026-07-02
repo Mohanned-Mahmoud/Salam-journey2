@@ -55,6 +55,16 @@ function Router() {
     );
   }
 
+  if (displayMode === null) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[var(--cream)]">
+        <p className="text-lg font-medium animate-pulse" style={{ color: "var(--text-dark)" }}>
+          جاري تحميل الصفحة...
+        </p>
+      </div>
+    );
+  }
+
   if (isAdminRoute) {
     return (
       <Switch>
@@ -69,31 +79,11 @@ function Router() {
   if (displayMode === "funnel_page") {
     return (
       <Switch>
+        <Route path="/funnel/:slug" component={FunnelPage} />
         <Route path="/" component={FunnelPage} />
         <Route path="/admin/login" component={AdminLoginPage} />
         <Route component={FunnelPage} />
       </Switch>
-    );
-  }
-
-  if (displayMode === null) {
-    return (
-      <div className="flex flex-col min-h-screen">
-        <Navbar />
-        <main className="flex-1">
-          <Switch>
-            <Route path="/" component={Home} />
-            <Route path="/courses" component={Courses} />
-            <Route path="/sessions" component={Sessions} />
-            <Route path="/products" component={Products} />
-            <Route path="/about" component={About} />
-            <Route path="/account" component={Account} />
-            <Route component={NotFound} />
-          </Switch>
-        </main>
-        <Footer />
-        <WhatsAppButton />
-      </div>
     );
   }
 

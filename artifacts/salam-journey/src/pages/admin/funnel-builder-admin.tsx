@@ -26,10 +26,11 @@ const BLOCK_LIBRARY: { type: FunnelBlockType; label: string; desc: string; Icon:
   { type: 'bonus',        label: 'بونص / هدايا',         desc: 'قائمة المكافآت والهدايا',           Icon: Star },
   { type: 'faq',          label: 'أسئلة شائعة',          desc: 'أكورديون بالأسئلة والأجوبة',        Icon: HelpCircle },
   { type: 'guarantee',    label: 'ضمان الجودة',          desc: 'شارة الضمان والثقة',                Icon: Award },
+  { type: 'registration_form' as any, label: 'استمارة تسجيل بيانات', desc: 'صندوق لاستقبال بيانات المشتركين وتخزينها', Icon: Plus },
 ];
 
 const BLOCK_DEFAULTS: Record<FunnelBlockType, Record<string, any>> = {
-  hero:         { headline: 'عنوانك الرئيسي هنا', subheadline: 'وصف مختصر ومقنع للبرنامج', ctaText: 'سجّلي الآن', ctaLink: '#', bgColor: '#7FA99B' },
+  hero:         { headline: 'عنوانك الرئيسي هنا', subheadline: 'وصف مختصر ومقنع للبرنامج', ctaText: 'سجّلي الآن', ctaTargetId: '', bgColor: '#7FA99B' },
   headline:     { headline: 'عنوان جذاب', subheadline: 'فقرة توضيحية تشرح الفكرة أو المرحلة', textAlign: 'center' },
   countdown:    { title: 'ينتهي العرض خلال', targetDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 16), subtitle: 'لا تفوّتي الفرصة' },
   stats:        { items: [{ number: '+2000', label: 'مشتركة' }, { number: '98%', label: 'معدل الرضا' }, { number: '+50', label: 'جلسة' }] },
@@ -38,9 +39,10 @@ const BLOCK_DEFAULTS: Record<FunnelBlockType, Record<string, any>> = {
   speakers:     { title: 'ضيوفنا من الخبراء', items: [{ name: 'اسم الضيف', title: 'اختصاصه', imageUrl: '' }] },
   curriculum:   { title: 'ماذا ستتعلمين؟', items: [{ day: 'اليوم ١', title: 'عنوان الجلسة', desc: 'ما ستتعلمينه' }] },
   testimonials: { title: 'ماذا قالت الأمهات؟', items: [{ name: 'الاسم', role: 'أم', quote: 'رأي إيجابي عن البرنامج.' }] },
-  image:        { imageUrl: '', alt: 'صورة', caption: '' },
+  image:        { imageUrl: '', text: '', imagePosition: 'right', alt: 'صورة', caption: '' },
+  registration_form: { title: 'سجلي بياناتك الآن للانضمام', buttonText: 'أرسل البيانات', redirectTargetId: '', giftUrl: '', giftName: '' },
   video:        { videoUrl: '', title: 'عنوان الفيديو', caption: '' },
-  cta:          { headline: 'جاهزة للانضمام؟', subheadline: 'انضمي إلى آلاف الأمهات', buttonText: 'احجزي مقعدك الآن', buttonLink: '#', bgColor: '#7FA99B' },
+  cta:          { headline: 'جاهزة للانضمام؟', subheadline: 'انضمي إلى آلاف الأمهات', buttonText: 'احجزي مقعدك الآن', buttonTargetId: '', bgColor: '#7FA99B' },
   bonus:        { title: 'ما ستحصلين عليه', items: [{ title: 'الهدية الأولى', desc: 'وصفها' }] },
   faq:          { title: 'أسئلة شائعة', items: [{ question: 'السؤال الأول؟', answer: 'الإجابة هنا.' }] },
   guarantee:    { title: 'ضمان استرداد كامل', text: 'إذا لم تكوني راضية خلال ٣٠ يوماً نسترد لكِ المبلغ كاملاً دون أي أسئلة.', icon: '🛡️' },
@@ -169,7 +171,7 @@ function ObjectListField({
   );
 }
 
-function BlockEditor({ block, onChange }: { block: FunnelBlock; onChange: (data: Record<string, any>) => void }) {
+function BlockEditor({ block, onChange, pageOptions }: { block: FunnelBlock; onChange: (data: Record<string, any>) => void; pageOptions: { label: string; value: string }[] }) {
   const d = block.data;
   function set(key: string, val: any) { onChange({ ...d, [key]: val }); }
 
@@ -183,7 +185,7 @@ function BlockEditor({ block, onChange }: { block: FunnelBlock; onChange: (data:
           <StringField label="العنوان الرئيسي" value={d.headline ?? ''} onChange={(v) => set('headline', v)} multiline />
           <StringField label="العنوان الفرعي" value={d.subheadline ?? ''} onChange={(v) => set('subheadline', v)} multiline />
           <StringField label="نص الزر" value={d.ctaText ?? ''} onChange={(v) => set('ctaText', v)} />
-          <StringField label="رابط الزر" value={d.ctaLink ?? ''} onChange={(v) => set('ctaLink', v)} />
+          <SelectField label="اربط الزر بصفحة تسويقية" value={d.ctaTargetId ?? d.ctaLink ?? ''} onChange={(v) => set('ctaTargetId', v)} options={pageOptions} />
           <ColorField label="لون الخلفية" value={d.bgColor ?? '#7FA99B'} onChange={(v) => set('bgColor', v)} />
         </div>
       );
@@ -271,6 +273,10 @@ function BlockEditor({ block, onChange }: { block: FunnelBlock; onChange: (data:
       return (
         <div className="space-y-3">
           <StringField label="رابط الصورة" value={d.imageUrl ?? ''} onChange={(v) => set('imageUrl', v)} />
+          <StringField label="النص الجانبي (اختياري - اتركه فارغاً لعرض الصورة كاملة)" value={d.text ?? ''} onChange={(v) => set('text', v)} multiline />
+          {d.text && (
+            <SelectField label="موقع الكلام بالنسبة للصورة" value={d.imagePosition ?? 'right'} onChange={(v) => set('imagePosition', v)} options={[{ label: 'الكلام يمين الصورة', value: 'right' }, { label: 'الكلام يسار الصورة', value: 'left' }]} />
+          )}
           <StringField label="النص البديل" value={d.alt ?? ''} onChange={(v) => set('alt', v)} />
           <StringField label="التعليق (اختياري)" value={d.caption ?? ''} onChange={(v) => set('caption', v)} />
         </div>
@@ -289,8 +295,18 @@ function BlockEditor({ block, onChange }: { block: FunnelBlock; onChange: (data:
           <StringField label="العنوان" value={d.headline ?? ''} onChange={(v) => set('headline', v)} />
           <StringField label="النص الفرعي" value={d.subheadline ?? ''} onChange={(v) => set('subheadline', v)} />
           <StringField label="نص الزر" value={d.buttonText ?? ''} onChange={(v) => set('buttonText', v)} />
-          <StringField label="رابط الزر" value={d.buttonLink ?? ''} onChange={(v) => set('buttonLink', v)} />
+          <SelectField label="ربط الزر بصفحة تسويقية" value={d.buttonTargetId ?? d.buttonLink ?? ''} onChange={(v) => set('buttonTargetId', v)} options={pageOptions} />
           <ColorField label="لون الخلفية" value={d.bgColor ?? '#7FA99B'} onChange={(v) => set('bgColor', v)} />
+        </div>
+      );
+    case 'registration_form' as any:
+      return (
+        <div className="space-y-3">
+          <StringField label="عنوان نموذج التسجيل" value={d.title ?? ''} onChange={(v) => set('title', v)} />
+          <StringField label="نص زر الإرسال" value={d.buttonText ?? ''} onChange={(v) => set('buttonText', v)} />
+          <SelectField label="التوجيه بعد التسجيل" value={d.redirectTargetId ?? ''} onChange={(v) => set('redirectTargetId', v)} options={pageOptions} />
+          <StringField label="رابط هدية التحميل (PDF / كتاب)" value={d.giftUrl ?? ''} onChange={(v) => set('giftUrl', v)} />
+          <StringField label="اسم الهدية الظاهر للمستخدم" value={d.giftName ?? ''} onChange={(v) => set('giftName', v)} />
         </div>
       );
     case 'bonus':
@@ -454,6 +470,17 @@ function BlockPreview({ block }: { block: FunnelBlock }) {
           <span className="inline-block px-5 py-2 rounded-full font-semibold text-sm" style={{ background: 'white', color: d.bgColor || '#7FA99B' }}>{d.buttonText}</span>
         </div>
       );
+    case 'registration_form' as any:
+      return (
+        <div className="p-4 max-w-sm mx-auto bg-gray-50 rounded-2xl border text-center">
+          <p className="font-bold text-sm mb-3 text-gray-700">{d.title || 'نموذج تسجيل البيانات'}</p>
+          <div className="space-y-2">
+            <input disabled placeholder="الاسم" className="w-full px-3 py-1 text-xs border rounded-lg bg-white" />
+            <input disabled placeholder="البريد الإلكتروني" className="w-full px-3 py-1 text-xs border rounded-lg bg-white" />
+          </div>
+          <span className="inline-block mt-3 px-4 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-bold">{d.buttonText || 'إرسال'}</span>
+        </div>
+      );
     case 'faq':
       return (
         <div className="py-4 px-6">
@@ -487,10 +514,26 @@ function BlockPreview({ block }: { block: FunnelBlock }) {
     case 'image':
       return (
         <div className="py-4 px-6 text-center">
-          {d.imageUrl
-            ? <img src={d.imageUrl} alt={d.alt} className="w-full max-h-32 object-cover rounded-xl" />
-            : <div className="w-full h-20 rounded-xl flex items-center justify-center" style={{ background: 'var(--cream)', border: '1px dashed rgba(127,169,155,0.4)' }}><Image size={24} style={{ color: 'var(--sage)' }} /></div>
-          }
+          {d.text ? (
+            <div className={`flex flex-col md:flex-row gap-4 items-center ${d.imagePosition === 'left' ? 'md:flex-row-reverse' : ''}`}>
+              <div className="w-full md:w-1/2">
+                {d.imageUrl
+                  ? <img src={d.imageUrl} alt={d.alt || ''} className="w-full max-h-32 object-cover rounded-xl" />
+                  : <div className="w-full h-20 rounded-xl flex items-center justify-center" style={{ background: 'var(--cream)', border: '1px dashed rgba(127,169,155,0.4)' }}><Image size={24} style={{ color: 'var(--sage)' }} /></div>
+                }
+              </div>
+              <div className="w-full md:w-1/2 text-right">
+                <p className="text-xs" style={{ color: 'var(--text-body)' }}>{d.text}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center w-full">
+              {d.imageUrl
+                ? <img src={d.imageUrl} alt={d.alt || ''} className="w-full max-h-32 object-cover rounded-xl mx-auto" />
+                : <div className="w-full h-20 rounded-xl flex items-center justify-center" style={{ background: 'var(--cream)', border: '1px dashed rgba(127,169,155,0.4)' }}><Image size={24} style={{ color: 'var(--sage)' }} /></div>
+              }
+            </div>
+          )}
           {d.caption && <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>{d.caption}</p>}
         </div>
       );
@@ -549,33 +592,43 @@ export function AdminFunnelBuilder() {
   const [displayMode, setDisplayMode] = useState<'full_website' | 'funnel_page'>('full_website');
   const [togglingMode, setTogglingMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pages, setPages] = useState<any[]>([]);
+  const [activePage, setActivePage] = useState<any>(null);
+  const [newPageTitle, setNewPageTitle] = useState('');
+  const [newPageSlug, setNewPageSlug] = useState('');
 
   const dragSrc = useRef<number | null>(null);
 
   useEffect(() => {
     Promise.all([
-      apiJson<{ blocks: FunnelBlock[] }>('/funnel-page'),
+      apiJson<any[]>('/admin/funnel-pages'),
       apiJson<{ value: string }>('/site-settings/display_mode'),
-    ]).then(([page, setting]) => {
-      setBlocks(Array.isArray(page.blocks) ? page.blocks : []);
+    ]).then(([pagesData, setting]) => {
+      setPages(pagesData);
       setDisplayMode((setting.value === 'funnel_page' ? 'funnel_page' : 'full_website') as any);
+      if (pagesData.length > 0) {
+        setActivePage(pagesData[0]);
+        setBlocks(Array.isArray(pagesData[0].blocks) ? pagesData[0].blocks : []);
+      }
     }).catch(() => {
       setError('تعذّر تحميل بيانات الصفحة. تحقق من الاتصال.');
     }).finally(() => setLoading(false));
   }, []);
 
   const save = useCallback(async () => {
+    if (!activePage) return;
     setSaving(true);
     try {
-      await apiJson('/admin/funnel-page', { method: 'PUT', body: JSON.stringify({ blocks }) });
+      await apiJson('/admin/funnel-page', { method: 'PUT', body: JSON.stringify({ id: activePage.id, title: activePage.title, slug: activePage.slug, blocks }) });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+      setPages((prev) => prev.map((p) => p.id === activePage.id ? { ...p, blocks } : p));
     } catch {
       setError('فشل الحفظ. حاولي مجدداً.');
     } finally {
       setSaving(false);
     }
-  }, [blocks]);
+  }, [blocks, activePage]);
 
   const toggleDisplayMode = useCallback(async () => {
     const next = displayMode === 'full_website' ? 'funnel_page' : 'full_website';
@@ -599,6 +652,32 @@ export function AdminFunnelBuilder() {
   function updateBlock(id: string, data: Record<string, any>) {
     setBlocks((prev) => prev.map((b) => b.id === id ? { ...b, data } : b));
   }
+
+  function handlePageChange(page: any) {
+    if (!page) return;
+    setActivePage(page);
+    setBlocks(Array.isArray(page.blocks) ? page.blocks : []);
+    setSelected(null);
+  }
+
+  const createNewPage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPageTitle || !newPageSlug) return;
+    try {
+      const createdPage = await apiJson<any>('/admin/funnel-page', {
+        method: 'PUT',
+        body: JSON.stringify({ title: newPageTitle, slug: newPageSlug, blocks: [] })
+      });
+      setNewPageTitle('');
+      setNewPageSlug('');
+      const updatedPages = await apiJson<any[]>('/admin/funnel-pages');
+      setPages(updatedPages);
+      const target = updatedPages.find((p) => p.id === createdPage.id);
+      if (target) handlePageChange(target);
+    } catch {
+      setError('فشل إنشاء صفحة جديدة. ربما الرابط مكرر.');
+    }
+  };
 
   function deleteBlock(id: string) {
     setBlocks((prev) => prev.filter((b) => b.id !== id));
@@ -646,6 +725,7 @@ export function AdminFunnelBuilder() {
   }
 
   const selectedBlock = blocks.find((b) => b.id === selected) ?? null;
+  const pageOptions = [{ label: 'اختر الصفحة التسويقية للربط...', value: '' }, ...pages.map((p) => ({ label: p.title, value: `/funnel/${p.slug}` }))];
 
   if (loading) {
     return (
@@ -656,7 +736,28 @@ export function AdminFunnelBuilder() {
   }
 
   return (
-    <div className="flex flex-col h-full" style={{ fontFamily: 'var(--font-body)' }}>
+    <div className="flex flex-col h-full" style={{ fontFamily: 'var(--font-body)' }} dir="rtl">
+      <div className="bg-white p-4 rounded-2xl mb-4 flex flex-wrap items-center justify-between gap-4 shadow-sm border border-gray-100">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-sm font-bold text-gray-700">الصفحة النشطة حالياً:</span>
+          <select
+            className="rounded-xl px-3 py-2 text-sm bg-gray-50 border outline-none font-medium"
+            value={activePage?.id ?? ''}
+            onChange={(e) => handlePageChange(pages.find((p) => p.id === e.target.value))}
+          >
+            {pages.map((p) => <option key={p.id} value={p.id}>{p.title} (/{p.slug})</option>)}
+          </select>
+        </div>
+
+        <form onSubmit={createNewPage} className="flex items-center gap-2 flex-wrap">
+          <input required placeholder="اسم الصفحة الجديدة" className="px-3 py-1.5 rounded-xl border text-xs text-black" value={newPageTitle} onChange={(e) => setNewPageTitle(e.target.value)} />
+          <input required placeholder="رابط الصفحة (slug)" className="px-3 py-1.5 rounded-xl border text-xs text-black" value={newPageSlug} onChange={(e) => setNewPageSlug(e.target.value)} />
+          <button type="submit" className="bg-gray-800 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1">
+            <Plus size={14} /> إنشاء صفحة
+          </button>
+        </form>
+      </div>
+
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-5" style={{ borderBottom: '1px solid rgba(127,169,155,0.15)' }}>
         <div>
@@ -836,6 +937,7 @@ export function AdminFunnelBuilder() {
                 <BlockEditor
                   block={selectedBlock}
                   onChange={(data) => updateBlock(selectedBlock.id, data)}
+                  pageOptions={pageOptions}
                 />
               ) : (
                 <p className="text-xs text-center mt-8" style={{ color: 'var(--text-muted)' }}>
@@ -900,7 +1002,7 @@ function InlinePreview({ blocks }: { blocks: FunnelBlock[] }) {
               <div key={block.id} className="px-8 py-16 text-center" style={{ background: `linear-gradient(135deg, ${d.bgColor || '#7FA99B'}, ${d.bgColor || '#5A8A80'})` }}>
                 <h1 className="text-3xl font-bold text-white mb-4 leading-relaxed">{d.headline}</h1>
                 <p className="text-lg mb-8" style={{ color: 'rgba(255,255,255,0.9)', maxWidth: 600, margin: '0 auto 2rem' }}>{d.subheadline}</p>
-                <a href={d.ctaLink || '#'} className="inline-block px-8 py-4 rounded-full font-bold text-lg shadow-lg" style={{ background: 'white', color: d.bgColor || '#7FA99B' }}>
+                <a href={d.ctaTargetId || d.ctaLink || '#'} className="inline-block px-8 py-4 rounded-full font-bold text-lg shadow-lg" style={{ background: 'white', color: d.bgColor || '#7FA99B' }}>
                   {d.ctaText || 'سجّلي الآن'}
                 </a>
               </div>
@@ -984,9 +1086,22 @@ function InlinePreview({ blocks }: { blocks: FunnelBlock[] }) {
               <div key={block.id} id="cta" className="px-8 py-14 text-center" style={{ background: `linear-gradient(135deg, ${d.bgColor || '#7FA99B'}, ${d.bgColor || '#5A8A80'})` }}>
                 <h2 className="text-2xl font-bold text-white mb-3">{d.headline}</h2>
                 {d.subheadline && <p className="mb-8 text-base" style={{ color: 'rgba(255,255,255,0.9)' }}>{d.subheadline}</p>}
-                <a href={d.buttonLink || '#'} className="inline-block px-10 py-4 rounded-full font-bold text-lg shadow-lg" style={{ background: 'white', color: d.bgColor || '#7FA99B' }}>
+                <a href={d.buttonTargetId || d.buttonLink || '#'} className="inline-block px-10 py-4 rounded-full font-bold text-lg shadow-lg" style={{ background: 'white', color: d.bgColor || '#7FA99B' }}>
                   {d.buttonText}
                 </a>
+              </div>
+            );
+          case 'registration_form' as any:
+            return (
+              <div key={block.id} className="px-8 py-10">
+                <div className="max-w-sm mx-auto bg-gray-50 rounded-2xl border p-6 text-center">
+                  <p className="font-bold text-sm mb-4" style={{ color: 'var(--text-dark)' }}>{d.title || 'نموذج تسجيل البيانات'}</p>
+                  <div className="space-y-2">
+                    <input disabled placeholder="الاسم" className="w-full px-3 py-2 text-sm border rounded-lg bg-white" />
+                    <input disabled placeholder="البريد الإلكتروني" className="w-full px-3 py-2 text-sm border rounded-lg bg-white" />
+                  </div>
+                  <span className="inline-block mt-4 px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold">{d.buttonText || 'إرسال'}</span>
+                </div>
               </div>
             );
           case 'faq':
@@ -1031,11 +1146,40 @@ function InlinePreview({ blocks }: { blocks: FunnelBlock[] }) {
           case 'image':
             return (
               <div key={block.id} className="px-8 py-6 text-center">
-                {d.imageUrl
-                  ? <img src={d.imageUrl} alt={d.alt || ''} className="w-full rounded-2xl max-h-96 object-cover mx-auto" />
-                  : <div className="w-full h-40 rounded-2xl flex items-center justify-center" style={{ background: 'var(--cream)', border: '2px dashed rgba(127,169,155,0.3)' }}><Image size={32} style={{ color: 'var(--sage)' }} /></div>
-                }
+                {d.text ? (
+                  <div className={`flex flex-col md:flex-row gap-8 items-center ${d.imagePosition === 'left' ? 'md:flex-row-reverse' : ''}`}>
+                    <div className="w-full md:w-1/2">
+                      {d.imageUrl
+                        ? <img src={d.imageUrl} alt={d.alt || ''} className="w-full rounded-2xl max-h-96 object-cover mx-auto" />
+                        : <div className="w-full h-40 rounded-2xl flex items-center justify-center" style={{ background: 'var(--cream)', border: '2px dashed rgba(127,169,155,0.3)' }}><Image size={32} style={{ color: 'var(--sage)' }} /></div>
+                      }
+                    </div>
+                    <div className="w-full md:w-1/2 text-right">
+                      <p className="text-base leading-relaxed" style={{ color: 'var(--text-body)' }}>{d.text}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center w-full">
+                    {d.imageUrl
+                      ? <img src={d.imageUrl} alt={d.alt || ''} className="w-full rounded-2xl max-h-96 object-cover mx-auto" />
+                      : <div className="w-full h-40 rounded-2xl flex items-center justify-center" style={{ background: 'var(--cream)', border: '2px dashed rgba(127,169,155,0.3)' }}><Image size={32} style={{ color: 'var(--sage)' }} /></div>
+                    }
+                  </div>
+                )}
                 {d.caption && <p className="text-sm mt-3" style={{ color: 'var(--text-muted)' }}>{d.caption}</p>}
+              </div>
+            );
+          case 'registration_form' as any:
+            return (
+              <div key={block.id} className="px-8 py-10">
+                <div className="max-w-sm mx-auto bg-gray-50 rounded-2xl border p-6 text-center">
+                  <p className="font-bold text-sm mb-4" style={{ color: 'var(--text-dark)' }}>{d.title || 'نموذج تسجيل البيانات'}</p>
+                  <div className="space-y-2">
+                    <input disabled placeholder="الاسم" className="w-full px-3 py-2 text-sm border rounded-lg bg-white" />
+                    <input disabled placeholder="البريد الإلكتروني" className="w-full px-3 py-2 text-sm border rounded-lg bg-white" />
+                  </div>
+                  <span className="inline-block mt-4 px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold">{d.buttonText || 'إرسال'}</span>
+                </div>
               </div>
             );
           case 'video':

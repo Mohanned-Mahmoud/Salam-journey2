@@ -4,7 +4,7 @@ import { DEFAULT_SETTINGS } from './types';
 import type { AdminSettings } from './types';
 import { apiJson } from '@/lib/api';
 
-const TIMES = ['10:00', '12:00', '14:00', '16:00', '18:00'];
+const TIMES = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'];
 const DAYS_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
 // خريطة لربط أسماء الـ state بالمفاتيح (Keys) كـ Rows في قاعدة البيانات

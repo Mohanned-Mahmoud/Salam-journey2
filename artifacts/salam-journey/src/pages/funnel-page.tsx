@@ -22,6 +22,11 @@ function useCountdown(targetDate: string) {
   return time;
 }
 
+const getSlugFromUrl = () => {
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  return parts[parts.length - 1] || 'main';
+};
+
 function CountdownBlock({ data }: { data: Record<string, any> }) {
   const time = useCountdown(data.targetDate || new Date().toISOString());
   return (
@@ -42,7 +47,102 @@ function CountdownBlock({ data }: { data: Record<string, any> }) {
   );
 }
 
-function renderBlock(block: FunnelBlock) {
+function RegistrationFormBlock({ data, pageId }: { data: Record<string, any>; pageId: string }) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  const safeRedirectTarget = typeof data.redirectTargetId === 'string' && data.redirectTargetId.trim()
+    ? data.redirectTargetId.trim()
+    : '/';
+
+  const triggerDownload = (url: string, fileName?: string) => {
+    const link = document.createElement('a');
+    link.href = url;
+    if (fileName) link.download = fileName;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    requestAnimationFrame(() => {
+      link.click();
+      window.setTimeout(() => link.remove(), 0);
+    });
+  };
+
+  const handleGiftAndRedirect = () => {
+    if (data.giftUrl) {
+      triggerDownload(data.giftUrl, data.giftName ? data.giftName : undefined);
+    }
+    window.setTimeout(() => {
+      window.location.assign(safeRedirectTarget);
+    }, 150);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus('loading');
+    try {
+      await apiJson('/funnel/register', {
+        method: 'POST',
+        body: JSON.stringify({ pageId, name, email, phone }),
+      });
+      setStatus('success');
+      setName('');
+      setEmail('');
+      setPhone('');
+    } catch {
+      setStatus('error');
+    }
+  };
+
+  return (
+    <section className="px-6 py-12 max-w-lg mx-auto bg-white shadow-xl rounded-3xl my-8 border border-gray-100">
+      <h3 className="text-xl font-bold text-center mb-6 text-gray-800">{data.title || 'سجلي بياناتك الآن'}</h3>
+      {status === 'success' ? (
+        <div className="space-y-4">
+          <div className="p-4 bg-emerald-50 text-emerald-800 rounded-2xl text-center font-semibold">تم تسجيل بياناتك بنجاح! سنتواصل معكِ قريباً.</div>
+          {(data.giftUrl || data.giftName) && (
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-center space-y-3">
+              <p className="text-sm font-bold text-emerald-900">{data.giftName ? `يتم الآن تجهيز: ${data.giftName}` : 'يتم الآن تجهيز الهدية الخاصة بكِ'}</p>
+            </div>
+          )}
+          <div className="rounded-2xl bg-gray-50 border border-gray-200 px-4 py-4 text-center space-y-3">
+            <p className="text-sm font-bold text-gray-700">اضغطي الزر لتنزيل الهدية ثم الانتقال للصفحة التالية</p>
+            <button
+              type="button"
+              onClick={handleGiftAndRedirect}
+              className="inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-bold bg-emerald-700 text-white hover:bg-emerald-800 transition-all w-full"
+            >
+              {data.giftUrl ? 'تحميل الهدية والانتقال' : 'الانتقال للصفحة التالية'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold mb-1 text-gray-600">الاسم بالكامل</label>
+            <input required type="text" className="w-full border rounded-xl px-4 py-2 text-sm outline-none bg-gray-50 text-black" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-xs font-bold mb-1 text-gray-600">البريد الإلكتروني</label>
+            <input required type="email" className="w-full border rounded-xl px-4 py-2 text-sm outline-none bg-gray-50 text-black" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-xs font-bold mb-1 text-gray-600">رقم الهاتف (واتساب)</label>
+            <input type="tel" className="w-full border rounded-xl px-4 py-2 text-sm outline-none bg-gray-50 text-black" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+          {status === 'error' && <p className="text-xs text-red-600 font-medium">حدث خطأ أثناء الإرسال.</p>}
+          <button type="submit" disabled={status === 'loading'} className="w-full py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-sm shadow transition-all">
+            {status === 'loading' ? 'جاري الإرسال...' : (data.buttonText || 'إرسال')}
+          </button>
+        </form>
+      )}
+    </section>
+  );
+}
+
+function renderBlock(block: FunnelBlock, pageId: string) {
   const d = block.data;
   switch (block.type) {
     case 'hero':
@@ -52,7 +152,7 @@ function renderBlock(block: FunnelBlock) {
             <h1 className="text-3xl md:text-5xl font-bold text-white mb-5 leading-relaxed">{d.headline}</h1>
             <p className="text-lg md:text-xl mb-10 leading-relaxed" style={{ color: 'rgba(255,255,255,0.92)' }}>{d.subheadline}</p>
             <a
-              href={d.ctaLink || '#'}
+              href={d.ctaTargetId || d.ctaLink || '#'}
               className="inline-block px-10 py-4 rounded-full font-bold text-lg transition-transform hover:scale-105 shadow-xl"
               style={{ background: 'white', color: d.bgColor || '#7FA99B' }}
             >
@@ -196,12 +296,23 @@ function renderBlock(block: FunnelBlock) {
 
     case 'image':
       return (
-        <section key={block.id} className="px-6 py-8 text-center">
-          {d.imageUrl
-            ? <img src={d.imageUrl} alt={d.alt || ''} className="w-full max-w-3xl mx-auto rounded-2xl shadow-md max-h-96 object-cover" />
-            : null
-          }
-          {d.caption && <p className="text-sm mt-3" style={{ color: 'var(--text-muted)' }}>{d.caption}</p>}
+        <section key={block.id} className="px-6 py-10 max-w-4xl mx-auto">
+          {d.text ? (
+            <div className={`flex flex-col md:flex-row gap-8 items-center ${d.imagePosition === 'left' ? 'md:flex-row-reverse' : ''}`}>
+              <div className="w-full md:w-1/2">
+                <img src={d.imageUrl || 'https://placehold.co/600x400'} alt={d.alt || ''} className="w-full rounded-2xl shadow-md object-cover max-h-96" />
+              </div>
+              <div className="w-full md:w-1/2 space-y-3 text-right">
+                <p className="text-base md:text-lg leading-relaxed text-gray-700 whitespace-pre-line">{d.text}</p>
+                {d.caption && <p className="text-xs text-gray-400">{d.caption}</p>}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center w-full">
+              {d.imageUrl && <img src={d.imageUrl} alt={d.alt || ''} className="w-full rounded-2xl shadow-md object-cover max-h-[500px]" />}
+              {d.caption && <p className="text-sm mt-3 text-gray-500">{d.caption}</p>}
+            </div>
+          )}
         </section>
       );
 
@@ -230,7 +341,7 @@ function renderBlock(block: FunnelBlock) {
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">{d.headline}</h2>
             {d.subheadline && <p className="text-base mb-10 leading-relaxed" style={{ color: 'rgba(255,255,255,0.9)' }}>{d.subheadline}</p>}
             <a
-              href={d.buttonLink || '#'}
+              href={d.buttonTargetId || d.buttonLink || '#'}
               className="inline-block px-10 py-4 rounded-full font-bold text-lg transition-transform hover:scale-105 shadow-xl"
               style={{ background: 'white', color: d.bgColor || '#7FA99B' }}
             >
@@ -239,6 +350,9 @@ function renderBlock(block: FunnelBlock) {
           </div>
         </section>
       );
+
+    case 'registration_form' as any:
+      return <RegistrationFormBlock key={block.id} data={d} pageId={pageId} />;
 
     case 'bonus':
       return (
@@ -298,12 +412,17 @@ function renderBlock(block: FunnelBlock) {
 
 export default function FunnelPage() {
   const [blocks, setBlocks] = useState<FunnelBlock[]>([]);
+  const [pageId, setPageId] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     document.title = 'رحلة سلام';
-    apiJson<{ blocks: FunnelBlock[] }>('/funnel-page')
-      .then((page) => setBlocks(Array.isArray(page.blocks) ? page.blocks : []))
+    const slug = getSlugFromUrl();
+    apiJson<{ id: string; blocks: FunnelBlock[] }>(`/funnel-page/${slug}`)
+      .then((page) => {
+        setPageId(page.id);
+        setBlocks(Array.isArray(page.blocks) ? page.blocks : []);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -318,7 +437,7 @@ export default function FunnelPage() {
 
   return (
     <div dir="rtl" className="min-h-screen" style={{ fontFamily: 'var(--font-body)', background: 'white' }}>
-      {blocks.map(renderBlock)}
+      {blocks.map((block) => renderBlock(block, pageId))}
       {blocks.length === 0 && (
         <div className="flex items-center justify-center min-h-screen text-center px-6">
           <div>
