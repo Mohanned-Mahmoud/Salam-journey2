@@ -8,6 +8,8 @@
  *   CAL_TIMEZONE       — Timezone string, e.g. "Africa/Cairo" (default: Africa/Cairo)
  */
 
+import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
+
 const CAL_BASE = "https://api.cal.com/v2";
 
 export interface CalBookingInput {
@@ -53,9 +55,9 @@ export async function createCalBooking(
     return { uid: "" };
   }
 
-  // Build ISO start time: combine date + time + timezone offset
-  // Cal.com v2 accepts ISO 8601 with timezone in the body.
-  const startTime = `${input.date}T${input.time}:00`;
+  // Combine date and time, and treat it as being in the target timezone to get the correct UTC ISO string
+  const localString = `${input.date}T${input.time}:00`;
+  const startTime = formatInTimeZone(localString, timezone, "yyyy-MM-dd'T'HH:mm:ssXXX");
 
   const body = {
     start: startTime,
