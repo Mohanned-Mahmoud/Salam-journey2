@@ -51,6 +51,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /leads/{id}/send-email:
+    post:
+      operationId: triggerGiveawayEmail
+      tags: [giveaway]
+      summary: Send the giveaway email to a registered lead
+      description: Fetches the lead and sends the ebook and schedules follow-up emails.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Email sending triggered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailTriggered"
+        "404":
+          description: Lead not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /consultation-slots:
     get:
       operationId: listConsultationSlots
@@ -144,6 +169,17 @@ components:
         - email
         - emailDelivery
         - createdAt
+    EmailTriggered:
+      type: object
+      properties:
+        success:
+          type: boolean
+        emailDelivery:
+          type: string
+          enum: [sent, failed]
+      required:
+        - success
+        - emailDelivery
     ConsultationDay:
       type: object
       properties:

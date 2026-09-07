@@ -10,7 +10,7 @@ import './salam-journey-styles.css';
 
 type FormData = { name: string; phone: string; email: string };
 type Errors = Partial<Record<keyof FormData, string>>;
-type Status = 'form' | 'preparing' | 'booking' | 'success';
+type Status = 'form' | 'watching_video' | 'booking' | 'success';
 type Appointment = { day: string; time: string };
 
 function formatTimeLabel(value: string): string {
@@ -72,9 +72,8 @@ export default function EbookRegistration() {
   }, [status]);
 
   useEffect(() => {
-    if (status !== 'preparing') return;
-    const timer = window.setTimeout(() => setStatus('booking'), 1600);
-    return () => window.clearTimeout(timer);
+    if (status !== 'watching_video') return;
+    // Don't auto-transition anymore; transition is handled by video onEnded
   }, [status]);
 
   const update = (key: keyof FormData, value: string) => {
@@ -93,7 +92,7 @@ export default function EbookRegistration() {
         {
           onSuccess: (lead) => {
             setLeadId(lead.id);
-            setStatus('preparing');
+            setStatus('watching_video');
           },
           onError: (error) => {
             setServerError(getErrorMessage(error, 'تعذر حفظ بياناتك الآن. حاولي مرة أخرى.'));
@@ -196,14 +195,30 @@ export default function EbookRegistration() {
               </>
             )}
 
-            {status === 'preparing' && (
-              <div className="sj-state" role="status" aria-live="polite" data-testid="status-preparing">
-                <div className="sj-loader" aria-hidden="true" />
+            {status === 'watching_video' && (
+              <div className="sj-state" role="status" aria-live="polite" data-testid="status-video">
                 <div className="sj-form-step">فيديو قصير لكِ · لحظات</div>
                 <h2>نحضّر هديتك الآن…</h2>
-                <p>شاهدي الفيديو القصير، وبعده اختاري موعد الاستشارة المجانية.</p>
-                <div className="sj-skeleton" style={{ width: '55%' }} />
-                <div className="sj-skeleton" style={{ width: '35%' }} />
+                <p>استغلي وقت الانتظار في سماع الفيديو</p>
+                <div style={{ margin: '20px 0', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                  <video 
+                    src="/VSL.mov" 
+                    controls 
+                    autoPlay 
+                    playsInline 
+                    style={{ width: '100%', display: 'block' }}
+                    onEnded={async () => {
+                      if (leadId) {
+                        try {
+                          await fetch(`/api/leads/${leadId}/send-email`, { method: 'POST' });
+                        } catch (e) {
+                          console.error("Failed to trigger email", e);
+                        }
+                      }
+                      setStatus('booking');
+                    }}
+                  />
+                </div>
               </div>
             )}
 
@@ -272,9 +287,6 @@ export default function EbookRegistration() {
                 <div className="sj-success-mark" aria-hidden="true"><Check size={32} /></div>
                 <h2>تم حجز موعدك بنجاح.</h2>
                 <p>سيرسل لكِ الدليل على <strong dir="ltr" data-testid="text-destination-email">{data.email}</strong>،<br />وسننتظرك يوم {slotsQuery.data?.find((day) => day.date === appointment.day)?.label} الساعة {formatTimeLabel(appointment.time)} للاستشارة المجانية.</p>
-                <a className="sj-cta sj-download" href="/images/ebook-blank.jpeg" download="salam-journey-guide.jpeg" data-testid="link-download-ebook">
-                  تحميل الدليل الآن <ArrowRight size={17} aria-hidden="true" />
-                </a>
                 <button className="sj-small-link" type="button" onClick={resetFlow} data-testid="button-register-another">
                   حجز موعد آخر
                 </button>

@@ -135,7 +135,7 @@ function Router() {
           <Route path="/courses" component={Courses} />
           <Route path="/sessions" component={Sessions} />
           <Route path="/products" component={Products} />
-          <Route path="/about" component={About} />
+          <Route path="/about">{() => <About />}</Route>
           <Route path="/account" component={Account} />
           <Route component={NotFound} />
         </Switch>

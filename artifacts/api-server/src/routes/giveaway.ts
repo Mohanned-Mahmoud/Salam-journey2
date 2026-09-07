@@ -245,12 +245,7 @@ router.post("/leads", async (req, res): Promise<void> => {
     .values({ name, phone, email, pageId: page.id })
     .returning();
 
-  let emailDelivery: "sent" | "failed" = "failed";
-  try {
-    emailDelivery = (await sendGiveawayEmail(name, email)) ? "sent" : "failed";
-  } catch (error) {
-    req.log.warn({ error, leadId: lead.id }, "Brevo delivery failed");
-  }
+  const emailDelivery: "sent" | "failed" = "failed"; // Will be sent later in the send-email endpoint
 
   res.status(201).json(
     CreateLeadResponse.parse({
@@ -260,6 +255,31 @@ router.post("/leads", async (req, res): Promise<void> => {
       createdAt: lead.createdAt,
     }),
   );
+});
+
+router.post("/leads/:id/send-email", async (req, res): Promise<void> => {
+  const leadId = req.params.id;
+  const [lead] = await db
+    .select({ id: funnelRegistrationsTable.id, name: funnelRegistrationsTable.name, email: funnelRegistrationsTable.email })
+    .from(funnelRegistrationsTable)
+    .where(eq(funnelRegistrationsTable.id, leadId));
+  
+  if (!lead) {
+    res.status(404).json({ error: "Lead not found." });
+    return;
+  }
+
+  let emailDelivery: "sent" | "failed" = "failed";
+  try {
+    emailDelivery = (await sendGiveawayEmail(lead.name, lead.email)) ? "sent" : "failed";
+  } catch (error) {
+    req.log.warn({ error, leadId: lead.id }, "Brevo delivery failed");
+  }
+
+  res.status(200).json({
+    success: emailDelivery === "sent",
+    emailDelivery
+  });
 });
 
 router.get("/consultation-slots", async (_req, res): Promise<void> => {
