@@ -68,8 +68,8 @@ function getDownloadUrl(): string {
 
   const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
   return domain
-    ? `https://${domain}/images/ebook-blank.jpeg`
-    : "https://salamjourney.com";
+    ? `https://${domain}/salam-journey-ebook.pdf`
+    : "https://salamjourney.com/salam-journey-ebook.pdf";
 }
 
 async function sendGiveawayEmail(
@@ -97,11 +97,25 @@ async function sendGiveawayEmail(
       to: [{ email, name }],
       subject: "دليلك المجاني جاهز | Salam Journey",
       htmlContent: `
-        <div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.9">
-          <p>مرحباً ${safeName}،</p>
-          <p>يسعدنا أن نشاركك دليل «٧ خطوات لتنشئة طفل واثق وسعيد».</p>
-          <p><a href="${downloadUrl}">تحميل الدليل الآن</a></p>
-          <p>نتمنى أن يكون رفيقاً لطيفاً في رحلتك.</p>
+        <div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.9; padding: 20px; color: #000; text-align: right;">
+          <p style="font-size: 16px;">مرحباً ${safeName}،</p>
+          <br/>
+          <p style="font-size: 16px;">مبروك حصولك على الكتيّب الإلكتروني المجاني!</p>
+          <p style="font-size: 16px;">شكراٌ لاهتمامك لمعرفة المزيد حول أساليب التربية الفعالة.</p>
+          <p style="font-size: 16px;">كما وعدتك في هذا الكتاب ستتعرفين على الخطوات السبع لتنشئة طفل سعيد وواثق.</p>
+          <p style="font-size: 16px;">الكتاب يتضمن طرق وأساليب عملية يمكن تطبيقها!</p>
+          <br/>
+          <a href="${downloadUrl}" style="display: inline-block; background-color: #a9523a; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">حملي الكتيّب من هنا</a>
+          <br/><br/>
+          <p style="font-size: 16px;">إذا أعجبك الكتيب، خذي له صورة وشاركيها على ستوري الانستغرام واعملي لي تاغ عبر صفحتي 
+          <a href="https://www.instagram.com/emannasser_salam/" style="color: #a9523a; font-weight: bold;">@emannasser_salam</a>
+          </p>
+          <br/>
+          <p style="font-size: 16px;">لدي هدية اخرى لك! أنتِ مدعوة لحجز جلسة إستشارية مجانية معي أنا إيمان ناصر.</p>
+          <p style="font-size: 16px;">حيث سأشارك معك 5 أسرار لتحقيق السعادة فى نفسك وحياتك الأسرية.</p>
+          <p style="font-size: 16px;">إليكي لينك التسجيل: <a href="https://salamjourney.com/sessions" style="color: #a9523a; font-weight: bold;">احجزي جلستك المجانية</a></p>
+          <br/>
+          <p style="font-size: 16px;">أتمنى لك قراءة ممتعة وأوقات سعيدة،<br/>إيمان ناصر 😉 سلام</p>
         </div>
       `,
     }),
