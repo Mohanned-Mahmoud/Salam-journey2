@@ -392,6 +392,32 @@ router.post("/consultations", async (req, res): Promise<void> => {
     // Non-conflict Cal.com error — log and continue (local booking is saved)
     req.log.warn({ error: calError, bookingId: consultation.id }, "Cal.com booking failed (non-critical)");
   }
+  // ─── Update Brevo Contact with Booking Time ──────────────────────────────
+  const apiKey = process.env.BREVO_API_KEY;
+  if (apiKey) {
+    try {
+      const contactResponse = await fetch("https://api.brevo.com/v3/contacts", {
+        method: "POST",
+        headers: {
+          "api-key": apiKey,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          email: lead.email,
+          attributes: { 
+            BOOKING_DATE: scheduledDate,
+            BOOKING_TIME: scheduledTime
+          },
+          updateEnabled: true,
+        }),
+      });
+      if (!contactResponse.ok) {
+        req.log.warn("Failed to update Brevo contact with booking details", await contactResponse.text());
+      }
+    } catch (brevoError) {
+      req.log.warn({ error: brevoError }, "Failed to update Brevo contact with booking details");
+    }
+  }
 
   res.status(201).json(
     CreateConsultationResponse.parse({
