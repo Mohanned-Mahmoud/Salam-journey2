@@ -12,6 +12,7 @@ import aiRouter from "./ai";
 import funnelRouter from "./funnel";
 import siteSettingsRouter from "./site-settings";
 import translateRouter from "./translate";
+import giveawayRouter from "./giveaway";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(aiRouter);
 router.use(funnelRouter);
 router.use(siteSettingsRouter);
 router.use(translateRouter);
+router.use(giveawayRouter);
 
 export default router;

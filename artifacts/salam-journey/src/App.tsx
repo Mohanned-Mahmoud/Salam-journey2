@@ -23,6 +23,8 @@ import AdminPage from "@/pages/admin/index";
 import AdminLoginPage from "@/pages/admin/login-page";
 import FunnelPage from "@/pages/funnel-page";
 import NotFound from "@/pages/not-found";
+import EbookLanding from "@/pages/salam-journey-landing";
+import EbookRegistration from "@/pages/salam-journey-registration";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,7 +35,7 @@ const queryClient = new QueryClient({
 function Router() {
   const [location] = useLocation();
   const { user, isAuthenticated, isLoading } = useAuth();
-  const [displayMode, setDisplayMode] = useState<'full_website' | 'funnel_page' | null>(null);
+  const [displayMode, setDisplayMode] = useState<'full_website' | 'funnel_page' | 'salam_journey' | null>(null);
 
   const isUserAdmin = isAuthenticated && (user as any)?.role === "admin";
   const isAdminRoute = location === "/admin" || location.startsWith("/admin/");
@@ -41,7 +43,11 @@ function Router() {
   useEffect(() => {
     if (isAdminRoute) return;
     apiJson<{ value: string }>("/site-settings/display_mode")
-      .then((res) => setDisplayMode(res.value === "funnel_page" ? "funnel_page" : "full_website"))
+      .then((res) => {
+        if (res.value === "funnel_page") setDisplayMode("funnel_page");
+        else if (res.value === "salam_journey") setDisplayMode("salam_journey");
+        else setDisplayMode("full_website");
+      })
       .catch(() => setDisplayMode("full_website"));
   }, [isAdminRoute]);
 
@@ -76,6 +82,16 @@ function Router() {
     );
   }
 
+  if (location.startsWith("/salam-journey")) {
+    return (
+      <Switch>
+        <Route path="/salam-journey" component={EbookLanding} />
+        <Route path="/salam-journey/register" component={EbookRegistration} />
+        <Route component={NotFound} />
+      </Switch>
+    );
+  }
+
   if (displayMode === "funnel_page") {
     return (
       <Switch>
@@ -83,6 +99,19 @@ function Router() {
         <Route path="/" component={FunnelPage} />
         <Route path="/admin/login" component={AdminLoginPage} />
         <Route component={FunnelPage} />
+      </Switch>
+    );
+  }
+
+  if (displayMode === "salam_journey") {
+    return (
+      <Switch>
+        <Route path="/" component={EbookLanding} />
+        <Route path="/register" component={EbookRegistration} />
+        <Route path="/salam-journey" component={EbookLanding} />
+        <Route path="/salam-journey/register" component={EbookRegistration} />
+        <Route path="/admin/login" component={AdminLoginPage} />
+        <Route component={NotFound} />
       </Switch>
     );
   }

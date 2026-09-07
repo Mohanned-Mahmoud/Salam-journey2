@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: giveaway
+    description: Salam Journey giveaway and consultation booking
 paths:
   /healthz:
     get:
@@ -24,6 +26,75 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /leads:
+    post:
+      operationId: createLead
+      tags: [giveaway]
+      summary: Register a giveaway lead
+      description: Saves a lead and attempts to send the ebook using transactional email.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadInput"
+      responses:
+        "201":
+          description: Lead saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadCreated"
+        "400":
+          description: Invalid lead details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /consultation-slots:
+    get:
+      operationId: listConsultationSlots
+      tags: [giveaway]
+      summary: List available consultation slots
+      responses:
+        "200":
+          description: Available days and times
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConsultationDay"
+  /consultations:
+    post:
+      operationId: createConsultation
+      tags: [giveaway]
+      summary: Book a free consultation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConsultationInput"
+      responses:
+        "201":
+          description: Consultation booked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Consultation"
+        "400":
+          description: Invalid booking details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Slot already booked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +104,101 @@ components:
           type: string
       required:
         - status
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+    LeadInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        phone:
+          type: string
+          minLength: 8
+        email:
+          type: string
+      required:
+        - name
+        - phone
+        - email
+    LeadCreated:
+      type: object
+      properties:
+        id:
+          type: number
+        email:
+          type: string
+        emailDelivery:
+          type: string
+          enum: [sent, failed]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - emailDelivery
+        - createdAt
+    ConsultationDay:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        label:
+          type: string
+        times:
+          type: array
+          items:
+            type: string
+      required:
+        - date
+        - label
+        - times
+    ConsultationInput:
+      type: object
+      properties:
+        leadId:
+          type: number
+          minimum: 1
+        scheduledDate:
+          type: string
+          format: date
+        scheduledTime:
+          type: string
+          minLength: 1
+      required:
+        - leadId
+        - scheduledDate
+        - scheduledTime
+    Consultation:
+      type: object
+      properties:
+        id:
+          type: number
+        leadId:
+          type: number
+        scheduledDate:
+          type: string
+          format: date
+        scheduledTime:
+          type: string
+        status:
+          type: string
+          enum: [booked]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - leadId
+        - scheduledDate
+        - scheduledTime
+        - status
+        - createdAt
 

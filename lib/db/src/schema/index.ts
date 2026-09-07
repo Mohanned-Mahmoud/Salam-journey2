@@ -12,3 +12,5 @@ export * from "./ai-knowledge";
 export * from "./funnel-page";
 export * from "./site-settings";
 export * from "./translations";
+export * from "./leads";
+export * from "./consultations";

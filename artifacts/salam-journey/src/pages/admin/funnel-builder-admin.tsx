@@ -589,7 +589,7 @@ export function AdminFunnelBuilder() {
   const [saved, setSaved] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
-  const [displayMode, setDisplayMode] = useState<'full_website' | 'funnel_page'>('full_website');
+  const [displayMode, setDisplayMode] = useState<'full_website' | 'funnel_page' | 'salam_journey'>('full_website');
   const [togglingMode, setTogglingMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pages, setPages] = useState<any[]>([]);
@@ -605,7 +605,7 @@ export function AdminFunnelBuilder() {
       apiJson<{ value: string }>('/site-settings/display_mode'),
     ]).then(([pagesData, setting]) => {
       setPages(pagesData);
-      setDisplayMode((setting.value === 'funnel_page' ? 'funnel_page' : 'full_website') as any);
+      setDisplayMode((setting.value === 'funnel_page' ? 'funnel_page' : setting.value === 'salam_journey' ? 'salam_journey' : 'full_website') as any);
       if (pagesData.length > 0) {
         setActivePage(pagesData[0]);
         setBlocks(Array.isArray(pagesData[0].blocks) ? pagesData[0].blocks : []);
@@ -630,8 +630,7 @@ export function AdminFunnelBuilder() {
     }
   }, [blocks, activePage]);
 
-  const toggleDisplayMode = useCallback(async () => {
-    const next = displayMode === 'full_website' ? 'funnel_page' : 'full_website';
+  const updateDisplayMode = useCallback(async (next: 'full_website' | 'funnel_page' | 'salam_journey') => {
     setTogglingMode(true);
     try {
       await apiJson('/admin/site-settings/display_mode', { method: 'PUT', body: JSON.stringify({ value: next }) });
@@ -641,7 +640,7 @@ export function AdminFunnelBuilder() {
     } finally {
       setTogglingMode(false);
     }
-  }, [displayMode]);
+  }, []);
 
   function addBlock(type: FunnelBlockType) {
     const newBlock: FunnelBlock = { id: genId(), type, data: { ...BLOCK_DEFAULTS[type] } };
@@ -769,22 +768,22 @@ export function AdminFunnelBuilder() {
           {/* Display mode toggle */}
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'white', border: '1px solid rgba(127,169,155,0.2)' }}>
             <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>وضع العرض:</span>
-            <button
-              type="button"
-              onClick={toggleDisplayMode}
+            <select
+              value={displayMode}
+              onChange={(e) => updateDisplayMode(e.target.value as any)}
               disabled={togglingMode}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all outline-none"
               style={{
-                background: displayMode === 'funnel_page' ? 'var(--sage)' : 'var(--cream)',
-                color: displayMode === 'funnel_page' ? 'white' : 'var(--text-dark)',
+                background: 'var(--cream)',
+                color: 'var(--text-dark)',
                 border: '1px solid rgba(127,169,155,0.3)',
               }}
             >
-              {togglingMode ? <Loader2 size={12} className="animate-spin" /> : (
-                displayMode === 'funnel_page' ? <ToggleRight size={14} /> : <ToggleLeft size={14} />
-              )}
-              {displayMode === 'funnel_page' ? 'الصفحة التسويقية' : 'الموقع الكامل'}
-            </button>
+              <option value="full_website">الموقع الكامل</option>
+              <option value="funnel_page">الصفحة التسويقية</option>
+              <option value="salam_journey">مشروع سلام جيرني</option>
+            </select>
+            {togglingMode && <Loader2 size={12} className="animate-spin" />}
           </div>
 
           {/* Preview toggle */}
