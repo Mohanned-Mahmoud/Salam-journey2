@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarDays, Check, Clock3, LockKeyhole, Loader2 } from 'lucide-react';
+import { ArrowRight, CalendarDays, Check, Clock3, LockKeyhole } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'wouter';
 import {
@@ -6,10 +6,7 @@ import {
   useCreateLead,
   useListConsultationSlots,
 } from '@workspace/api-client-react';
-import { useReveal } from '@/lib/use-reveal';
-import { SoftBlob } from '@/components/section-divider';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import './salam-journey-styles.css';
 
 type FormData = { name: string; phone: string; email: string };
 type Errors = Partial<Record<keyof FormData, string>>;
@@ -42,8 +39,16 @@ function validate(data: FormData): Errors {
   return errors;
 }
 
+function RegisterLogo() {
+  return (
+    <Link href="/salam-journey" className="sj-logo" data-testid="link-register-logo">
+      <span className="sj-logo-mark" aria-hidden="true">س</span>
+      <span className="sj-logo-word">Salam Journey</span>
+    </Link>
+  );
+}
+
 export default function EbookRegistration() {
-  const ref = useReveal<HTMLDivElement>();
   const [data, setData] = useState<FormData>({ name: '', phone: '', email: '' });
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<Status>('form');
@@ -51,7 +56,6 @@ export default function EbookRegistration() {
   const [bookingError, setBookingError] = useState('');
   const [serverError, setServerError] = useState('');
   const [leadId, setLeadId] = useState<number | null>(null);
-
   const createLead = useCreateLead();
   const slotsQuery = useListConsultationSlots({
     query: { enabled: status === 'booking' },
@@ -64,6 +68,8 @@ export default function EbookRegistration() {
       : status === 'booking'
         ? 'احجزي استشارتك المجانية | Salam Journey'
         : 'احصلي على دليلك المجاني | Salam Journey';
+    const description = document.querySelector('meta[name="description"]');
+    description?.setAttribute('content', 'سجّلي بياناتك واحجزي موعد استشارتك المجانية مع Salam Journey.');
   }, [status]);
 
   useEffect(() => {
@@ -143,228 +149,140 @@ export default function EbookRegistration() {
   };
 
   return (
-    <div ref={ref} className="relative min-h-[85vh] bg-[var(--cream)] overflow-hidden flex items-center py-16">
-      <SoftBlob
-        color="var(--blush)"
-        className="absolute -top-32 -start-32 w-[600px] h-[600px] opacity-40 animate-drift pointer-events-none"
-      />
-      
-      <div className="container mx-auto px-5 md:px-8 relative z-10">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row gap-12 lg:gap-24">
-          {/* Sidebar / Context */}
-          <div className="w-full md:w-5/12 flex flex-col justify-center reveal">
-            <span className="uppercase tracking-[0.18em] text-xs font-semibold mb-3 text-[var(--sage-dark)]">
-              رحلتك تبدأ من هنا
-            </span>
-            <h1 className="text-4xl md:text-5xl leading-tight mb-6 text-[var(--text-dark)]">
-              هدية صغيرة<br />لأيام كبيرة.
-            </h1>
-            <p className="text-lg text-[var(--text-body)] mb-8">
-              سنرسل لك الدليل مباشرة إلى بريدك الإلكتروني. خذي وقتك، واقرئيه على مهل… فهو لكِ.
-            </p>
-            <div className="p-6 rounded-2xl bg-[var(--sage-muted)]/30 border border-[var(--sage-light)] text-[var(--text-dark)] italic text-lg leading-relaxed">
-              «الأطفال لا يحتاجون إلى أم مثالية، بل إلى أم تشعر بهم وتحاول.»
-            </div>
+    <div className="sj-register-page sj-noise" dir="rtl">
+      <div className="sj-register-layout">
+        <aside className="sj-register-aside">
+          <RegisterLogo />
+          <div className="sj-aside-copy">
+            <div className="sj-kicker">رحلتك تبدأ من هنا</div>
+            <h1>هدية صغيرة<br />لأيام كبيرة.</h1>
+            <p>سنرسل لك الدليل مباشرة إلى بريدك الإلكتروني. خذي وقتك، واقرئيه على مهل… فهو لكِ.</p>
           </div>
+          <div className="sj-aside-quote">«الأطفال لا يحتاجون إلى أم مثالية، بل إلى أم تشعر بهم وتحاول.»</div>
+        </aside>
 
-          {/* Form Area */}
-          <div className="w-full md:w-7/12 reveal" data-reveal-delay="120">
-            <div className="glass-card p-8 md:p-12 shadow-xl border border-white/50 bg-white/70 backdrop-blur-xl relative overflow-hidden rounded-[2rem]">
-              
-              <Link href="/salam-journey" className="inline-flex items-center gap-2 text-[var(--text-muted)] hover:text-[var(--text-dark)] transition-colors mb-8 text-sm">
-                <ArrowRight size={14} /> العودة إلى صفحة الهدية
-              </Link>
+        <main className="sj-register-main">
+          <div className="sj-form-wrap">
+            <Link href="/salam-journey" className="sj-back" data-testid="link-back-home">
+              <ArrowRight size={14} aria-hidden="true" /> العودة إلى صفحة الهدية
+            </Link>
 
-              {status === 'form' && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className="text-[var(--sage-dark)] text-sm font-semibold mb-2">الخطوة ١ من ١ · أقل من دقيقة</div>
-                  <h2 className="text-2xl md:text-3xl mb-4 text-[var(--text-dark)]">أين نرسل لكِ الدليل؟</h2>
-                  <p className="text-[var(--text-body)] mb-8">أدخلي بياناتك لنجهّز نسختك المجانية. لا توجد قوائم مزعجة، وعد.</p>
-                  
-                  <form onSubmit={submit} noValidate className="space-y-5">
-                    <div className="space-y-2">
-                      <label htmlFor="sj-name" className="text-sm font-medium text-[var(--text-dark)]">الاسم الكامل</label>
-                      <Input 
-                        id="sj-name" 
-                        value={data.name} 
-                        onChange={(e) => update('name', e.target.value)} 
-                        placeholder="مثال: منى أحمد" 
-                        className={`bg-white ${errors.name ? 'border-red-500 ring-red-500' : ''}`}
-                      />
-                      {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="sj-phone" className="text-sm font-medium text-[var(--text-dark)]">رقم الهاتف</label>
-                      <Input 
-                        id="sj-phone" 
-                        inputMode="tel"
-                        value={data.phone} 
-                        onChange={(e) => update('phone', e.target.value)} 
-                        placeholder="010 1234 5678" 
-                        className={`bg-white ${errors.phone ? 'border-red-500 ring-red-500' : ''}`}
-                      />
-                      {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="sj-email" className="text-sm font-medium text-[var(--text-dark)]">البريد الإلكتروني</label>
-                      <Input 
-                        id="sj-email" 
-                        type="email"
-                        dir="ltr"
-                        value={data.email} 
-                        onChange={(e) => update('email', e.target.value)} 
-                        placeholder="you@example.com" 
-                        className={`bg-white text-left ${errors.email ? 'border-red-500 ring-red-500' : ''}`}
-                      />
-                      {errors.email && <p className="text-red-500 text-sm mt-1 text-right">{errors.email}</p>}
-                    </div>
-
-                    <Button 
-                      type="submit" 
-                      disabled={createLead.isPending} 
-                      className="w-full h-12 mt-4 rounded-xl text-md font-semibold text-white bg-[var(--sage-dark)] hover:bg-[var(--sage)] transition-colors gap-2"
-                    >
-                      {createLead.isPending ? <Loader2 className="animate-spin" size={18} /> : 'أرسلوا لي الكتاب'}
-                      {!createLead.isPending && <ArrowRight size={17} />}
-                    </Button>
-                  </form>
-                  
-                  {serverError && <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">{serverError}</div>}
-                  <div className="mt-6 flex items-center justify-center gap-2 text-xs text-[var(--text-muted)]">
-                    <LockKeyhole size={12} /> بياناتك محفوظة معنا ولن نشاركها مع أي جهة.
+            {status === 'form' && (
+              <>
+                <div className="sj-form-step">الخطوة ١ من ١ · أقل من دقيقة</div>
+                <h2>أين نرسل لكِ الدليل؟</h2>
+                <p className="sj-form-intro">أدخلي بياناتك لنجهّز نسختك المجانية. لا توجد قوائم مزعجة، وعد.</p>
+                <form className="sj-fields" onSubmit={submit} noValidate>
+                  <div className="sj-field">
+                    <label htmlFor="sj-name">الاسم الكامل</label>
+                    <input id="sj-name" className={`sj-input${errors.name ? ' invalid' : ''}`} value={data.name} onChange={(event) => update('name', event.target.value)} placeholder="مثال: منى أحمد" aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? 'sj-name-error' : undefined} data-testid="input-name" />
+                    {errors.name && <div className="sj-field-error" id="sj-name-error" role="alert" data-testid="error-name">{errors.name}</div>}
                   </div>
-                </div>
-              )}
-
-              {status === 'preparing' && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-center py-12">
-                  <div className="w-16 h-16 rounded-full border-4 border-[var(--sage-light)] border-t-[var(--sage-dark)] animate-spin mx-auto mb-8" />
-                  <div className="text-[var(--sage-dark)] text-sm font-semibold mb-2">فيديو قصير لكِ · لحظات</div>
-                  <h2 className="text-2xl md:text-3xl mb-4 text-[var(--text-dark)]">نحضّر هديتك الآن…</h2>
-                  <p className="text-[var(--text-body)]">شاهدي الفيديو القصير، وبعده اختاري موعد الاستشارة المجانية.</p>
-                </div>
-              )}
-
-              {status === 'booking' && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className="text-[var(--sage-dark)] text-sm font-semibold mb-2">الخطوة ٢ من ٢ · استشارة مجانية</div>
-                  <h2 className="text-2xl md:text-3xl mb-4 text-[var(--text-dark)]">خلّي لنا وقتًا نسمعك فيه.</h2>
-                  <p className="text-[var(--text-body)] mb-8">بعد مشاهدة الفيديو، احجزي موعدًا قصيرًا مع فريق Salam Journey لنتحدث عن احتياجاتك ونجيب عن أسئلتك.</p>
-
-                  {slotsQuery.isLoading && (
-                    <div className="py-12 text-center text-[var(--text-muted)] flex flex-col items-center justify-center gap-3">
-                      <Loader2 className="animate-spin" size={24} />
-                      نجهّز المواعيد المتاحة…
-                    </div>
-                  )}
-                  {slotsQuery.isError && (
-                    <div className="p-4 bg-red-50 text-red-600 rounded-lg text-sm">
-                      تعذر تحميل المواعيد الآن. حدّثي الصفحة وحاولي مرة أخرى.
-                    </div>
-                  )}
-                  {!slotsQuery.isLoading && !slotsQuery.isError && (
-                    <div className="space-y-6">
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2 font-medium text-[var(--text-dark)]"><CalendarDays size={16} /> اختاري اليوم</div>
-                        <div className="grid grid-cols-2 gap-2">
-                          {slotsQuery.data?.map((day) => {
-                            const [weekday, ...dateParts] = day.label.split('،');
-                            return (
-                              <button
-                                key={day.date}
-                                type="button"
-                                onClick={() => selectAppointment('day', day.date)}
-                                disabled={day.times.length === 0}
-                                className={`p-3 rounded-xl border text-sm transition-all flex flex-col items-center justify-center gap-1
-                                  ${appointment.day === day.date 
-                                    ? 'border-[var(--sage-dark)] bg-[var(--sage-light)]/20 text-[var(--sage-dark)] font-bold shadow-sm' 
-                                    : 'border-gray-200 bg-white hover:border-[var(--sage)] hover:bg-gray-50 text-[var(--text-dark)]'}
-                                  ${day.times.length === 0 ? 'opacity-50 cursor-not-allowed bg-gray-100' : ''}
-                                `}
-                              >
-                                <span>{weekday}</span>
-                                <strong className="font-semibold">{dateParts.join('،')}</strong>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2 font-medium text-[var(--text-dark)]"><Clock3 size={16} /> اختاري الوقت</div>
-                        <div className="grid grid-cols-3 gap-2">
-                          {(slotsQuery.data?.find((day) => day.date === appointment.day)?.times ?? []).map((time) => (
-                            <button
-                              key={time}
-                              type="button"
-                              onClick={() => selectAppointment('time', time)}
-                              className={`p-3 rounded-xl border text-sm transition-all flex items-center justify-center
-                                ${appointment.time === time 
-                                  ? 'border-[var(--sage-dark)] bg-[var(--sage-dark)] text-white font-bold shadow-sm' 
-                                  : 'border-gray-200 bg-white hover:border-[var(--sage)] hover:bg-gray-50 text-[var(--text-dark)]'}
-                              `}
-                            >
-                              {formatTimeLabel(time)}
-                            </button>
-                          ))}
-                          {appointment.day && (slotsQuery.data?.find((day) => day.date === appointment.day)?.times.length === 0) && (
-                            <div className="col-span-3 text-center text-sm text-[var(--text-muted)] py-4">
-                              لا توجد مواعيد متاحة في هذا اليوم.
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {bookingError && <div className="mt-6 p-3 bg-red-50 text-red-600 rounded-lg text-sm">{bookingError}</div>}
-                  {serverError && <div className="mt-6 p-3 bg-red-50 text-red-600 rounded-lg text-sm">{serverError}</div>}
-                  
-                  <Button 
-                    type="button" 
-                    onClick={confirmAppointment} 
-                    disabled={createConsultation.isPending || slotsQuery.isLoading || slotsQuery.isError}
-                    className="w-full h-12 mt-8 rounded-xl text-md font-semibold text-white bg-[var(--sage-dark)] hover:bg-[var(--sage)] transition-colors gap-2"
-                  >
-                    {createConsultation.isPending ? <Loader2 className="animate-spin" size={18} /> : 'تأكيد موعد الاستشارة'}
-                    {!createConsultation.isPending && <ArrowRight size={17} />}
-                  </Button>
-                  <div className="mt-6 flex items-center justify-center gap-2 text-xs text-[var(--text-muted)]">
-                    <LockKeyhole size={12} /> الموعد مجاني ومدته ٢٠ دقيقة.
+                  <div className="sj-field">
+                    <label htmlFor="sj-phone">رقم الهاتف</label>
+                    <input id="sj-phone" inputMode="tel" className={`sj-input${errors.phone ? ' invalid' : ''}`} value={data.phone} onChange={(event) => update('phone', event.target.value)} placeholder="010 1234 5678" aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? 'sj-phone-error' : undefined} data-testid="input-phone" />
+                    {errors.phone && <div className="sj-field-error" id="sj-phone-error" role="alert" data-testid="error-phone">{errors.phone}</div>}
                   </div>
-                </div>
-              )}
-
-              {status === 'success' && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-center py-8">
-                  <div className="w-20 h-20 rounded-full bg-[var(--sage-light)] text-[var(--sage-dark)] flex items-center justify-center mx-auto mb-6 shadow-sm">
-                    <Check size={40} />
+                  <div className="sj-field">
+                    <label htmlFor="sj-email">البريد الإلكتروني</label>
+                    <input id="sj-email" type="email" dir="ltr" className={`sj-input${errors.email ? ' invalid' : ''}`} value={data.email} onChange={(event) => update('email', event.target.value)} placeholder="you@example.com" aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? 'sj-email-error' : undefined} data-testid="input-email" />
+                    {errors.email && <div className="sj-field-error" id="sj-email-error" role="alert" data-testid="error-email">{errors.email}</div>}
                   </div>
-                  <h2 className="text-2xl md:text-3xl mb-4 text-[var(--text-dark)]">تم حجز موعدك بنجاح.</h2>
-                  <p className="text-[var(--text-body)] mb-8 leading-relaxed">
-                    سيرسل لكِ الدليل على <strong dir="ltr" className="text-[var(--text-dark)] mx-1">{data.email}</strong>،<br />
-                    وسننتظرك يوم {slotsQuery.data?.find((day) => day.date === appointment.day)?.label} الساعة {formatTimeLabel(appointment.time)} للاستشارة المجانية.
-                  </p>
-                  
-                  <a 
-                    href="/images/ebook-blank.jpeg" 
-                    download="salam-journey-guide.jpeg" 
-                    className="flex items-center justify-center gap-2 w-full h-12 mb-4 rounded-xl text-md font-semibold text-white bg-[var(--sage-dark)] hover:bg-[var(--sage)] transition-colors"
-                  >
-                    تحميل الدليل الآن <ArrowRight size={17} />
-                  </a>
-                  
-                  <button onClick={resetFlow} className="text-sm font-medium text-[var(--sage-dark)] hover:underline underline-offset-4">
-                    حجز موعد آخر
+                  <button className="sj-cta sj-submit" type="submit" disabled={createLead.isPending} data-testid="button-submit-registration">
+                    {createLead.isPending ? 'جارٍ تجهيز طلبك…' : 'أرسلوا لي الكتاب'} <ArrowRight size={17} aria-hidden="true" />
                   </button>
-                </div>
-              )}
+                </form>
+                {serverError && <div className="sj-field-error sj-server-error" role="alert">{serverError}</div>}
+                <div className="sj-privacy"><LockKeyhole size={11} aria-hidden="true" /> بياناتك محفوظة معنا ولن نشاركها مع أي جهة.</div>
+              </>
+            )}
 
-            </div>
+            {status === 'preparing' && (
+              <div className="sj-state" role="status" aria-live="polite" data-testid="status-preparing">
+                <div className="sj-loader" aria-hidden="true" />
+                <div className="sj-form-step">فيديو قصير لكِ · لحظات</div>
+                <h2>نحضّر هديتك الآن…</h2>
+                <p>شاهدي الفيديو القصير، وبعده اختاري موعد الاستشارة المجانية.</p>
+                <div className="sj-skeleton" style={{ width: '55%' }} />
+                <div className="sj-skeleton" style={{ width: '35%' }} />
+              </div>
+            )}
+
+            {status === 'booking' && (
+              <div className="sj-booking" data-testid="status-booking">
+                <div className="sj-form-step">الخطوة ٢ من ٢ · استشارة مجانية</div>
+                <h2>خلّي لنا وقتًا<br />نسمعك فيه.</h2>
+                <p className="sj-form-intro">بعد مشاهدة الفيديو، احجزي موعدًا قصيرًا مع فريق Salam Journey لنتحدث عن احتياجاتك ونجيب عن أسئلتك.</p>
+
+                {slotsQuery.isLoading && <div className="sj-slot-loading" role="status">نجهّز المواعيد المتاحة…</div>}
+                {slotsQuery.isError && <div className="sj-field-error sj-server-error" role="alert">تعذر تحميل المواعيد الآن. حدّثي الصفحة وحاولي مرة أخرى.</div>}
+                {!slotsQuery.isLoading && !slotsQuery.isError && (
+                  <>
+                    <div className="sj-booking-group">
+                      <div className="sj-booking-label"><CalendarDays size={15} aria-hidden="true" /> اختاري اليوم</div>
+                      <div className="sj-day-grid" role="group" aria-label="اختيار يوم الاستشارة">
+                        {slotsQuery.data?.map((day) => {
+                          const [weekday, ...dateParts] = day.label.split('،');
+                          return (
+                            <button
+                              className={`sj-day-option${appointment.day === day.date ? ' selected' : ''}`}
+                              key={day.date}
+                              type="button"
+                              onClick={() => selectAppointment('day', day.date)}
+                              aria-pressed={appointment.day === day.date}
+                              disabled={day.times.length === 0}
+                            >
+                              <span>{weekday}</span>
+                              <strong>{dateParts.join('،')}</strong>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="sj-booking-group">
+                      <div className="sj-booking-label"><Clock3 size={15} aria-hidden="true" /> اختاري الوقت</div>
+                      <div className="sj-time-grid" role="group" aria-label="اختيار وقت الاستشارة">
+                        {(slotsQuery.data?.find((day) => day.date === appointment.day)?.times ?? []).map((time) => (
+                          <button
+                            className={`sj-time-option${appointment.time === time ? ' selected' : ''}`}
+                            key={time}
+                            type="button"
+                            onClick={() => selectAppointment('time', time)}
+                            aria-pressed={appointment.time === time}
+                          >
+                            {formatTimeLabel(time)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {bookingError && <div className="sj-field-error sj-booking-error" role="alert">{bookingError}</div>}
+                {serverError && <div className="sj-field-error sj-server-error" role="alert">{serverError}</div>}
+                <button className="sj-cta sj-submit" type="button" onClick={confirmAppointment} disabled={createConsultation.isPending || slotsQuery.isLoading || slotsQuery.isError} data-testid="button-confirm-appointment">
+                  {createConsultation.isPending ? 'جارٍ تأكيد الموعد…' : 'تأكيد موعد الاستشارة'} <ArrowRight size={17} aria-hidden="true" />
+                </button>
+                <div className="sj-privacy"><LockKeyhole size={11} aria-hidden="true" /> الموعد مجاني ومدته ٢٠ دقيقة.</div>
+              </div>
+            )}
+
+            {status === 'success' && (
+              <div className="sj-state" data-testid="status-success">
+                <div className="sj-success-mark" aria-hidden="true"><Check size={32} /></div>
+                <h2>تم حجز موعدك بنجاح.</h2>
+                <p>سيرسل لكِ الدليل على <strong dir="ltr" data-testid="text-destination-email">{data.email}</strong>،<br />وسننتظرك يوم {slotsQuery.data?.find((day) => day.date === appointment.day)?.label} الساعة {formatTimeLabel(appointment.time)} للاستشارة المجانية.</p>
+                <a className="sj-cta sj-download" href="/images/ebook-blank.jpeg" download="salam-journey-guide.jpeg" data-testid="link-download-ebook">
+                  تحميل الدليل الآن <ArrowRight size={17} aria-hidden="true" />
+                </a>
+                <button className="sj-small-link" type="button" onClick={resetFlow} data-testid="button-register-another">
+                  حجز موعد آخر
+                </button>
+              </div>
+            )}
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );
