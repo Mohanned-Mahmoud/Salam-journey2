@@ -62,15 +62,17 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#039;");
 }
 
+function getFrontendUrl(): string {
+  if (process.env.FRONTEND_URL) return process.env.FRONTEND_URL;
+  const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
+  return domain ? `https://${domain}` : "https://salamjourney.com";
+}
+
 function getDownloadUrl(): string {
   if (process.env.EBOOK_DOWNLOAD_URL) {
     return process.env.EBOOK_DOWNLOAD_URL;
   }
-
-  const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
-  return domain
-    ? `https://${domain}/salam-journey-ebook.pdf`
-    : "https://salamjourney.com/salam-journey-ebook.pdf";
+  return `${getFrontendUrl()}/salam-journey-ebook.pdf`;
 }
 
 async function sendGiveawayEmail(
@@ -99,6 +101,9 @@ async function sendGiveawayEmail(
       subject: "دليلك المجاني جاهز | Salam Journey",
       htmlContent: `
         <div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.9; padding: 20px; color: #000; text-align: right;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <img src="${getFrontendUrl()}/images/logo.png" alt="Salam Journey" style="max-width: 200px; height: auto;" />
+          </div>
           <p style="font-size: 16px;">مرحباً ${safeName}،</p>
           <br/>
           <p style="font-size: 16px;">مبروك حصولك على الكتيّب الإلكتروني المجاني!</p>
@@ -111,10 +116,6 @@ async function sendGiveawayEmail(
           <p style="font-size: 16px;">إذا أعجبك الكتيب، خذي له صورة وشاركيها على ستوري الانستغرام واعملي لي تاغ عبر صفحتي 
           <a href="https://www.instagram.com/emannasser_salam/" style="color: #a9523a; font-weight: bold;">@emannasser_salam</a>
           </p>
-          <br/>
-          <p style="font-size: 16px;">لدي هدية اخرى لك! أنتِ مدعوة لحجز جلسة إستشارية مجانية معي أنا إيمان ناصر.</p>
-          <p style="font-size: 16px;">حيث سأشارك معك 5 أسرار لتحقيق السعادة فى نفسك وحياتك الأسرية.</p>
-          <p style="font-size: 16px;">إليكي لينك التسجيل: <a href="https://salamjourney.com/sessions" style="color: #a9523a; font-weight: bold;">احجزي جلستك المجانية</a></p>
           <br/>
           <p style="font-size: 16px;">أتمنى لك قراءة ممتعة وأوقات سعيدة،<br/>إيمان ناصر 😉 سلام</p>
         </div>
@@ -143,20 +144,13 @@ async function sendGiveawayEmail(
       subject: "خطوتك الأولى لتحقيق السعادة لنفسك ولحياتك الأسرية",
       htmlContent: `
         <div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.9; padding: 20px; color: #000; text-align: right;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <img src="${getFrontendUrl()}/images/logo.png" alt="Salam Journey" style="max-width: 200px; height: auto;" />
+          </div>
           <p style="font-size: 16px;">عزيزتي ${safeName}،</p>
           <br/>
           <p style="font-size: 16px;">طلبتي بالأمس نسخة من الكتيب المجاني <strong>7 خطوات لتنشئة طفل واثق وسعيد</strong>، وأردت فقط التواصل معك ومعرفة ما إذا كانت لديكي فرصة لقراءته حتى الآن.</p>
           <p style="font-size: 16px;">هذا الكتيب هو خطوة أولى رائعة نحو خلق علاقة جيدة مع أبنائك ورحلة تربية ممتعة بإذن الله. وأنا متأكدة من أنك ستستفيدين كثيرًا من ذلك.</p>
-          <br/>
-          <p style="font-size: 16px;">لكنني أردت أيضًا التأكد من أنك رأيت رابط الجلسة الاستشارية المجانية، هاهو:</p>
-          <p style="font-size: 16px;">إذا كنتِ جاده بشأن خلق علاقة آمنة مع طفلك والاستمتاع بأمومتك، فلا توجد طريقة أفضل للبدء من جدولة جلسة استشارية مجانية معي أنا إيمان ناصر.</p>
-          <p style="font-size: 16px;">خلال 30 دقيقة فقط سأقدم لك المخطط الدقيق الذي استخدمته مع العديد من الأمهات لبناء علاقة آمنة مع أطفالهم وتحقيق أهدافهم التربوية على المدي البعيد والقصير.</p>
-          <p style="font-size: 16px;">وسنقوم أيضًا بمشاركة بعض الأسرار التي يمكنك استخدامها من أجل <strong>تحقيق السعادة في نفسك وحياتك الأسرية.</strong></p>
-          <p style="font-size: 16px;">هذه جلسة استشارية مجانية تمامًا وبدون التزام.</p>
-          <p style="font-size: 16px;">فقط دعيني أوضح لك مدى إمكانية خلق نظام في بيتك يتضمن تحقيق أهدافك التربوية وأستمتاعك بأمومتك فى الوقت ذاته، وبعد ذلك سنبدأ من هناك.</p>
-          <p style="font-size: 16px;">لا يتوفر لدي سوى عدد قليل من المقاعد كل شهر، لذلك إذا كنت لا تزالين مهتمة بكيفية بناء علاقة آمنة وقوية مع أبنائك وتوفير جو أسري سعيد، فانقري على الرابط أدناه لحجز مكانك لأن المقاعد محدودة!</p>
-          <br/>
-          <a href="https://salamjourney.com/sessions" style="display: inline-block; background-color: #a9523a; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">احجزي جلستك المجانية من هنا</a>
           <br/><br/>
           <p style="font-size: 16px;">أتمنى التحدث إليك قريبًا،<br/>إيمان ناصر</p>
           <br/>
