@@ -125,9 +125,9 @@ async function sendGiveawayEmail(
     return false;
   }
 
-  // Schedule the second email 24 hours later
+  // Schedule the second email 5 minutes later (for testing)
   const now = new Date();
-  const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const scheduledTime = new Date(now.getTime() + 5 * 60 * 1000);
 
   const secondEmailResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
@@ -138,7 +138,7 @@ async function sendGiveawayEmail(
     body: JSON.stringify({
       sender: { name: senderName, email: senderEmail },
       to: [{ email, name }],
-      scheduledAt: next24Hours.toISOString(),
+      scheduledAt: scheduledTime.toISOString(),
       subject: "خطوتك الأولى لتحقيق السعادة لنفسك ولحياتك الأسرية",
       htmlContent: `
         <div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.9; padding: 20px; color: #000; text-align: right;">
