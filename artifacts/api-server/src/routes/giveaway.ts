@@ -125,6 +125,56 @@ async function sendGiveawayEmail(
     return false;
   }
 
+  // Schedule the second email 24 hours later
+  const now = new Date();
+  const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+  const secondEmailResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": apiKey,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      sender: { name: senderName, email: senderEmail },
+      to: [{ email, name }],
+      scheduledAt: next24Hours.toISOString(),
+      subject: "خطوتك الأولى لتحقيق السعادة لنفسك ولحياتك الأسرية",
+      htmlContent: `
+        <div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.9; padding: 20px; color: #000; text-align: right;">
+          <p style="font-size: 16px;">عزيزتي ${safeName}،</p>
+          <br/>
+          <p style="font-size: 16px;">طلبتي بالأمس نسخة من الكتيب المجاني <strong>7 خطوات لتنشئة طفل واثق وسعيد</strong>، وأردت فقط التواصل معك ومعرفة ما إذا كانت لديكي فرصة لقراءته حتى الآن.</p>
+          <p style="font-size: 16px;">هذا الكتيب هو خطوة أولى رائعة نحو خلق علاقة جيدة مع أبنائك ورحلة تربية ممتعة بإذن الله. وأنا متأكدة من أنك ستستفيدين كثيرًا من ذلك.</p>
+          <br/>
+          <p style="font-size: 16px;">لكنني أردت أيضًا التأكد من أنك رأيت رابط الجلسة الاستشارية المجانية، هاهو:</p>
+          <p style="font-size: 16px;">إذا كنتِ جاده بشأن خلق علاقة آمنة مع طفلك والاستمتاع بأمومتك، فلا توجد طريقة أفضل للبدء من جدولة جلسة استشارية مجانية معي أنا إيمان ناصر.</p>
+          <p style="font-size: 16px;">خلال 30 دقيقة فقط سأقدم لك المخطط الدقيق الذي استخدمته مع العديد من الأمهات لبناء علاقة آمنة مع أطفالهم وتحقيق أهدافهم التربوية على المدي البعيد والقصير.</p>
+          <p style="font-size: 16px;">وسنقوم أيضًا بمشاركة بعض الأسرار التي يمكنك استخدامها من أجل <strong>تحقيق السعادة في نفسك وحياتك الأسرية.</strong></p>
+          <p style="font-size: 16px;">هذه جلسة استشارية مجانية تمامًا وبدون التزام.</p>
+          <p style="font-size: 16px;">فقط دعيني أوضح لك مدى إمكانية خلق نظام في بيتك يتضمن تحقيق أهدافك التربوية وأستمتاعك بأمومتك فى الوقت ذاته، وبعد ذلك سنبدأ من هناك.</p>
+          <p style="font-size: 16px;">لا يتوفر لدي سوى عدد قليل من المقاعد كل شهر، لذلك إذا كنت لا تزالين مهتمة بكيفية بناء علاقة آمنة وقوية مع أبنائك وتوفير جو أسري سعيد، فانقري على الرابط أدناه لحجز مكانك لأن المقاعد محدودة!</p>
+          <br/>
+          <a href="https://salamjourney.com/sessions" style="display: inline-block; background-color: #a9523a; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">احجزي جلستك المجانية من هنا</a>
+          <br/><br/>
+          <p style="font-size: 16px;">أتمنى التحدث إليك قريبًا،<br/>إيمان ناصر</p>
+          <br/>
+          <hr style="border: 0; border-top: 1px solid #ccc; margin: 20px 0;" />
+          <p style="font-size: 14px; color: #666; font-style: italic; text-align: center;">
+            رسالتي هي مساعدة الأمهات والآباء الذين يعانون يومياً في رحلتهم مع أبنائهم على البقاء هادئين وفهم أنفسهم وأطفالهم، وبناء تواصل عميق بين جميع أفراد الأسرة.
+          </p>
+          <br/>
+          <p style="font-size: 16px;">لذا لا تترددي فى متابعة حساباتي عبر مواقع التواصل الإجتماعي ليصلك الكثير فيما يخص التربية وتحسين جوده حياتك فى وجود أطفال.</p>
+          <p style="font-size: 16px;">أتمنى لك قراءة ممتعة وأوقات سعيدة.<br/>إيمان ناصر 😉 سلام</p>
+        </div>
+      `,
+    }),
+  });
+
+  if (!secondEmailResponse.ok) {
+    console.warn("Failed to schedule the second email in Brevo", await secondEmailResponse.text());
+  }
+
   const listId = Number(process.env.BREVO_LIST_ID);
   if (Number.isInteger(listId) && listId > 0) {
     const contactResponse = await fetch("https://api.brevo.com/v3/contacts", {
