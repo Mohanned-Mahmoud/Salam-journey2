@@ -129,7 +129,7 @@ export default function EbookLanding() {
       </main>
 
       <div className="sj-about-wrapper" style={{ marginTop: '50px' }}>
-        <About />
+        <About hideBookingButton={true} />
       </div>
 
       <footer className="sj-simple-footer" style={{ padding: '40px 20px', textAlign: 'center', borderTop: '1px solid var(--sj-line)' }}>

@@ -145,7 +145,7 @@ const STORY_GROUPS = [
   { sectionIndexes: [4, 5], image: "third" },
 ];
 
-export default function About() {
+export default function About({ hideBookingButton }: { hideBookingButton?: boolean } = {}) {
   const ref = useReveal<HTMLDivElement>();
   const { lang, t } = useLanguage();
 
@@ -389,11 +389,13 @@ export default function About() {
             })}
           </div>
 
-          <div className="text-center mt-14 reveal">
-            <Link href="/sessions" className="pill-btn pill-btn-primary">
-              {t(tx("احجزي جلستك الأولى", "Book your first session"))}
-            </Link>
-          </div>
+          {!hideBookingButton && (
+            <div className="text-center mt-14 reveal">
+              <Link href="/sessions" className="pill-btn pill-btn-primary">
+                {t(tx("احجزي جلستك الأولى", "Book your first session"))}
+              </Link>
+            </div>
+          )}
         </div>
         <SectionDivider color="var(--cream)" />
       </section>
