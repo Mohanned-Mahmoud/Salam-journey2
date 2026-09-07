@@ -378,10 +378,7 @@ router.post("/consultations", async (req, res): Promise<void> => {
     });
 
     if (calResult.uid) {
-      await db
-        .update(bookingsTable)
-        .set({ calBookingId: calResult.uid })
-        .where(eq(bookingsTable.id, consultation.id));
+  
     }
   } catch (calError) {
     if (calError instanceof CalComConflictError) {
