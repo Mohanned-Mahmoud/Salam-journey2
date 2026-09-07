@@ -64,8 +64,9 @@ function escapeHtml(value: string): string {
 
 function getFrontendUrl(): string {
   if (process.env.FRONTEND_URL) return process.env.FRONTEND_URL;
+  if (process.env.RENDER_EXTERNAL_URL) return process.env.RENDER_EXTERNAL_URL;
   const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
-  return domain ? `https://${domain}` : "https://salamjourney.com";
+  return domain ? `https://${domain}` : "https://salam-journey.onrender.com";
 }
 
 function getDownloadUrl(): string {
