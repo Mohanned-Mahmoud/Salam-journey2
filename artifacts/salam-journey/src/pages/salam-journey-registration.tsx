@@ -202,7 +202,7 @@ export default function EbookRegistration() {
                 <p>استغلي وقت الانتظار في سماع الفيديو</p>
                 <div style={{ margin: '20px 0', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                   <video 
-                    src="/VSL.mov" 
+                    src="/VSL.mp4" 
                     controls 
                     autoPlay 
                     playsInline 
