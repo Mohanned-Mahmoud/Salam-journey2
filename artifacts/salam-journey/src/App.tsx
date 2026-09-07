@@ -111,6 +111,16 @@ function Router() {
         <Route path="/salam-journey" component={EbookLanding} />
         <Route path="/salam-journey/register" component={EbookRegistration} />
         <Route path="/admin/login" component={AdminLoginPage} />
+        <Route path="/about">
+          <div className="flex flex-col min-h-screen">
+            <Navbar />
+            <main className="flex-1">
+              <About />
+            </main>
+            <Footer />
+            <WhatsAppButton />
+          </div>
+        </Route>
         <Route component={NotFound} />
       </Switch>
     );
