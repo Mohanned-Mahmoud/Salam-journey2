@@ -3,11 +3,12 @@ import { useEffect } from 'react';
 import { Link } from 'wouter';
 import './salam-journey-styles.css';
 
+import { Footer } from '@/components/layout/footer';
+
 function Logo() {
   return (
-    <Link href="/salam-journey" className="sj-logo" data-testid="link-logo">
-      <span className="sj-logo-mark" aria-hidden="true">س</span>
-      <span className="sj-logo-word">Salam Journey</span>
+    <Link href="/salam-journey" data-testid="link-logo">
+      <img src="/images/logo.png" alt="Salam Journey" className="h-10 w-auto object-contain" />
     </Link>
   );
 }
@@ -97,11 +98,7 @@ export default function EbookLanding() {
         </section>
       </main>
 
-      <footer className="sj-container sj-footer">
-        <strong>Salam Journey</strong>
-        <span>نرافق العائلة في رحلتها، يومًا بيوم</span>
-        <span className="sj-ltr">salamjourney.com</span>
-      </footer>
+      <Footer />
     </div>
   );
 }

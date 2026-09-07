@@ -41,9 +41,8 @@ function validate(data: FormData): Errors {
 
 function RegisterLogo() {
   return (
-    <Link href="/salam-journey" className="sj-logo" data-testid="link-register-logo">
-      <span className="sj-logo-mark" aria-hidden="true">س</span>
-      <span className="sj-logo-word">Salam Journey</span>
+    <Link href="/salam-journey" data-testid="link-register-logo">
+      <img src="/images/logo.png" alt="Salam Journey" className="h-10 w-auto object-contain" />
     </Link>
   );
 }
