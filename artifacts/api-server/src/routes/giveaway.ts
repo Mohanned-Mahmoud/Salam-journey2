@@ -8,9 +8,11 @@ import {
   ListConsultationSlotsResponse,
 } from "@workspace/api-zod";
 import {
-  consultationsTable,
+  bookingsTable,
+  coachesTable,
   db,
-  leadsTable,
+  funnelPageTable,
+  funnelRegistrationsTable,
 } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -157,9 +159,26 @@ router.post("/leads", async (req, res): Promise<void> => {
     return;
   }
 
+  let [page] = await db
+    .select({ id: funnelPageTable.id })
+    .from(funnelPageTable)
+    .where(eq(funnelPageTable.slug, "giveaway"))
+    .limit(1);
+
+  if (!page) {
+    [page] = await db
+      .insert(funnelPageTable)
+      .values({
+        title: "Giveaway Funnel",
+        slug: "giveaway",
+        blocks: [],
+      })
+      .returning();
+  }
+
   const [lead] = await db
-    .insert(leadsTable)
-    .values({ name, phone, email })
+    .insert(funnelRegistrationsTable)
+    .values({ name, phone, email, pageId: page.id })
     .returning();
 
   let emailDelivery: "sent" | "failed" = "failed";
@@ -182,10 +201,11 @@ router.post("/leads", async (req, res): Promise<void> => {
 router.get("/consultation-slots", async (_req, res): Promise<void> => {
   const booked = await db
     .select({
-      scheduledDate: consultationsTable.scheduledDate,
-      scheduledTime: consultationsTable.scheduledTime,
+      scheduledDate: bookingsTable.date,
+      scheduledTime: bookingsTable.slot,
     })
-    .from(consultationsTable);
+    .from(bookingsTable)
+    .where(eq(bookingsTable.sessionType, "giveaway_consultation"));
   const bookedKeys = new Set(
     booked.map((slot) => `${slot.scheduledDate}:${slot.scheduledTime}`),
   );
@@ -213,21 +233,21 @@ router.post("/consultations", async (req, res): Promise<void> => {
   }
 
   const [lead] = await db
-    .select({ id: leadsTable.id })
-    .from(leadsTable)
-    .where(eq(leadsTable.id, leadId));
+    .select({ id: funnelRegistrationsTable.id, name: funnelRegistrationsTable.name, email: funnelRegistrationsTable.email, phone: funnelRegistrationsTable.phone })
+    .from(funnelRegistrationsTable)
+    .where(eq(funnelRegistrationsTable.id, leadId));
   if (!lead) {
     res.status(400).json({ error: "Register your details before booking." });
     return;
   }
 
   const [existing] = await db
-    .select({ id: consultationsTable.id })
-    .from(consultationsTable)
+    .select({ id: bookingsTable.id })
+    .from(bookingsTable)
     .where(
       and(
-        eq(consultationsTable.scheduledDate, scheduledDate),
-        eq(consultationsTable.scheduledTime, scheduledTime),
+        eq(bookingsTable.date, scheduledDate),
+        eq(bookingsTable.slot, scheduledTime),
       ),
     );
   if (existing) {
@@ -235,23 +255,37 @@ router.post("/consultations", async (req, res): Promise<void> => {
     return;
   }
 
+  const [coach] = await db
+    .select({ id: coachesTable.id })
+    .from(coachesTable)
+    .limit(1);
+
+  if (!coach) {
+    res.status(500).json({ error: "No coaches available to book." });
+    return;
+  }
+
   const [consultation] = await db
-    .insert(consultationsTable)
+    .insert(bookingsTable)
     .values({
-      leadId,
-      scheduledDate,
-      scheduledTime,
-      status: "booked",
+      coachId: coach.id,
+      date: scheduledDate,
+      slot: scheduledTime,
+      sessionType: "giveaway_consultation",
+      guestName: lead.name,
+      guestEmail: lead.email,
+      guestWhatsapp: lead.phone,
+      status: "confirmed",
     })
     .returning();
 
   res.status(201).json(
     CreateConsultationResponse.parse({
       id: consultation.id,
-      leadId: consultation.leadId,
-      scheduledDate: new Date(`${consultation.scheduledDate}T00:00:00Z`),
-      scheduledTime: consultation.scheduledTime,
-      status: consultation.status,
+      leadId: leadId,
+      scheduledDate: new Date(`${consultation.date}T00:00:00Z`),
+      scheduledTime: consultation.slot,
+      status: "booked",
       createdAt: consultation.createdAt,
     }),
   );

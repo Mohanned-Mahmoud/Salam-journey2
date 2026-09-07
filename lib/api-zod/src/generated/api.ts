@@ -34,7 +34,7 @@ export const CreateLeadBody = zod.object({
 })
 
 export const CreateLeadResponse = zod.object({
-  "id": zod.number(),
+  "id": zod.string(),
   "email": zod.string(),
   "emailDelivery": zod.enum(['sent', 'failed']),
   "createdAt": zod.coerce.date()
@@ -60,14 +60,14 @@ export const ListConsultationSlotsResponse = zod.array(ListConsultationSlotsResp
 
 
 export const CreateConsultationBody = zod.object({
-  "leadId": zod.number().min(1),
+  "leadId": zod.string().min(1),
   "scheduledDate": zod.coerce.date(),
   "scheduledTime": zod.string().min(1)
 })
 
 export const CreateConsultationResponse = zod.object({
-  "id": zod.number(),
-  "leadId": zod.number(),
+  "id": zod.string(),
+  "leadId": zod.string(),
   "scheduledDate": zod.coerce.date(),
   "scheduledTime": zod.string(),
   "status": zod.enum(['booked']),

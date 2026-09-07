@@ -30,7 +30,7 @@ export const LeadCreatedEmailDelivery = {
 } as const;
 
 export interface LeadCreated {
-  id: number;
+  id: string;
   email: string;
   emailDelivery: LeadCreatedEmailDelivery;
   createdAt: string;
@@ -43,8 +43,7 @@ export interface ConsultationDay {
 }
 
 export interface ConsultationInput {
-  /** @minimum 1 */
-  leadId: number;
+  leadId: string;
   scheduledDate: string;
   /** @minLength 1 */
   scheduledTime: string;
@@ -58,8 +57,8 @@ export const ConsultationStatus = {
 } as const;
 
 export interface Consultation {
-  id: number;
-  leadId: number;
+  id: string;
+  leadId: string;
   scheduledDate: string;
   scheduledTime: string;
   status: ConsultationStatus;

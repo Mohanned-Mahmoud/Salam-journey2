@@ -18,4 +18,4 @@ export const testimonialsTable = pgTable("testimonials", {
 
 export const insertTestimonialSchema = createInsertSchema(testimonialsTable).omit({ id: true, createdAt: true });
 export type Testimonial = typeof testimonialsTable.$inferSelect;
-export type InsertTestimonial = Omit<Testimonial, "id" | "createdAt">;
+export type InsertTestimonial = typeof testimonialsTable.$inferInsert;

@@ -130,7 +130,7 @@ components:
       type: object
       properties:
         id:
-          type: number
+          type: string
         email:
           type: string
         emailDelivery:
@@ -164,8 +164,7 @@ components:
       type: object
       properties:
         leadId:
-          type: number
-          minimum: 1
+          type: string
         scheduledDate:
           type: string
           format: date
@@ -180,9 +179,9 @@ components:
       type: object
       properties:
         id:
-          type: number
+          type: string
         leadId:
-          type: number
+          type: string
         scheduledDate:
           type: string
           format: date

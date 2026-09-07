@@ -39,7 +39,7 @@ async function isAdminAuthenticated(req: Request, res: Response, next: NextFunct
 
 router.get("/site-settings/:key", async (req, res) => {
   try {
-    const { key } = req.params;
+    const key = req.params.key as string;
     const [row] = await db
       .select()
       .from(siteSettingsTable)
@@ -60,7 +60,7 @@ router.get("/site-settings/:key", async (req, res) => {
 
 router.put("/admin/site-settings/:key", isAdminAuthenticated, async (req, res) => {
   try {
-    const { key } = req.params;
+    const key = req.params.key as string;
     const { value } = req.body as { value: string };
     if (typeof value !== "string") {
       res.status(400).json({ error: "value must be a string" });

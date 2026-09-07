@@ -54,10 +54,10 @@ export default function EbookRegistration() {
   const [appointment, setAppointment] = useState<Appointment>({ day: '', time: '' });
   const [bookingError, setBookingError] = useState('');
   const [serverError, setServerError] = useState('');
-  const [leadId, setLeadId] = useState<number | null>(null);
+  const [leadId, setLeadId] = useState<string | null>(null);
   const createLead = useCreateLead();
   const slotsQuery = useListConsultationSlots({
-    query: { enabled: status === 'booking' },
+    query: { enabled: status === 'booking' } as any,
   });
   const createConsultation = useCreateConsultation();
 
