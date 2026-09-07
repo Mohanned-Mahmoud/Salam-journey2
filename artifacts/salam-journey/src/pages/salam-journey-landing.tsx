@@ -1,9 +1,12 @@
 import { ArrowLeft, LockKeyhole } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 import './salam-journey-styles.css';
 
+import { FaWhatsapp, FaInstagram, FaYoutube, FaFacebook, FaTiktok } from "react-icons/fa";
+import { apiJson } from "@/lib/api";
 import { Footer } from '@/components/layout/footer';
+import About from '@/pages/about';
 
 function Logo() {
   return (
@@ -14,11 +17,38 @@ function Logo() {
 }
 
 export default function EbookLanding() {
+  const [social, setSocial] = useState({ whatsapp: "", instagram: "", youtube: "", facebook: "", tiktok: "" });
+
   useEffect(() => {
     document.title = 'دليل صغير، أثر كبير | Salam Journey';
     const description = document.querySelector('meta[name="description"]');
     description?.setAttribute('content', 'احصلي على دليل Salam Journey المجاني لتنشئة طفل واثق وسعيد، مكتوب بالعربية وبحب.');
+    
+    Promise.all([
+      apiJson<{value: string}>('/site-settings/whatsapp_number').catch(()=>({value:""})),
+      apiJson<{value: string}>('/site-settings/instagram_url').catch(()=>({value:""})),
+      apiJson<{value: string}>('/site-settings/youtube_url').catch(()=>({value:""})),
+      apiJson<{value: string}>('/site-settings/facebook_url').catch(()=>({value:""})),
+      apiJson<{value: string}>('/site-settings/tiktok_url').catch(()=>({value:""}))
+    ]).then(([wa, ig, yt, fb, tk]) => {
+      const cleanWa = wa.value.replace(/\D/g, "");
+      setSocial({
+        whatsapp: cleanWa ? `https://wa.me/${cleanWa}` : "",
+        instagram: ig.value,
+        youtube: yt.value,
+        facebook: fb.value,
+        tiktok: tk.value
+      });
+    });
   }, []);
+
+  const socialLinks = [
+    { href: social.whatsapp, Icon: FaWhatsapp, show: !!social.whatsapp },
+    { href: social.instagram, Icon: FaInstagram, show: !!social.instagram },
+    { href: social.youtube, Icon: FaYoutube, show: !!social.youtube },
+    { href: social.facebook, Icon: FaFacebook, show: !!social.facebook },
+    { href: social.tiktok, Icon: FaTiktok, show: !!social.tiktok },
+  ];
 
   return (
     <div className="sj-page sj-noise" dir="rtl">
@@ -98,7 +128,20 @@ export default function EbookLanding() {
         </section>
       </main>
 
-      <Footer />
+      <div className="sj-about-wrapper" style={{ marginTop: '50px' }}>
+        <About />
+      </div>
+
+      <footer className="sj-simple-footer" style={{ padding: '40px 20px', textAlign: 'center', borderTop: '1px solid var(--sj-line)' }}>
+        <div className="sj-social-links" style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '20px' }}>
+          {socialLinks.filter(l => l.show).map((l, i) => (
+            <a key={i} href={l.href} target="_blank" rel="noreferrer" style={{ color: 'var(--sj-terra)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '45px', height: '45px', borderRadius: '50%', background: 'rgba(169, 82, 58, 0.08)', transition: 'all 0.2s' }}>
+              <l.Icon size={22} />
+            </a>
+          ))}
+        </div>
+        <p style={{ color: '#829089', fontSize: '12px', margin: 0 }}>© {new Date().getFullYear()} أكاديمية سلام | جميع الحقوق محفوظة</p>
+      </footer>
     </div>
   );
 }
