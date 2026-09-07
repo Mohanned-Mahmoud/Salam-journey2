@@ -8,7 +8,7 @@
 import type { LeadCreatedEmailDelivery } from './leadCreatedEmailDelivery';
 
 export interface LeadCreated {
-  id: number;
+  id: string;
   email: string;
   emailDelivery: LeadCreatedEmailDelivery;
   createdAt: Date;

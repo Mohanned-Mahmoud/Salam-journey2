@@ -8,10 +8,11 @@
 import type { ConsultationStatus } from './consultationStatus';
 
 export interface Consultation {
-  id: number;
-  leadId: number;
+  id: string;
+  leadId: string;
   scheduledDate: Date;
   scheduledTime: string;
   status: ConsultationStatus;
+  calBookingId?: string | null;
   createdAt: Date;
 }

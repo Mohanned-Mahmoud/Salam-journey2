@@ -226,6 +226,9 @@ components:
         status:
           type: string
           enum: [booked]
+        calBookingId:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time

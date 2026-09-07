@@ -14,6 +14,7 @@ import {
   funnelPageTable,
   funnelRegistrationsTable,
 } from "@workspace/db";
+import { createCalBooking, CalComConflictError } from "../lib/calcom";
 
 const router: IRouter = Router();
 const consultationTimes = ["11:00", "13:00", "17:30", "19:00"];
@@ -362,6 +363,38 @@ router.post("/consultations", async (req, res): Promise<void> => {
       status: "confirmed",
     })
     .returning();
+
+  // ─── Cal.com Integration ───────────────────────────────────────────────
+  // Attempt to create the booking on Cal.com.
+  // If the slot was grabbed by someone else at the same moment → 409.
+  // Any other Cal.com error → we continue with the local booking only.
+  try {
+    const calResult = await createCalBooking({
+      name: lead.name,
+      email: lead.email,
+      date: scheduledDate,
+      time: scheduledTime,
+      phone: lead.phone ?? undefined,
+    });
+
+    if (calResult.uid) {
+      await db
+        .update(bookingsTable)
+        .set({ calBookingId: calResult.uid })
+        .where(eq(bookingsTable.id, consultation.id));
+    }
+  } catch (calError) {
+    if (calError instanceof CalComConflictError) {
+      // Roll back local booking so the slot is free again
+      await db.delete(bookingsTable).where(eq(bookingsTable.id, consultation.id));
+      res.status(409).json({
+        error: "هذا الوقت تم حجزه للتو. اختاري وقتًا آخر من فضلك.",
+      });
+      return;
+    }
+    // Non-conflict Cal.com error — log and continue (local booking is saved)
+    req.log.warn({ error: calError, bookingId: consultation.id }, "Cal.com booking failed (non-critical)");
+  }
 
   res.status(201).json(
     CreateConsultationResponse.parse({

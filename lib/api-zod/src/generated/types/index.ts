@@ -10,6 +10,8 @@ export * from './consultation';
 export * from './consultationDay';
 export * from './consultationInput';
 export * from './consultationStatus';
+export * from './emailTriggered';
+export * from './emailTriggeredEmailDelivery';
 export * from './errorResponse';
 export * from './healthStatus';
 export * from './leadCreated';

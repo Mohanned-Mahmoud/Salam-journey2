@@ -25,6 +25,7 @@ export const bookingsTable = pgTable("bookings", {
   guestEmail: varchar("guest_email", { length: 255 }),
   guestWhatsapp: varchar("guest_whatsapp", { length: 20 }),
   status: bookingStatusEnum("status").default("pending"),
+  calBookingId: varchar("cal_booking_id", { length: 100 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

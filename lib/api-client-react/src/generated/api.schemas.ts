@@ -36,6 +36,19 @@ export interface LeadCreated {
   createdAt: string;
 }
 
+export type EmailTriggeredEmailDelivery = typeof EmailTriggeredEmailDelivery[keyof typeof EmailTriggeredEmailDelivery];
+
+
+export const EmailTriggeredEmailDelivery = {
+  sent: 'sent',
+  failed: 'failed',
+} as const;
+
+export interface EmailTriggered {
+  success: boolean;
+  emailDelivery: EmailTriggeredEmailDelivery;
+}
+
 export interface ConsultationDay {
   date: string;
   label: string;
@@ -62,6 +75,7 @@ export interface Consultation {
   scheduledDate: string;
   scheduledTime: string;
   status: ConsultationStatus;
+  calBookingId?: string | null;
   createdAt: string;
 }
 

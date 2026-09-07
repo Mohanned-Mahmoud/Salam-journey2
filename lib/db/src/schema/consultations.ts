@@ -21,6 +21,7 @@ export const consultationsTable = pgTable(
     scheduledDate: date("scheduled_date", { mode: "string" }).notNull(),
     scheduledTime: text("scheduled_time").notNull(),
     status: text("status").notNull().default("booked"),
+    calBookingId: text("cal_booking_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

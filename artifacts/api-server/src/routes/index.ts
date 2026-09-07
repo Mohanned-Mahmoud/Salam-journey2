@@ -13,6 +13,7 @@ import funnelRouter from "./funnel";
 import siteSettingsRouter from "./site-settings";
 import translateRouter from "./translate";
 import giveawayRouter from "./giveaway";
+import calWebhookRouter from "./cal-webhook";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(funnelRouter);
 router.use(siteSettingsRouter);
 router.use(translateRouter);
 router.use(giveawayRouter);
+router.use(calWebhookRouter);
 
 export default router;

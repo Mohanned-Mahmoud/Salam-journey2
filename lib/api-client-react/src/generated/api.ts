@@ -23,6 +23,7 @@ import type {
   Consultation,
   ConsultationDay,
   ConsultationInput,
+  EmailTriggered,
   ErrorResponse,
   HealthStatus,
   LeadCreated,
@@ -148,11 +149,17 @@ export const getCreateLeadUrl = () => {
  */
 export const createLead = async (leadInput: LeadInput, options?: Parameters<typeof customFetch>[1]): Promise<LeadCreated> => {
 
-  return customFetch<LeadCreated>(getCreateLeadUrl(),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<LeadCreated>(getCreateLeadUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
     body: JSON.stringify(leadInput)
   }
 );}
@@ -161,11 +168,13 @@ export const createLead = async (leadInput: LeadInput, options?: Parameters<type
 
 
 
-export const getCreateLeadMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLead>>, TError,{data: BodyType<LeadInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createLead>>, TError,{data: BodyType<LeadInput>}, TContext> => {
+export const getCreateLeadMutationKey = () => ['createLead'] as const;
 
-const mutationKey = ['createLead'];
+export const getCreateLeadMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLead>>, TError,CreateLeadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createLead>>, TError,CreateLeadMutationVariables, TContext> => {
+
+const mutationKey = getCreateLeadMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -175,7 +184,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLead>>, {data: BodyType<LeadInput>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createLead>>, CreateLeadMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  createLead(data,requestOptions)
@@ -191,19 +200,95 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateLeadMutationResult = NonNullable<Awaited<ReturnType<typeof createLead>>>
     export type CreateLeadMutationBody = BodyType<LeadInput>
     export type CreateLeadMutationError = ErrorType<ErrorResponse>
+    export type CreateLeadMutationVariables = {data: BodyType<LeadInput>}
 
     /**
  * @summary Register a giveaway lead
  */
 export const useCreateLead = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLead>>, TError,{data: BodyType<LeadInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createLead>>, TError,CreateLeadMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createLead>>,
         TError,
-        {data: BodyType<LeadInput>},
+        CreateLeadMutationVariables,
         TContext
       > => {
       return useMutation(getCreateLeadMutationOptions(options));
+    }
+
+export const getTriggerGiveawayEmailUrl = (id: number,) => {
+
+
+
+
+  return `/api/leads/${id}/send-email`
+}
+
+/**
+ * Fetches the lead and sends the ebook and schedules follow-up emails.
+ * @summary Send the giveaway email to a registered lead
+ */
+export const triggerGiveawayEmail = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<EmailTriggered> => {
+
+  return customFetch<EmailTriggered>(getTriggerGiveawayEmailUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getTriggerGiveawayEmailMutationKey = () => ['triggerGiveawayEmail'] as const;
+
+export const getTriggerGiveawayEmailMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerGiveawayEmail>>, TError,TriggerGiveawayEmailMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof triggerGiveawayEmail>>, TError,TriggerGiveawayEmailMutationVariables, TContext> => {
+
+const mutationKey = getTriggerGiveawayEmailMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof triggerGiveawayEmail>>, TriggerGiveawayEmailMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  triggerGiveawayEmail(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TriggerGiveawayEmailMutationResult = NonNullable<Awaited<ReturnType<typeof triggerGiveawayEmail>>>
+
+    export type TriggerGiveawayEmailMutationError = ErrorType<ErrorResponse>
+    export type TriggerGiveawayEmailMutationVariables = {id: number}
+
+    /**
+ * @summary Send the giveaway email to a registered lead
+ */
+export const useTriggerGiveawayEmail = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerGiveawayEmail>>, TError,TriggerGiveawayEmailMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof triggerGiveawayEmail>>,
+        TError,
+        TriggerGiveawayEmailMutationVariables,
+        TContext
+      > => {
+      return useMutation(getTriggerGiveawayEmailMutationOptions(options));
     }
 
 export const getListConsultationSlotsUrl = () => {
@@ -296,11 +381,17 @@ export const getCreateConsultationUrl = () => {
  */
 export const createConsultation = async (consultationInput: ConsultationInput, options?: Parameters<typeof customFetch>[1]): Promise<Consultation> => {
 
-  return customFetch<Consultation>(getCreateConsultationUrl(),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<Consultation>(getCreateConsultationUrl(),
   {
     ...options,
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
     body: JSON.stringify(consultationInput)
   }
 );}
@@ -309,11 +400,13 @@ export const createConsultation = async (consultationInput: ConsultationInput, o
 
 
 
-export const getCreateConsultationMutationOptions = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createConsultation>>, TError,{data: BodyType<ConsultationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createConsultation>>, TError,{data: BodyType<ConsultationInput>}, TContext> => {
+export const getCreateConsultationMutationKey = () => ['createConsultation'] as const;
 
-const mutationKey = ['createConsultation'];
+export const getCreateConsultationMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createConsultation>>, TError,CreateConsultationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createConsultation>>, TError,CreateConsultationMutationVariables, TContext> => {
+
+const mutationKey = getCreateConsultationMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -323,7 +416,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createConsultation>>, {data: BodyType<ConsultationInput>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createConsultation>>, CreateConsultationMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  createConsultation(data,requestOptions)
@@ -339,16 +432,17 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateConsultationMutationResult = NonNullable<Awaited<ReturnType<typeof createConsultation>>>
     export type CreateConsultationMutationBody = BodyType<ConsultationInput>
     export type CreateConsultationMutationError = ErrorType<ErrorResponse>
+    export type CreateConsultationMutationVariables = {data: BodyType<ConsultationInput>}
 
     /**
  * @summary Book a free consultation
  */
 export const useCreateConsultation = <TError = ErrorType<ErrorResponse>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createConsultation>>, TError,{data: BodyType<ConsultationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createConsultation>>, TError,CreateConsultationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createConsultation>>,
         TError,
-        {data: BodyType<ConsultationInput>},
+        CreateConsultationMutationVariables,
         TContext
       > => {
       return useMutation(getCreateConsultationMutationOptions(options));

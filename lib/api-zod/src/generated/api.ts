@@ -42,6 +42,20 @@ export const CreateLeadResponse = zod.object({
 
 
 /**
+ * Fetches the lead and sends the ebook and schedules follow-up emails.
+ * @summary Send the giveaway email to a registered lead
+ */
+export const TriggerGiveawayEmailParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const TriggerGiveawayEmailResponse = zod.object({
+  "success": zod.boolean(),
+  "emailDelivery": zod.enum(['sent', 'failed'])
+})
+
+
+/**
  * @summary List available consultation slots
  */
 export const ListConsultationSlotsResponseItem = zod.object({
@@ -58,9 +72,8 @@ export const ListConsultationSlotsResponse = zod.array(ListConsultationSlotsResp
 
 
 
-
 export const CreateConsultationBody = zod.object({
-  "leadId": zod.string().min(1),
+  "leadId": zod.string(),
   "scheduledDate": zod.coerce.date(),
   "scheduledTime": zod.string().min(1)
 })
@@ -71,6 +84,7 @@ export const CreateConsultationResponse = zod.object({
   "scheduledDate": zod.coerce.date(),
   "scheduledTime": zod.string(),
   "status": zod.enum(['booked']),
+  "calBookingId": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 

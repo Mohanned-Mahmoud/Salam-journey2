@@ -7,8 +7,7 @@
  */
 
 export interface ConsultationInput {
-  /** @minimum 1 */
-  leadId: number;
+  leadId: string;
   scheduledDate: Date;
   /** @minLength 1 */
   scheduledTime: string;
