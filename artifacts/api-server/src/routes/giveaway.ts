@@ -102,7 +102,7 @@ async function sendGiveawayEmail(
       htmlContent: `
         <div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.9; padding: 20px; color: #000; text-align: right;">
           <div style="text-align: center; margin-bottom: 20px;">
-            <img src="${getFrontendUrl()}/images/logo.png" alt="Salam Journey" style="max-width: 200px; height: auto;" />
+            <img src="https://raw.githubusercontent.com/Mohanned-Mahmoud/Salam-journey2/main/artifacts/salam-journey/public/images/logo.png" alt="Salam Journey" style="max-width: 200px; height: auto;" />
           </div>
           <p style="font-size: 16px;">مرحباً ${safeName}،</p>
           <br/>
@@ -145,7 +145,7 @@ async function sendGiveawayEmail(
       htmlContent: `
         <div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.9; padding: 20px; color: #000; text-align: right;">
           <div style="text-align: center; margin-bottom: 20px;">
-            <img src="${getFrontendUrl()}/images/logo.png" alt="Salam Journey" style="max-width: 200px; height: auto;" />
+            <img src="https://raw.githubusercontent.com/Mohanned-Mahmoud/Salam-journey2/main/artifacts/salam-journey/public/images/logo.png" alt="Salam Journey" style="max-width: 200px; height: auto;" />
           </div>
           <p style="font-size: 16px;">عزيزتي ${safeName}،</p>
           <br/>
