@@ -55,6 +55,7 @@ export default function EbookRegistration() {
   const [bookingError, setBookingError] = useState('');
   const [serverError, setServerError] = useState('');
   const [leadId, setLeadId] = useState<string | null>(null);
+  const [showBookingBtn, setShowBookingBtn] = useState(false);
   const createLead = useCreateLead();
   const slotsQuery = useListConsultationSlots({
     query: { enabled: status === 'booking' } as any,
@@ -75,6 +76,17 @@ export default function EbookRegistration() {
     if (status !== 'watching_video') return;
     // Don't auto-transition anymore; transition is handled by video onEnded
   }, [status]);
+
+  const handleVideoComplete = async () => {
+    if (leadId) {
+      try {
+        await fetch(`/api/leads/${leadId}/send-email`, { method: 'POST' });
+      } catch (e) {
+        console.error("Failed to trigger email", e);
+      }
+    }
+    setStatus('booking');
+  };
 
   const update = (key: keyof FormData, value: string) => {
     setData((current) => ({ ...current, [key]: value }));
@@ -207,18 +219,25 @@ export default function EbookRegistration() {
                     autoPlay 
                     playsInline 
                     style={{ width: '100%', display: 'block' }}
-                    onEnded={async () => {
-                      if (leadId) {
-                        try {
-                          await fetch(`/api/leads/${leadId}/send-email`, { method: 'POST' });
-                        } catch (e) {
-                          console.error("Failed to trigger email", e);
-                        }
+                    onTimeUpdate={(e) => {
+                      if (e.currentTarget.currentTime >= 209 && !showBookingBtn) {
+                        setShowBookingBtn(true);
                       }
-                      setStatus('booking');
                     }}
+                    onEnded={handleVideoComplete}
                   />
                 </div>
+                {showBookingBtn && (
+                  <div style={{ textAlign: 'center', marginTop: '20px' }} className="sj-fade-in">
+                    <button 
+                      onClick={handleVideoComplete}
+                      className="sj-cta"
+                      type="button"
+                    >
+                      احجزي جلستك المجانية <ArrowRight size={17} aria-hidden="true" />
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
