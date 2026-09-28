@@ -79,6 +79,7 @@ function getDownloadUrl(): string {
 async function sendGiveawayEmail(
   name: string,
   email: string,
+  phone: string,
 ): Promise<boolean> {
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) {
@@ -181,7 +182,7 @@ async function sendGiveawayEmail(
       },
       body: JSON.stringify({
         email,
-        attributes: { FIRSTNAME: name },
+        attributes: { FIRSTNAME: name, WHATSAPP: phone },
         listIds: [listId],
         updateEnabled: true,
       }),
@@ -256,7 +257,7 @@ router.post("/leads", async (req, res): Promise<void> => {
 router.post("/leads/:id/send-email", async (req, res): Promise<void> => {
   const leadId = req.params.id;
   const [lead] = await db
-    .select({ id: funnelRegistrationsTable.id, name: funnelRegistrationsTable.name, email: funnelRegistrationsTable.email })
+    .select({ id: funnelRegistrationsTable.id, name: funnelRegistrationsTable.name, email: funnelRegistrationsTable.email, phone: funnelRegistrationsTable.phone })
     .from(funnelRegistrationsTable)
     .where(eq(funnelRegistrationsTable.id, leadId));
   
@@ -267,7 +268,7 @@ router.post("/leads/:id/send-email", async (req, res): Promise<void> => {
 
   let emailDelivery: "sent" | "failed" = "failed";
   try {
-    emailDelivery = (await sendGiveawayEmail(lead.name, lead.email)) ? "sent" : "failed";
+    emailDelivery = (await sendGiveawayEmail(lead.name, lead.email, lead.phone)) ? "sent" : "failed";
   } catch (error) {
     req.log.warn({ error, leadId: lead.id }, "Brevo delivery failed");
   }
