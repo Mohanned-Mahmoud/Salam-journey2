@@ -27,8 +27,8 @@ function getErrorMessage(error: unknown, fallback: string): string {
 
 function validate(data: FormData): Errors {
   const errors: Errors = {};
-  if (!data.name.trim() || data.name.trim().split(/\s+/).length < 2 || !/[\u0600-\u06ff]/.test(data.name)) {
-    errors.name = 'اكتبي الاسم الكامل باللغة العربية';
+  if (!data.name.trim()) {
+    errors.name = 'يرجى إدخال الاسم';
   }
   const phone = data.phone.replace(/[\s-]/g, '');
   if (!/^(?:\+?20|0)?1[0125]\d{8}$/.test(phone) && !/^\+?[1-9]\d{7,14}$/.test(phone)) {
