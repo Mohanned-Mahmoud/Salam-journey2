@@ -320,13 +320,13 @@ export default function About({ hideBookingButton }: { hideBookingButton?: boole
                         style={{ background: "var(--white)", border: "1px solid rgba(127,169,155,0.3)" }}
                       >
                         <div
-                          className="rounded-[2rem] aspect-[4/5] overflow-hidden flex items-center justify-center relative"
+                          className="rounded-[2rem] aspect-[4/5] overflow-hidden flex items-center justify-center relative p-12"
                           style={{ background: "linear-gradient(135deg, var(--blush-light), var(--cream))" }}
                         >
                           <img
                             src="/images/logo.png"
                             alt="Salam Journey Logo"
-                            className="w-full h-full object-cover"
+                            className="w-full h-auto object-contain drop-shadow-md"
                           />
                         </div>
                       </div>
