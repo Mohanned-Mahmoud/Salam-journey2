@@ -1,18 +1,13 @@
-import { ArrowRight, CalendarDays, Check, Clock3, LockKeyhole } from 'lucide-react';
-import { useEffect, useState, useRef, type FormEvent } from 'react';
+import { ArrowRight, LockKeyhole } from 'lucide-react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'wouter';
-import {
-  useCreateConsultation,
-  useCreateLead,
-  useListConsultationSlots,
-} from '@workspace/api-client-react';
+import { useCreateLead } from '@workspace/api-client-react';
 import { COUNTRY_CODES } from './country-codes.ts';
 import './salam-journey-styles.css';
 
 type FormData = { name: string; phone: string; email: string; whatsappCountryCode: string };
 type Errors = Partial<Record<keyof FormData, string>>;
-type Status = 'form' | 'watching_video' | 'booking' | 'success';
-type Appointment = { day: string; time: string };
+type Status = 'form' | 'watching_video' | 'booking';
 
 function formatTimeLabel(value: string): string {
   const [hours, minutes] = value.split(':').map(Number);
@@ -52,16 +47,9 @@ export default function EbookRegistration() {
   const [data, setData] = useState<FormData>({ name: '', phone: '', email: '', whatsappCountryCode: '+20' });
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<Status>('form');
-  const [appointment, setAppointment] = useState<Appointment>({ day: '', time: '' });
-  const [bookingError, setBookingError] = useState('');
   const [serverError, setServerError] = useState('');
   const [leadId, setLeadId] = useState<string | null>(null);
-  const brevoFormRef = useRef<HTMLFormElement>(null);
   const createLead = useCreateLead();
-  const slotsQuery = useListConsultationSlots({
-    query: { enabled: status === 'booking' } as any,
-  });
-  const createConsultation = useCreateConsultation();
 
   useEffect(() => {
     document.title = status === 'success'
@@ -79,7 +67,7 @@ export default function EbookRegistration() {
   }, [status]);
 
   const handleVideoComplete = async () => {
-    // Email is now handled by Brevo form submission
+    // Email is now handled by backend Brevo form submission
     setStatus('booking');
   };
 
@@ -108,50 +96,6 @@ export default function EbookRegistration() {
         },
       );
     }
-  };
-
-  const selectAppointment = (key: keyof Appointment, value: string) => {
-    setAppointment((current) => ({ ...current, [key]: value }));
-    setBookingError('');
-  };
-
-  const confirmAppointment = () => {
-    if (!appointment.day || !appointment.time) {
-      setBookingError('اختاري اليوم والساعة المناسبة لكِ أولاً');
-      return;
-    }
-    if (!leadId) {
-      setBookingError('انتهت جلسة التسجيل. أعيدي إدخال بياناتك من فضلك.');
-      return;
-    }
-
-    setBookingError('');
-    setServerError('');
-    createConsultation.mutate(
-      {
-        data: {
-          leadId,
-          scheduledDate: appointment.day,
-          scheduledTime: appointment.time,
-        },
-      },
-      {
-        onSuccess: () => setStatus('success'),
-        onError: (error) => {
-          setServerError(getErrorMessage(error, 'تعذر تأكيد الموعد. اختاري وقتًا آخر.'));
-          void slotsQuery.refetch();
-        },
-      },
-    );
-  };
-
-  const resetFlow = () => {
-    setStatus('form');
-    setErrors({});
-    setAppointment({ day: '', time: '' });
-    setBookingError('');
-    setServerError('');
-    setLeadId(null);
   };
 
   return (
@@ -255,70 +199,13 @@ export default function EbookRegistration() {
               <div className="sj-booking" data-testid="status-booking">
                 <div className="sj-form-step">الخطوة ٢ من ٢ · استشارة مجانية</div>
                 <h2>خلّي لنا وقتًا<br />نسمعك فيه.</h2>
-                <p className="sj-form-intro">بعد مشاهدة الفيديو، احجزي موعدًا قصيرًا مع فريق Salam Journey لنتحدث عن احتياجاتك ونجيب عن أسئلتك.</p>
-
-                {slotsQuery.isLoading && <div className="sj-slot-loading" role="status">نجهّز المواعيد المتاحة…</div>}
-                {slotsQuery.isError && <div className="sj-field-error sj-server-error" role="alert">تعذر تحميل المواعيد الآن. حدّثي الصفحة وحاولي مرة أخرى.</div>}
-                {!slotsQuery.isLoading && !slotsQuery.isError && (
-                  <>
-                    <div className="sj-booking-group">
-                      <div className="sj-booking-label"><CalendarDays size={15} aria-hidden="true" /> اختاري اليوم</div>
-                      <div className="sj-day-grid" role="group" aria-label="اختيار يوم الاستشارة">
-                        {slotsQuery.data?.map((day) => {
-                          const [weekday, ...dateParts] = day.label.split('،');
-                          return (
-                            <button
-                              className={`sj-day-option${appointment.day === day.date ? ' selected' : ''}`}
-                              key={day.date}
-                              type="button"
-                              onClick={() => selectAppointment('day', day.date)}
-                              aria-pressed={appointment.day === day.date}
-                              disabled={day.times.length === 0}
-                            >
-                              <span>{weekday}</span>
-                              <strong>{dateParts.join('،')}</strong>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="sj-booking-group">
-                      <div className="sj-booking-label"><Clock3 size={15} aria-hidden="true" /> اختاري الوقت</div>
-                      <div className="sj-time-grid" role="group" aria-label="اختيار وقت الاستشارة">
-                        {(slotsQuery.data?.find((day) => day.date === appointment.day)?.times ?? []).map((time) => (
-                          <button
-                            className={`sj-time-option${appointment.time === time ? ' selected' : ''}`}
-                            key={time}
-                            type="button"
-                            onClick={() => selectAppointment('time', time)}
-                            aria-pressed={appointment.time === time}
-                          >
-                            {formatTimeLabel(time)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {bookingError && <div className="sj-field-error sj-booking-error" role="alert">{bookingError}</div>}
-                {serverError && <div className="sj-field-error sj-server-error" role="alert">{serverError}</div>}
-                <button className="sj-cta sj-submit" type="button" onClick={confirmAppointment} disabled={createConsultation.isPending || slotsQuery.isLoading || slotsQuery.isError} data-testid="button-confirm-appointment">
-                  {createConsultation.isPending ? 'جارٍ تأكيد الموعد…' : 'تأكيد موعد الاستشارة'} <ArrowRight size={17} aria-hidden="true" />
-                </button>
-                <div className="sj-privacy"><LockKeyhole size={11} aria-hidden="true" /> الموعد مجاني ومدته ٢٠ دقيقة.</div>
-              </div>
-            )}
-
-            {status === 'success' && (
-              <div className="sj-state" data-testid="status-success">
-                <div className="sj-success-mark" aria-hidden="true"><Check size={32} /></div>
-                <h2>تم حجز موعدك بنجاح.</h2>
-                <p>سيرسل لكِ الدليل على <strong dir="ltr" data-testid="text-destination-email">{data.email}</strong>،<br />وسننتظرك يوم {slotsQuery.data?.find((day) => day.date === appointment.day)?.label} الساعة {formatTimeLabel(appointment.time)} للاستشارة المجانية.</p>
-                <button className="sj-small-link" type="button" onClick={resetFlow} data-testid="button-register-another">
-                  حجز موعد آخر
-                </button>
+                <p className="sj-form-intro" style={{ marginBottom: '20px' }}>بعد مشاهدة الفيديو، احجزي موعدًا قصيرًا مع فريق Salam Journey لنتحدث عن احتياجاتك ونجيب عن أسئلتك.</p>
+                <iframe 
+                  frameBorder="0" 
+                  width="100%" 
+                  height="720" 
+                  src="https://meet.brevo.com/salam-journey-1/borderless?l=30-minute-meeting"
+                ></iframe>
               </div>
             )}
           </div>
