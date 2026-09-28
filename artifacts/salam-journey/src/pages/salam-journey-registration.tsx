@@ -100,14 +100,7 @@ export default function EbookRegistration() {
         {
           onSuccess: (lead) => {
             setLeadId(lead.id);
-            if (brevoFormRef.current) {
-              brevoFormRef.current.submit();
-              setTimeout(() => {
-                setStatus('watching_video');
-              }, 500);
-            } else {
-              setStatus('watching_video');
-            }
+            setStatus('watching_video');
           },
           onError: (error) => {
             setServerError(getErrorMessage(error, 'تعذر حفظ بياناتك الآن. حاولي مرة أخرى.'));
@@ -175,23 +168,6 @@ export default function EbookRegistration() {
         </aside>
 
         <main className="sj-register-main">
-          <iframe name="brevo_frame" id="brevo_frame" style={{ display: 'none' }} title="hidden-iframe"></iframe>
-          <form
-            ref={brevoFormRef}
-            style={{ display: 'none' }}
-            method="POST"
-            target="brevo_frame"
-            action="https://ea6200ad.sibforms.com/v2/serve/MUIFAAsuq79YYyfyx7hoTn8ECq4qxA5i4R8w-OV1BiWlce5ZAtfW1DlvFB5dEbVMK-imqq5AndbpDZnChJ4vT5iW8RK6tu7Bd6sDxfhusklhvLhU-5mvSN1XSNxAmPjBRW_4xNIoCecKHKhzggQEgVCvoP_xQlRyEYJWKptOhluQRaUYidgTs9x36V1AhipaalHp2wZuMK3XJIpsiw=="
-          >
-            <input type="hidden" name="FIRSTNAME" value={data.name} />
-            <input type="hidden" name="EMAIL" value={data.email} />
-            <input type="hidden" name="WHATSAPP__COUNTRY_CODE" value={data.whatsappCountryCode} />
-            <input type="hidden" name="WHATSAPP" value={data.whatsappCountryCode === '+20' && data.phone.startsWith('0') ? data.phone.substring(1) : data.phone} />
-            <input type="text" name="email_address_check" value="" className="input--hidden" />
-            <input type="hidden" name="locale" value="en" />
-            <input type="hidden" name="html_type" value="simple" />
-          </form>
-
           <div className="sj-form-wrap">
             <Link href="/salam-journey" className="sj-back" data-testid="link-back-home">
               <ArrowRight size={14} aria-hidden="true" /> العودة إلى صفحة الهدية

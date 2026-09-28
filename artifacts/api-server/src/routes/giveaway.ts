@@ -242,6 +242,44 @@ router.post("/leads", async (req, res): Promise<void> => {
     .values({ name, phone, email, pageId: page.id })
     .returning();
 
+  try {
+    const formUrl = "https://ea6200ad.sibforms.com/serve/MUIFAAsuq79YYyfyx7hoTn8ECq4qxA5i4R8w-OV1BiWlce5ZAtfW1DlvFB5dEbVMK-imqq5AndbpDZnChJ4vT5iW8RK6tu7Bd6sDxfhusklhvLhU-5mvSN1XSNxAmPjBRW_4xNIoCecKHKhzggQEgVCvoP_xQlRyEYJWKptOhluQRaUYidgTs9x36V1AhipaalHp2wZuMK3XJIpsiw==";
+    const formData = new URLSearchParams();
+    formData.append("FIRSTNAME", name);
+    formData.append("EMAIL", email);
+    
+    let ccode = "";
+    let pnum = phone;
+    
+    if (phone.startsWith("+20")) {
+      ccode = "+20";
+      pnum = phone.substring(3);
+      if (pnum.startsWith("0")) pnum = pnum.substring(1);
+    } else if (phone.startsWith("+")) {
+      ccode = phone.substring(0, 4); 
+      pnum = phone.substring(4);
+    } else if (phone.startsWith("00")) {
+      ccode = "+" + phone.substring(2, 4);
+      pnum = phone.substring(4);
+    }
+
+    formData.append("WHATSAPP__COUNTRY_CODE", ccode);
+    formData.append("WHATSAPP", pnum);
+    formData.append("email_address_check", "");
+    formData.append("locale", "en");
+    formData.append("html_type", "simple");
+
+    await fetch(formUrl, {
+      method: "POST",
+      body: formData,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      }
+    });
+  } catch (err) {
+    console.error("Brevo form submit error:", err);
+  }
+
   const emailDelivery: "sent" | "failed" = "failed"; // Will be sent later in the send-email endpoint
 
   res.status(201).json(
