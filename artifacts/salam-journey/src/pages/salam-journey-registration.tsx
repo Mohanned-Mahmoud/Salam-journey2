@@ -52,11 +52,9 @@ export default function EbookRegistration() {
   const createLead = useCreateLead();
 
   useEffect(() => {
-    document.title = status === 'success'
-      ? 'موعدك تأكد | Salam Journey'
-      : status === 'booking'
-        ? 'احجزي استشارتك المجانية | Salam Journey'
-        : 'احصلي على دليلك المجاني | Salam Journey';
+    document.title = status === 'booking'
+      ? 'احجزي استشارتك المجانية | Salam Journey'
+      : 'احصلي على دليلك المجاني | Salam Journey';
     const description = document.querySelector('meta[name="description"]');
     description?.setAttribute('content', 'سجّلي بياناتك واحجزي موعد استشارتك المجانية مع Salam Journey.');
   }, [status]);
