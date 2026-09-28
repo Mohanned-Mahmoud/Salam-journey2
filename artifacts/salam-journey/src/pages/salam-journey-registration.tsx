@@ -5,7 +5,6 @@ import {
   useCreateConsultation,
   useCreateLead,
   useListConsultationSlots,
-  useTriggerGiveawayEmail
 } from '@workspace/api-client-react';
 import { COUNTRY_CODES } from './country-codes.ts';
 import './salam-journey-styles.css';
@@ -63,7 +62,6 @@ export default function EbookRegistration() {
     query: { enabled: status === 'booking' } as any,
   });
   const createConsultation = useCreateConsultation();
-  const triggerEmail = useTriggerGiveawayEmail();
 
   useEffect(() => {
     document.title = status === 'success'
@@ -81,7 +79,7 @@ export default function EbookRegistration() {
   }, [status]);
 
   const handleVideoComplete = async () => {
-    // Email is now handled by backend
+    // Email is now handled by Brevo form submission
     setStatus('booking');
   };
 
@@ -102,7 +100,9 @@ export default function EbookRegistration() {
         {
           onSuccess: (lead) => {
             setLeadId(lead.id);
-            triggerEmail.mutate({ id: lead.id as any });
+            if (brevoFormRef.current) {
+              brevoFormRef.current.submit();
+            }
             setStatus('watching_video');
           },
           onError: (error) => {
