@@ -194,14 +194,15 @@ export default function EbookRegistration() {
                   style={{ display: 'none' }}
                   method="POST"
                   target="brevo_frame"
-                  action="https://ea6200ad.sibforms.com/serve/MUIFAAsuq79YYyfyx7hoTn8ECq4qxA5i4R8w-OV1BiWlce5ZAtfW1DlvFB5dEbVMK-imqq5AndbpDZnChJ4vT5iW8RK6tu7Bd6sDxfhusklhvLhU-5mvSN1XSNxAmPjBRW_4xNIoCecKHKhzggQEgVCvoP_xQlRyEYJWKptOhluQRaUYidgTs9x36V1AhipaalHp2wZuMK3XJIpsiw=="
+                  action="https://ea6200ad.sibforms.com/v2/serve/MUIFAAsuq79YYyfyx7hoTn8ECq4qxA5i4R8w-OV1BiWlce5ZAtfW1DlvFB5dEbVMK-imqq5AndbpDZnChJ4vT5iW8RK6tu7Bd6sDxfhusklhvLhU-5mvSN1XSNxAmPjBRW_4xNIoCecKHKhzggQEgVCvoP_xQlRyEYJWKptOhluQRaUYidgTs9x36V1AhipaalHp2wZuMK3XJIpsiw=="
                 >
                   <input type="hidden" name="FIRSTNAME" value={data.name} />
                   <input type="hidden" name="EMAIL" value={data.email} />
                   <input type="hidden" name="WHATSAPP__COUNTRY_CODE" value={data.whatsappCountryCode} />
                   <input type="hidden" name="WHATSAPP" value={data.phone} />
-                  <input type="hidden" name="email_address_check" value="" />
+                  <input type="text" name="email_address_check" value="" className="input--hidden" />
                   <input type="hidden" name="locale" value="en" />
+                  <input type="hidden" name="html_type" value="simple" />
                 </form>
 
                 <form className="sj-fields" onSubmit={submit} noValidate>
