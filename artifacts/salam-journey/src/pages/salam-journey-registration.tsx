@@ -159,7 +159,7 @@ export default function EbookRegistration() {
 
   return (
     <div className="sj-register-page sj-noise" dir="rtl">
-      <div className="sj-register-layout">
+      <div className={`sj-register-layout ${status === 'watching_video' || status === 'booking' ? 'video-mode' : ''}`}>
         <aside className="sj-register-aside">
           <RegisterLogo />
           <div className="sj-aside-copy">
@@ -175,6 +175,12 @@ export default function EbookRegistration() {
             <Link href="/salam-journey" className="sj-back" data-testid="link-back-home">
               <ArrowRight size={14} aria-hidden="true" /> العودة إلى صفحة الهدية
             </Link>
+            
+            {(status === 'watching_video' || status === 'booking') && (
+              <div style={{ marginBottom: '30px', textAlign: 'center' }}>
+                <RegisterLogo />
+              </div>
+            )}
 
             {status === 'form' && (
               <>

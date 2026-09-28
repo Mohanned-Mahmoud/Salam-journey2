@@ -139,6 +139,10 @@ html { scroll-behavior: smooth; }
 /* Registration */
 .sj-register-page { min-height: 100dvh; background: var(--sj-cream); color: var(--sj-ink); font-family: var(--font-body); margin: 0; }
 .sj-register-layout { display: grid; grid-template-columns: .86fr 1.14fr; min-height: 100dvh; }
+.sj-register-layout.video-mode { display: block; }
+.sj-register-layout.video-mode .sj-register-aside { display: none; }
+.sj-register-layout.video-mode .sj-register-main { max-width: 900px; margin: 0 auto; width: 100%; }
+.sj-register-layout.video-mode .sj-form-wrap { max-width: 100%; }
 .sj-register-aside {
   display: flex; flex-direction: column; justify-content: space-between;
   padding: 38px clamp(28px, 7vw, 108px); background: var(--sj-ink); color: var(--sj-cream);
