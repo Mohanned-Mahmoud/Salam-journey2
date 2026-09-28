@@ -206,8 +206,8 @@ router.post("/leads", async (req, res): Promise<void> => {
   const phone = parsed.data.phone.replace(/[\s-]/g, "");
   const email = parsed.data.email.trim().toLowerCase();
 
-  if (name.split(/\s+/).length < 2 || !/[\u0600-\u06ff]/.test(name)) {
-    res.status(400).json({ error: "Please provide the full Arabic name." });
+  if (!name) {
+    res.status(400).json({ error: "Please provide a name." });
     return;
   }
   if (!emailPattern.test(email)) {
