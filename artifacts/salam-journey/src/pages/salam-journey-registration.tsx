@@ -1,14 +1,15 @@
 import { ArrowRight, CalendarDays, Check, Clock3, LockKeyhole } from 'lucide-react';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, useRef, type FormEvent } from 'react';
 import { Link } from 'wouter';
 import {
   useCreateConsultation,
   useCreateLead,
   useListConsultationSlots,
 } from '@workspace/api-client-react';
+import { COUNTRY_CODES } from './country-codes.ts';
 import './salam-journey-styles.css';
 
-type FormData = { name: string; phone: string; email: string };
+type FormData = { name: string; phone: string; email: string; whatsappCountryCode: string };
 type Errors = Partial<Record<keyof FormData, string>>;
 type Status = 'form' | 'watching_video' | 'booking' | 'success';
 type Appointment = { day: string; time: string };
@@ -48,14 +49,14 @@ function RegisterLogo() {
 }
 
 export default function EbookRegistration() {
-  const [data, setData] = useState<FormData>({ name: '', phone: '', email: '' });
+  const [data, setData] = useState<FormData>({ name: '', phone: '', email: '', whatsappCountryCode: '+20' });
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<Status>('form');
   const [appointment, setAppointment] = useState<Appointment>({ day: '', time: '' });
   const [bookingError, setBookingError] = useState('');
   const [serverError, setServerError] = useState('');
   const [leadId, setLeadId] = useState<string | null>(null);
-  const [showBookingBtn, setShowBookingBtn] = useState(false);
+  const brevoFormRef = useRef<HTMLFormElement>(null);
   const createLead = useCreateLead();
   const slotsQuery = useListConsultationSlots({
     query: { enabled: status === 'booking' } as any,
@@ -78,13 +79,7 @@ export default function EbookRegistration() {
   }, [status]);
 
   const handleVideoComplete = async () => {
-    if (leadId) {
-      try {
-        await fetch(`/api/leads/${leadId}/send-email`, { method: 'POST' });
-      } catch (e) {
-        console.error("Failed to trigger email", e);
-      }
-    }
+    // Email is now handled by Brevo form submission
     setStatus('booking');
   };
 
@@ -99,11 +94,15 @@ export default function EbookRegistration() {
     setErrors(nextErrors);
     setServerError('');
     if (Object.keys(nextErrors).length === 0) {
+      const fullPhone = `${data.whatsappCountryCode}${data.phone}`;
       createLead.mutate(
-        { data: { name: data.name.trim(), phone: data.phone, email: data.email.trim() } },
+        { data: { name: data.name.trim(), phone: fullPhone, email: data.email.trim() } },
         {
           onSuccess: (lead) => {
             setLeadId(lead.id);
+            if (brevoFormRef.current) {
+              brevoFormRef.current.submit();
+            }
             setStatus('watching_video');
           },
           onError: (error) => {
@@ -182,6 +181,23 @@ export default function EbookRegistration() {
                 <div className="sj-form-step">الخطوة ١ من ١ · أقل من دقيقة</div>
                 <h2>أين نرسل لكِ الدليل؟</h2>
                 <p className="sj-form-intro">أدخلي بياناتك لنجهّز نسختك المجانية. لا توجد قوائم مزعجة، وعد.</p>
+                
+                <iframe name="brevo_frame" id="brevo_frame" style={{ display: 'none' }} title="hidden-iframe"></iframe>
+                <form
+                  ref={brevoFormRef}
+                  style={{ display: 'none' }}
+                  method="POST"
+                  target="brevo_frame"
+                  action="https://ea6200ad.sibforms.com/serve/MUIFAAsuq79YYyfyx7hoTn8ECq4qxA5i4R8w-OV1BiWlce5ZAtfW1DlvFB5dEbVMK-imqq5AndbpDZnChJ4vT5iW8RK6tu7Bd6sDxfhusklhvLhU-5mvSN1XSNxAmPjBRW_4xNIoCecKHKhzggQEgVCvoP_xQlRyEYJWKptOhluQRaUYidgTs9x36V1AhipaalHp2wZuMK3XJIpsiw=="
+                >
+                  <input type="hidden" name="FIRSTNAME" value={data.name} />
+                  <input type="hidden" name="EMAIL" value={data.email} />
+                  <input type="hidden" name="WHATSAPP__COUNTRY_CODE" value={data.whatsappCountryCode} />
+                  <input type="hidden" name="WHATSAPP" value={data.phone} />
+                  <input type="hidden" name="email_address_check" value="" />
+                  <input type="hidden" name="locale" value="en" />
+                </form>
+
                 <form className="sj-fields" onSubmit={submit} noValidate>
                   <div className="sj-field">
                     <label htmlFor="sj-name">الاسم الكامل</label>
@@ -189,8 +205,21 @@ export default function EbookRegistration() {
                     {errors.name && <div className="sj-field-error" id="sj-name-error" role="alert" data-testid="error-name">{errors.name}</div>}
                   </div>
                   <div className="sj-field">
-                    <label htmlFor="sj-phone">رقم الهاتف</label>
-                    <input id="sj-phone" inputMode="tel" className={`sj-input${errors.phone ? ' invalid' : ''}`} value={data.phone} onChange={(event) => update('phone', event.target.value)} placeholder="010 1234 5678" aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? 'sj-phone-error' : undefined} data-testid="input-phone" />
+                    <label htmlFor="sj-phone">رقم واتس آب</label>
+                    <div style={{ display: 'flex', gap: '8px', direction: 'ltr' }}>
+                      <select 
+                        className={`sj-input${errors.phone ? ' invalid' : ''}`}
+                        style={{ width: '130px', padding: '14px 8px', flexShrink: 0 }}
+                        value={data.whatsappCountryCode}
+                        onChange={(event) => update('whatsappCountryCode', event.target.value)}
+                        aria-label="كود الدولة"
+                      >
+                        {COUNTRY_CODES.map((code: { value: string; label: string }) => (
+                          <option key={code.value} value={code.value}>{code.label}</option>
+                        ))}
+                      </select>
+                      <input id="sj-phone" inputMode="tel" className={`sj-input${errors.phone ? ' invalid' : ''}`} value={data.phone} onChange={(event) => update('phone', event.target.value)} placeholder="10 1234 5678" aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? 'sj-phone-error' : undefined} data-testid="input-phone" />
+                    </div>
                     {errors.phone && <div className="sj-field-error" id="sj-phone-error" role="alert" data-testid="error-phone">{errors.phone}</div>}
                   </div>
                   <div className="sj-field">
@@ -219,25 +248,18 @@ export default function EbookRegistration() {
                     autoPlay 
                     playsInline 
                     style={{ width: '100%', display: 'block' }}
-                    onTimeUpdate={(e) => {
-                      if (e.currentTarget.currentTime >= 209 && !showBookingBtn) {
-                        setShowBookingBtn(true);
-                      }
-                    }}
                     onEnded={handleVideoComplete}
                   />
                 </div>
-                {showBookingBtn && (
-                  <div style={{ textAlign: 'center', marginTop: '20px' }} className="sj-fade-in">
-                    <button 
-                      onClick={handleVideoComplete}
-                      className="sj-cta"
-                      type="button"
-                    >
-                      احجزي جلستك المجانية <ArrowRight size={17} aria-hidden="true" />
-                    </button>
-                  </div>
-                )}
+                <div style={{ textAlign: 'center', marginTop: '20px' }} className="sj-fade-in">
+                  <button 
+                    onClick={handleVideoComplete}
+                    className="sj-cta"
+                    type="button"
+                  >
+                    احجزي جلستك المجانية <ArrowRight size={17} aria-hidden="true" />
+                  </button>
+                </div>
               </div>
             )}
 
