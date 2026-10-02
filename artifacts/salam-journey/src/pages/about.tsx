@@ -316,11 +316,11 @@ export default function About({ hideBookingButton }: { hideBookingButton?: boole
                       </div>
                     ) : group.image !== "coach" ? (
                       <div
-                        className="rounded-[2.5rem] p-2 w-[80%] max-w-[280px] mx-auto"
+                        className="rounded-[2.5rem] p-2 w-[80%] max-w-[300px] mx-auto"
                         style={{ background: "var(--white)", border: "1px solid rgba(127,169,155,0.3)" }}
                       >
                         <div
-                          className="rounded-[2rem] aspect-square overflow-hidden flex items-center justify-center relative p-10"
+                          className="rounded-[2rem] aspect-square overflow-hidden flex items-center justify-center relative p-6"
                           style={{ background: "linear-gradient(135deg, var(--blush-light), var(--cream))" }}
                         >
                           <img
