@@ -202,7 +202,7 @@ export default function EbookRegistration() {
                   frameBorder="0" 
                   width="100%" 
                   height="720" 
-                  src="https://meet.brevo.com/salam-journey-1/borderless?l=30-minute-meeting"
+                  src="https://meet.brevo.com/eman-nasser/borderless"
                 ></iframe>
               </div>
             )}
