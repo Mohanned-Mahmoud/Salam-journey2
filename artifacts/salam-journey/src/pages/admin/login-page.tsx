@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@/hooks/use-auth'; // 🌟 استيراد الهوك الموحد للسيستم
+import { useAuth } from '@/hooks/use-auth';
+import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 
 export default function AdminLoginPage() {
   const [, navigate] = useLocation();
@@ -122,6 +123,18 @@ export default function AdminLoginPage() {
               {submitting ? 'جاري التحقق من الصلاحيات...' : 'دخول اللوحة'}
             </button>
           </form>
+
+          <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-[0.18em]" style={{ color: "var(--text-body)" }}>
+            <span className="h-px flex-1" style={{ background: "rgba(127,169,155,0.3)" }} />
+            <span>أو</span>
+            <span className="h-px flex-1" style={{ background: "rgba(127,169,155,0.3)" }} />
+          </div>
+
+          <GoogleSignInButton
+            label="الدخول باستخدام حساب جوجل"
+            onSuccess={() => navigate('/admin')}
+            onError={(msg) => setError(msg)}
+          />
         </div>
       </div>
     </div>
