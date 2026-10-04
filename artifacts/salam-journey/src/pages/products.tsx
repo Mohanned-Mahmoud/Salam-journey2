@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, FileText, Sparkles, Heart, Coffee } from "lucide-react";
 import { useLanguage, tx, type Bilingual } from "@/lib/i18n";
+import { useAuth } from "@/hooks/use-auth";
+import { useAuthModals } from "@/components/auth/auth-modals";
 import { useReveal } from "@/lib/use-reveal";
 import { apiJson } from "@/lib/api";
 import { SoftBlob, SectionDivider } from "@/components/section-divider";
@@ -10,6 +12,7 @@ type ProductCard = {
   title: Bilingual;
   desc: Bilingual;
   price: Bilingual;
+  rawPrice: number;
   free: boolean;
   Icon: React.ComponentType<{ size?: number; className?: string }>;
   gradient: string;
@@ -20,8 +23,11 @@ type ProductType = "pdf" | "printable" | "guide" | "other";
 export default function Products() {
   const ref = useReveal<HTMLDivElement>();
   const { lang, t } = useLanguage();
+  const { user } = useAuth();
+  const { openAuthGate } = useAuthModals();
   const [products, setProducts] = useState<ProductCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +57,7 @@ export default function Products() {
               title: tx(product.titleAr, product.titleEn),
               desc: tx(product.descAr ?? "", product.descEn ?? product.descAr ?? ""),
               price: tx(formatProductPrice(product.price, product.isFree, "ar"), formatProductPrice(product.price, product.isFree, "en")),
+              rawPrice: Number(product.price ?? 0),
               free: Boolean(product.isFree),
               Icon: getProductIcon(product.type),
               gradient: getProductGradient(product.type),
@@ -70,6 +77,58 @@ export default function Products() {
   }, []);
 
   const visibleProducts = useMemo(() => products, [products]);
+
+  const handleProductAction = async (p: ProductCard) => {
+    if (p.free) {
+      // Direct download logic (mocked)
+      window.open(p.id === 'calm-guide' ? '/calm-guide.pdf' : '#', '_blank');
+      return;
+    }
+
+    if (!user) {
+      openAuthGate({
+        message: tx("يرجى تسجيل الدخول لمتابعة عملية الشراء.", "Please sign in to continue with the purchase."),
+      });
+      return;
+    }
+
+    try {
+      setProcessingId(p.id);
+      const res = await fetch("http://localhost:3100/api/stripe/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [
+            {
+              name: p.title.en || p.title.ar,
+              description: "Digital Product",
+              amount: p.rawPrice,
+              quantity: 1,
+            }
+          ],
+          metadata: {
+            type: "product",
+            productId: p.id,
+            userId: user.id
+          },
+          successUrl: `${window.location.origin}/payment-success`,
+          cancelUrl: `${window.location.origin}/payment-cancel`,
+        })
+      });
+
+      if (!res.ok) throw new Error("Failed to create checkout session");
+      
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      console.error(err);
+      alert(t(tx("حدث خطأ أثناء معالجة الدفع", "Error processing payment")));
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
   return (
     <div ref={ref} key={lang} className="lang-fade">
@@ -156,9 +215,11 @@ export default function Products() {
                     </span>
                     <button
                       type="button"
+                      onClick={() => handleProductAction(p)}
+                      disabled={processingId === p.id}
                       className="pill-btn pill-btn-primary text-sm py-2 px-5"
                     >
-                      {p.free ? t(tx("تحميل", "Download")) : t(tx("شراء", "Buy"))}
+                      {processingId === p.id ? t(tx("جاري التحويل...", "Processing...")) : p.free ? t(tx("تحميل", "Download")) : t(tx("شراء", "Buy"))}
                       <Download size={14} />
                     </button>
                   </div>

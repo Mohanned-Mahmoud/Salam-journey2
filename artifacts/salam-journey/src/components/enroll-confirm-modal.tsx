@@ -12,6 +12,7 @@ export type CourseSummary = {
   id: string;
   title: Bilingual;
   price: Bilingual;
+  rawPrice: number;
   free: boolean;
 };
 
@@ -33,6 +34,7 @@ export function EnrollConfirmModal({ course, isOpen, onClose }: Props) {
   const { openAuthGate } = useAuthModals();
   const [, navigate] = useLocation();
   const [confirmed, setConfirmed] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     if (!isOpen) setConfirmed(false);
@@ -40,7 +42,7 @@ export function EnrollConfirmModal({ course, isOpen, onClose }: Props) {
 
   if (!course) return null;
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!user) {
       onClose();
       openAuthGate({
@@ -49,25 +51,67 @@ export function EnrollConfirmModal({ course, isOpen, onClose }: Props) {
           "Please sign in or create an account to enroll in this course.",
         ),
         onSuccess: () => {
-          /* After auth succeeds, re-enroll for them automatically. */
-          const r = enrollCourse({ id: course.id, title: course.title.ar });
-          if (r.alreadyEnrolled) {
-            notify.info(t(tx("أنتِ مسجّلة بالفعل", "You're already enrolled")));
-          } else {
+          if (course.free) {
+            enrollCourse({ id: course.id, title: course.title.ar });
             notify.success(t(tx("تم التسجيل في الدورة 🌿", "Enrolled successfully 🌿")));
+            navigate("/account");
+          } else {
+             notify.info(t(tx("تم تسجيل الدخول، يمكنك الآن المتابعة للدفع", "Signed in, you can now proceed to payment")));
           }
-          navigate("/account");
         },
       });
       return;
     }
-    const r = enrollCourse({ id: course.id, title: course.title.ar });
-    if (r.alreadyEnrolled) {
+
+    const enrolledIds = new Set(user.enrolledCourses?.map((c: any) => c.id) || []);
+    if (enrolledIds.has(course.id)) {
       notify.info(t(tx("أنتِ مسجّلة بالفعل في هذه الدورة", "You're already enrolled in this course")));
       onClose();
       return;
     }
-    setConfirmed(true);
+
+    if (course.free) {
+      enrollCourse({ id: course.id, title: course.title.ar });
+      setConfirmed(true);
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      const res = await fetch("http://localhost:3100/api/stripe/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [
+            {
+              name: course.title.en || course.title.ar,
+              description: "Course Enrollment",
+              amount: course.rawPrice,
+              quantity: 1,
+            }
+          ],
+          metadata: {
+            type: "course",
+            courseId: course.id,
+            userId: user.id
+          },
+          successUrl: `${window.location.origin}/payment-success`,
+          cancelUrl: `${window.location.origin}/payment-cancel`,
+        })
+      });
+
+      if (!res.ok) throw new Error("Failed to create checkout session");
+      
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      console.error(err);
+      notify.error(t(tx("حدث خطأ أثناء معالجة الدفع", "Error processing payment")));
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -126,8 +170,8 @@ export function EnrollConfirmModal({ course, isOpen, onClose }: Props) {
               <button type="button" onClick={onClose} className="pill-btn pill-btn-outline flex-1">
                 {t(tx("إلغاء", "Cancel"))}
               </button>
-              <button type="button" onClick={handleConfirm} className="pill-btn pill-btn-primary flex-1">
-                {t(tx("تأكيد التسجيل", "Confirm"))}
+              <button type="button" onClick={handleConfirm} disabled={isProcessing} className="pill-btn pill-btn-primary flex-1">
+                {isProcessing ? t(tx("جاري التحويل...", "Processing...")) : t(tx("تأكيد التسجيل", "Confirm"))}
               </button>
             </div>
           </>

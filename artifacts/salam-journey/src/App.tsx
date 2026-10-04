@@ -25,6 +25,8 @@ import FunnelPage from "@/pages/funnel-page";
 import NotFound from "@/pages/not-found";
 import EbookLanding from "@/pages/salam-journey-landing";
 import EbookRegistration from "@/pages/salam-journey-registration";
+import PaymentSuccess from "@/pages/payment-success";
+import PaymentCancel from "@/pages/payment-cancel";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -137,6 +139,8 @@ function Router() {
           <Route path="/products" component={Products} />
           <Route path="/about">{() => <About />}</Route>
           <Route path="/account" component={Account} />
+          <Route path="/payment-success" component={PaymentSuccess} />
+          <Route path="/payment-cancel" component={PaymentCancel} />
           <Route component={NotFound} />
         </Switch>
       </main>

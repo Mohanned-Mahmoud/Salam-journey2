@@ -14,6 +14,7 @@ import siteSettingsRouter from "./site-settings";
 import translateRouter from "./translate";
 import giveawayRouter from "./giveaway";
 import calWebhookRouter from "./cal-webhook";
+import stripeRouter from "./stripe";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(siteSettingsRouter);
 router.use(translateRouter);
 router.use(giveawayRouter);
 router.use(calWebhookRouter);
+router.use(stripeRouter);
 
 export default router;

@@ -193,6 +193,7 @@ export function BookingCalendar({ onConfirmed }: Props) {
     topic: "",
     notes: "",
   });
+  const [processing, setProcessing] = useState(false);
 
   /* Pre-fill form whenever the signed-in user changes. */
   useEffect(() => {
@@ -303,48 +304,50 @@ export function BookingCalendar({ onConfirmed }: Props) {
     const sessionTypeBilingual = tx(form.sessionType.ar, form.sessionType.en);
     const packageTotal = form.bookingKind === "single" ? null : form.packageSessionsTotal;
 
-    const confirmed = await onConfirmed?.({
-      date: key,
-      slot: selectedSlot,
-      slotLabel,
-      sessionType: sessionTypeBilingual,
-      bookingKind: form.bookingKind,
-      packageSessionsTotal: packageTotal,
-      topic: form.topic,
-      notes: form.notes,
-      name: form.name,
-      email: form.email,
-      whatsapp: form.whatsapp,
-    });
+    try {
+      setProcessing(true);
+      const pkgKey = form.bookingKind === "single" ? "single" : form.packageSessionsTotal === 4 ? "fourSessions" : "sixSessions";
+      const priceString = sessionPrices[pkgKey as keyof typeof sessionPrices] || "50";
+      const rawPrice = parseInt(priceString.toString().replace(/[^0-9]/g, "")) || 50;
 
-    if (confirmed === false) {
-      return;
+      const res = await fetch("http://localhost:3100/api/stripe/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [
+            {
+              name: sessionTypeBilingual.en || sessionTypeBilingual.ar,
+              description: `Booking on ${key} at ${slotLabel}`,
+              amount: rawPrice,
+              quantity: 1,
+            }
+          ],
+          metadata: {
+            type: "booking",
+            bookingKind: form.bookingKind,
+            date: key,
+            slot: selectedSlot,
+            userId: user?.id || "guest",
+            email: form.email,
+            whatsapp: form.whatsapp
+          },
+          successUrl: `${window.location.origin}/payment-success`,
+          cancelUrl: `${window.location.origin}/payment-cancel`,
+        })
+      });
+
+      if (!res.ok) throw new Error("Failed to create checkout session");
+      
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      console.error(err);
+      alert(t(tx("حدث خطأ أثناء معالجة الدفع", "Error processing payment")));
+    } finally {
+      setProcessing(false);
     }
-
-    setBookedMap((prev) => {
-      const next = { ...prev, [key]: Array.from(new Set([...(prev[key] ?? []), selectedSlot])) };
-      saveBooked(next);
-      return next;
-    });
-
-    saveBookingRecord({
-      date: key,
-      slot: selectedSlot,
-      slotLabel,
-      sessionType: t(sessionTypeBilingual),
-      bookingKind: form.bookingKind,
-      packageSessionsTotal: packageTotal,
-      packageSessionsRemaining: packageTotal,
-      topic: form.topic,
-      notes: form.notes,
-      name: form.name,
-      email: form.email,
-      whatsapp: form.whatsapp,
-    });
-
-    /* Reset slot + text inputs after confirmation */
-    setSelectedSlot(null);
-    setForm((prev) => ({ ...prev, topic: "", notes: "" }));
   };
 
   const cells: (number | null)[] = [];
@@ -729,8 +732,8 @@ export function BookingCalendar({ onConfirmed }: Props) {
               />
             </Field>
 
-            <button type="submit" className="pill-btn pill-btn-primary mt-4 w-full md:w-auto font-bold text-base shadow-sm">
-              {t(tx("تأكيد الحجز", "Confirm Booking"))}
+            <button type="submit" disabled={processing} className="pill-btn pill-btn-primary mt-4 w-full md:w-auto font-bold text-base shadow-sm">
+              {processing ? t(tx("جاري التحويل...", "Processing...")) : t(tx("تأكيد الحجز", "Confirm Booking"))}
             </button>
           </form>
         )}

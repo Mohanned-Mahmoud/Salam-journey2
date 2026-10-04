@@ -16,6 +16,7 @@ type CourseCard = {
   duration: Bilingual;
   students: string;
   price: Bilingual;
+  rawPrice: number;
   badge?: Bilingual;
   gradient: string;
   imageUrl?: string;
@@ -77,6 +78,7 @@ export default function Courses() {
               ),
               students: course.students ?? "—",
               price: tx(formatCoursePrice(course.price, "ar"), formatCoursePrice(course.price, "en")),
+              rawPrice: Number(course.price ?? 0),
               badge: course.category === "free" ? tx("مجاني", "Free") : undefined,
               gradient: course.gradient ?? getCourseGradient(course.category),
               imageUrl: course.imageUrl ?? undefined,
@@ -168,7 +170,7 @@ export default function Courses() {
                   navigate("/account?tab=courses");
                   return;
                 }
-                setEnrollFor({ id: c.id, title: c.title, price: c.price, free: c.category === "free" });
+                setEnrollFor({ id: c.id, title: c.title, price: c.price, rawPrice: c.rawPrice, free: c.category === "free" });
               };
 
               return (

@@ -29,6 +29,11 @@ app.use(
   }),
 );
 app.use(cors());
+
+// Stripe Webhook needs the raw body to verify signatures. We must mount it BEFORE express.json()
+import stripeWebhookRouter from "./routes/stripe-webhook";
+app.use("/api/webhook/stripe", express.raw({ type: 'application/json' }), stripeWebhookRouter);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(authMiddleware);

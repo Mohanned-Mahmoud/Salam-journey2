@@ -22,7 +22,8 @@
     "firebase-admin": "^11.4.0",
     "googleapis": "^173.0.0",
     "pino": "^9",
-    "pino-http": "^10"
+    "pino-http": "^10",
+    "stripe": "^23.0.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
