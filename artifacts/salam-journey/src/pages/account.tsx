@@ -10,6 +10,7 @@ import {
   Clock,
   Sparkles,
   ArrowRight,
+  PackageOpen,
 } from "lucide-react";
 import { useLanguage, tx } from "@/lib/i18n";
 import { useReveal } from "@/lib/use-reveal";
@@ -24,6 +25,7 @@ const TABS: { id: TabId; label: { ar: string; en: string }; Icon: React.Componen
   { id: "profile",  label: tx("الملف الشخصي", "Profile"),         Icon: UserIcon },
   { id: "courses",  label: tx("دوراتي", "My Courses"),             Icon: BookOpen },
   { id: "bookings", label: tx("حجوزاتي", "My Bookings"),           Icon: CalendarDays },
+  { id: "products", label: tx("منتجاتي", "My Products"),           Icon: PackageOpen },
   { id: "password", label: tx("تغيير كلمة المرور", "Change Password"), Icon: KeyRound },
 ];
 
@@ -177,6 +179,7 @@ export default function Account() {
               {tab === "profile"  && <ProfileTab />}
               {tab === "courses"  && <CoursesTab />}
               {tab === "bookings" && <BookingsTab />}
+              {tab === "products" && <ProductsTab />}
               {tab === "password" && <PasswordTab />}
             </div>
           </div>
@@ -458,6 +461,69 @@ function BookingsTab() {
             );
           })}
         </ul>
+      )}
+    </Card>
+  );
+}
+
+function ProductsTab() {
+  const { user } = useAuth();
+  const { t } = useLanguage();
+
+  if (!user) return null;
+  const products = user.purchasedProducts || [];
+
+  return (
+    <Card>
+      <div className="mb-6">
+        <h2 className="text-2xl mb-1">{t(tx("منتجاتي", "My Products"))}</h2>
+        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+          {t(tx("المنتجات الرقمية التي قمتِ بشرائها", "Digital products you've purchased"))}
+        </p>
+      </div>
+
+      {products.length === 0 ? (
+        <EmptyState
+          Icon={PackageOpen}
+          title={tx("لم تقومي بشراء أي منتج بعد", "No products purchased yet")}
+          subtitle={tx(
+            "تصفّحي مكتبتنا التربوية وابدئي رحلتكِ باقتناء ما يفيدكِ.",
+            "Browse our parenting library and start your journey by acquiring what helps you."
+          )}
+          ctaLabel={tx("تصفّحي المنتجات", "Browse products")}
+          ctaHref="/products"
+        />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {products.map((p) => (
+            <article
+              key={p.id}
+              className="rounded-2xl p-5 flex flex-col"
+              style={{ background: "var(--cream)", border: "1px solid rgba(127,169,155,0.2)" }}
+            >
+              <div
+                className="h-24 rounded-xl mb-4 flex items-center justify-end p-3"
+                style={{ background: "linear-gradient(135deg, var(--sage-dark), var(--sage))" }}
+              >
+                <PackageOpen size={20} color="white" />
+              </div>
+              <h3 className="text-lg mb-1">{p.titleAr}</h3>
+              <p className="text-xs mb-3" style={{ color: "var(--text-muted)" }}>
+                {t(tx("تم الشراء في", "Purchased"))} {new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" }).format(new Date(p.purchasedAt))}
+              </p>
+              {p.downloadUrl && (
+                <a
+                  href={p.downloadUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="pill-btn pill-btn-primary text-sm py-2 mt-auto text-center"
+                >
+                  {t(tx("فتح / تنزيل", "Open / Download"))} <ArrowRight size={14} className="inline-block" />
+                </a>
+              )}
+            </article>
+          ))}
+        </div>
       )}
     </Card>
   );

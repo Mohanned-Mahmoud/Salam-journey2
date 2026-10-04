@@ -119,6 +119,7 @@ export type SalamUser = {
   createdAt?: string;
   enrolledCourses: { id: string; title: string; enrolledAt: string; progress: number }[];
   bookings: BookingRecord[];
+  purchasedProducts?: { id: string; productId: string; purchasedAt: string; titleAr: string; titleEn: string }[];
 };
 
 /* ── localStorage helpers ── */

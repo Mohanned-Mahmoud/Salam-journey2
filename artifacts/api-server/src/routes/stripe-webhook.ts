@@ -43,9 +43,15 @@ router.post("/", async (req, res): Promise<any> => {
     } else if (metadata?.type === 'booking') {
         // Handle booking confirmation
         logger.info(`Confirming booking ${metadata.bookingId}`);
-    } else if (metadata?.type === 'product') {
+    } else if (metadata?.type === 'product' && metadata?.productId && metadata?.userId) {
         // Handle digital product delivery
-        logger.info(`Delivering product ${metadata.productId}`);
+        logger.info(`Delivering product ${metadata.productId} to user ${metadata.userId}`);
+        const { db, purchasedProductsTable } = await import("@workspace/db");
+        await db.insert(purchasedProductsTable).values({
+          productId: metadata.productId,
+          userId: metadata.userId,
+          paymentId: session.id
+        });
     }
   }
 

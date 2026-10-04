@@ -20,6 +20,7 @@ type AdminUserSummary = {
   createdAt: string;
   bookings: any[];
   enrolledCourses: { id: string; title: string; enrolledAt: string; progress: number }[];
+  purchasedProducts: { id: string; productId: string; purchasedAt: string; titleAr: string; titleEn: string }[];
 };
 
 // 🛡️ الميدل وير الموحد الجديد: بيفحص التوكن الحي ويشيك على رتبة الأدمن من جدول الـ usersTable
@@ -92,11 +93,21 @@ async function isAdminAuthenticated(req: Request, res: Response, next: NextFunct
 // -------------------------------------------------------------
 router.get("/admin/users", isAdminAuthenticated, async (_req, res) => {
   try {
-    const [users, bookings, enrollments, courses] = await Promise.all([
+    const { purchasedProductsTable, productsTable } = await import("@workspace/db");
+    
+    const [users, bookings, enrollments, courses, purchasedProducts] = await Promise.all([
       db.select().from(usersTable),
       db.select().from(bookingsTable),
       db.select().from(enrollmentsTable),
       db.select().from(coursesTable),
+      db.select({
+        id: purchasedProductsTable.id,
+        productId: purchasedProductsTable.productId,
+        userId: purchasedProductsTable.userId,
+        purchasedAt: purchasedProductsTable.purchasedAt,
+        titleAr: productsTable.titleAr,
+        titleEn: productsTable.titleEn,
+      }).from(purchasedProductsTable).leftJoin(productsTable, eq(purchasedProductsTable.productId, productsTable.id))
     ]);
 
     const typedBookings = bookings as unknown as Array<{
@@ -142,6 +153,20 @@ router.get("/admin/users", isAdminAuthenticated, async (_req, res) => {
       });
       enrollmentsByUser.set(enrollment.userId, next);
     }
+    
+    const productsByUser = new Map<string, AdminUserSummary["purchasedProducts"]>();
+    for (const p of purchasedProducts) {
+      if (!p.userId) continue;
+      const next = productsByUser.get(p.userId) ?? [];
+      next.push({
+        id: p.id,
+        productId: p.productId,
+        purchasedAt: asIsoString(p.purchasedAt),
+        titleAr: p.titleAr || 'منتج غير معروف',
+        titleEn: p.titleEn || 'Unknown Product'
+      });
+      productsByUser.set(p.userId, next);
+    }
 
     const payload: AdminUserSummary[] = users.map((user) => ({
       id: user.id,
@@ -151,6 +176,7 @@ router.get("/admin/users", isAdminAuthenticated, async (_req, res) => {
       createdAt: asIsoString(user.createdAt),
       bookings: bookingsByUser.get(user.id) ?? [],
       enrolledCourses: enrollmentsByUser.get(user.id) ?? [],
+      purchasedProducts: productsByUser.get(user.id) ?? []
     }));
 
     res.json(payload);

@@ -46,4 +46,32 @@ router.delete("/products/:id", async (req, res) => {
   }
 });
 
+router.get("/products/purchased/:userId", async (req, res) => {
+  try {
+    const userId = req.params.userId as string;
+    // We need to import purchasedProductsTable
+    // Actually wait, let's just use raw query if it's easier, or import it.
+    // I will import it at the top of the file in another edit.
+    const { purchasedProductsTable } = await import("@workspace/db");
+    
+    const purchased = await db
+      .select({
+        id: productsTable.id,
+        titleAr: productsTable.titleAr,
+        titleEn: productsTable.titleEn,
+        type: productsTable.type,
+        downloadUrl: productsTable.downloadUrl,
+        purchasedAt: purchasedProductsTable.purchasedAt
+      })
+      .from(purchasedProductsTable)
+      .innerJoin(productsTable, eq(purchasedProductsTable.productId, productsTable.id))
+      .where(eq(purchasedProductsTable.userId, userId));
+      
+    res.json(purchased);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch purchased products" });
+  }
+});
+
 export default router;

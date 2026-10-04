@@ -90,7 +90,7 @@ export function AdminUsers() {
         <table className="w-full text-sm">
           <thead>
             <tr style={{ background: 'rgba(127,169,155,0.08)' }}>
-              {['#', 'الاسم', 'البريد', 'الواتساب', 'الدورات', 'الحجوزات', 'إجراءات'].map((h) => (
+              {['#', 'الاسم', 'البريد', 'الواتساب', 'الدورات', 'الحجوزات', 'المنتجات', 'إجراءات'].map((h) => (
                 <th key={h} className="text-right px-4 py-3 font-semibold" style={{ color: 'var(--text-dark)' }}>{h}</th>
               ))}
             </tr>
@@ -124,6 +124,11 @@ export function AdminUsers() {
                       </span>
                     )}
                   </div>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ background: 'rgba(90,138,128,0.1)', color: 'var(--sage-dark)' }}>
+                    {u.purchasedProducts?.length ?? 0}
+                  </span>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
@@ -186,6 +191,22 @@ export function AdminUsers() {
                             {b.bookingKind === 'package' ? `باقة ${b.packageSessionsTotal ?? 3} جلسات` : 'فردية'}
                           </span>
                         </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div>
+                <p className="font-semibold text-sm mb-2" style={{ color: 'var(--text-dark)' }}>المنتجات الرقمية ({viewUser.purchasedProducts?.length ?? 0})</p>
+                {(viewUser.purchasedProducts?.length ?? 0) === 0 ? (
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>لا توجد منتجات مشتراة</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {viewUser.purchasedProducts?.map((p) => (
+                      <li key={p.id} className="text-sm px-3 py-2 rounded-xl flex items-center justify-between" style={{ background: 'var(--cream)', color: 'var(--text-body)' }}>
+                        <span>{p.titleAr}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{new Date(p.purchasedAt).toLocaleDateString('ar-EG')}</span>
                       </li>
                     ))}
                   </ul>

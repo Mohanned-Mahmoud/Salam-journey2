@@ -8,6 +8,13 @@
       "when": 1788771398492,
       "tag": "0000_classy_thunderbolt_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791114250159,
+      "tag": "0001_light_gamma_corps",
+      "breakpoints": true
     }
   ]
 }

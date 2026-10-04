@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, FileText, Sparkles, Heart, Coffee } from "lucide-react";
+import { Download, FileText, Sparkles, Heart, Coffee, X } from "lucide-react";
 import { useLanguage, tx, type Bilingual } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import { useAuthModals } from "@/components/auth/auth-modals";
@@ -28,6 +28,12 @@ export default function Products() {
   const [products, setProducts] = useState<ProductCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ProductCard | null>(null);
+  const [buyConfirmProduct, setBuyConfirmProduct] = useState<ProductCard | null>(null);
+
+  const purchasedProductIds = useMemo(() => {
+    return new Set(user?.purchasedProducts?.map(p => p.id) || []);
+  }, [user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,10 +84,12 @@ export default function Products() {
 
   const visibleProducts = useMemo(() => products, [products]);
 
-  const handleProductAction = async (p: ProductCard) => {
-    if (p.free) {
-      // Direct download logic (mocked)
-      window.open(p.id === 'calm-guide' ? '/calm-guide.pdf' : '#', '_blank');
+  const handleProductAction = (p: ProductCard) => {
+    if (p.free || purchasedProductIds.has(p.id)) {
+      // Direct download logic
+      // In a real app we'd fetch a presigned URL or something. For now:
+      const dl = user?.purchasedProducts?.find(pp => pp.id === p.id)?.downloadUrl;
+      window.open(dl || p.id === 'calm-guide' ? '/calm-guide.pdf' : '#', '_blank');
       return;
     }
 
@@ -92,6 +100,13 @@ export default function Products() {
       return;
     }
 
+    setBuyConfirmProduct(p);
+  };
+
+  const confirmPurchase = async () => {
+    if (!buyConfirmProduct || !user) return;
+    const p = buyConfirmProduct;
+    
     try {
       setProcessingId(p.id);
       const data = await apiJson<{ url: string }>("/stripe/create-checkout-session", {
@@ -123,6 +138,7 @@ export default function Products() {
       alert(t(tx("حدث خطأ أثناء معالجة الدفع", "Error processing payment")));
     } finally {
       setProcessingId(null);
+      setBuyConfirmProduct(null);
     }
   };
 
@@ -174,7 +190,7 @@ export default function Products() {
                 data-reveal-delay={i * 80}
                 style={{ background: "var(--white)" }}
               >
-                <div className="h-40 relative overflow-hidden" style={{ background: p.gradient }}>
+                <div className="h-40 relative overflow-hidden cursor-pointer" style={{ background: p.gradient }} onClick={() => setSelectedProduct(p)}>
                   <SoftBlob
                     color="rgba(255,255,255,0.2)"
                     className="absolute -top-10 -start-10 w-[200px] h-[200px] animate-drift pointer-events-none"
@@ -198,7 +214,7 @@ export default function Products() {
                   </span>
                 </div>
                 <div className="p-6 flex flex-col flex-1">
-                  <h3 className="text-xl mb-2">{t(p.title)}</h3>
+                  <h3 className="text-xl mb-2 cursor-pointer hover:underline" onClick={() => setSelectedProduct(p)}>{t(p.title)}</h3>
                   <p
                     className="text-sm leading-relaxed mb-5 flex-1"
                     style={{ color: "var(--text-body)" }}
@@ -215,7 +231,11 @@ export default function Products() {
                       disabled={processingId === p.id}
                       className="pill-btn pill-btn-primary text-sm py-2 px-5"
                     >
-                      {processingId === p.id ? t(tx("جاري التحويل...", "Processing...")) : p.free ? t(tx("تحميل", "Download")) : t(tx("شراء", "Buy"))}
+                      {processingId === p.id 
+                        ? t(tx("جاري التحويل...", "Processing...")) 
+                        : (p.free || purchasedProductIds.has(p.id))
+                          ? t(tx("فتح / تنزيل", "Open / Download")) 
+                          : t(tx("شراء", "Buy"))}
                       <Download size={14} />
                     </button>
                   </div>
@@ -231,6 +251,91 @@ export default function Products() {
           )}
         </div>
       </section>
+
+      {/* Product Details Modal */}
+      {selectedProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(45,74,69,0.5)" }}>
+          <div className="rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto flex flex-col" style={{ background: "var(--white)" }}>
+            <div className="h-48 relative shrink-0" style={{ background: selectedProduct.gradient }}>
+              <button 
+                type="button" 
+                onClick={() => setSelectedProduct(null)}
+                className="absolute top-4 end-4 p-2 rounded-full hover:bg-black/10 transition-colors"
+                style={{ color: "var(--sage-dark)" }}
+              >
+                <X size={20} />
+              </button>
+              <div className="relative h-full flex items-center justify-center">
+                <span
+                  className="w-20 h-20 rounded-3xl flex items-center justify-center"
+                  style={{ background: "rgba(255,255,255,0.85)", color: "var(--sage-dark)" }}
+                >
+                  <selectedProduct.Icon size={32} />
+                </span>
+              </div>
+            </div>
+            
+            <div className="p-6 md:p-8 flex-1 flex flex-col">
+              <h2 className="text-2xl font-bold mb-3">{t(selectedProduct.title)}</h2>
+              <p className="text-base leading-relaxed mb-6 flex-1 whitespace-pre-wrap" style={{ color: "var(--text-body)" }}>
+                {t(selectedProduct.desc)}
+              </p>
+              
+              <div className="flex items-center justify-between gap-4 pt-4 mt-auto border-t" style={{ borderColor: "var(--cream-dark)" }}>
+                <span className="font-bold text-2xl" style={{ color: "var(--sage-dark)" }}>
+                  {t(selectedProduct.price)}
+                </span>
+                
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleProductAction(selectedProduct);
+                    setSelectedProduct(null);
+                  }}
+                  className="pill-btn pill-btn-primary py-3 px-8 text-base"
+                >
+                  {(selectedProduct.free || purchasedProductIds.has(selectedProduct.id))
+                    ? t(tx("فتح / تنزيل", "Open / Download")) 
+                    : t(tx("شراء المنتج", "Buy Product"))}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Purchase Confirmation Modal */}
+      {buyConfirmProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(45,74,69,0.5)" }}>
+          <div className="rounded-3xl p-6 md:p-8 w-full max-w-sm text-center" style={{ background: "var(--white)" }}>
+            <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-4" style={{ background: "var(--sage-muted)", color: "var(--sage-dark)" }}>
+              <buyConfirmProduct.Icon size={24} />
+            </div>
+            <h3 className="text-xl font-bold mb-2">{t(tx("تأكيد الشراء", "Confirm Purchase"))}</h3>
+            <p className="text-sm mb-6" style={{ color: "var(--text-body)" }}>
+              {t(tx(`أنت على وشك شراء "${buyConfirmProduct.title.ar}". سيتم تحويلك إلى صفحة الدفع الآمنة.`, `You are about to purchase "${buyConfirmProduct.title.en}". You will be redirected to the secure payment page.`))}
+            </p>
+            <div className="flex gap-3">
+              <button 
+                type="button" 
+                onClick={confirmPurchase}
+                disabled={processingId === buyConfirmProduct.id}
+                className="flex-1 pill-btn pill-btn-primary py-2.5"
+              >
+                {processingId === buyConfirmProduct.id ? t(tx("جاري...", "Loading...")) : t(tx("متابعة للدفع", "Proceed to Pay"))}
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setBuyConfirmProduct(null)}
+                className="flex-1 pill-btn py-2.5"
+                style={{ background: "var(--cream)", color: "var(--text-dark)" }}
+              >
+                {t(tx("إلغاء", "Cancel"))}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
