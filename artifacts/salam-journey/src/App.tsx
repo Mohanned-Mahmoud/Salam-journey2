@@ -63,16 +63,6 @@ function Router() {
     );
   }
 
-  if (displayMode === null) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-[var(--cream)]">
-        <p className="text-lg font-medium animate-pulse" style={{ color: "var(--text-dark)" }}>
-          جاري تحميل الصفحة...
-        </p>
-      </div>
-    );
-  }
-
   if (isAdminRoute) {
     return (
       <Switch>
@@ -81,6 +71,16 @@ function Router() {
           {isUserAdmin ? <AdminPage /> : <Redirect to="/" replace />}
         </Route>
       </Switch>
+    );
+  }
+
+  if (displayMode === null) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[var(--cream)]">
+        <p className="text-lg font-medium animate-pulse" style={{ color: "var(--text-dark)" }}>
+          جاري تحميل الصفحة...
+        </p>
+      </div>
     );
   }
 
