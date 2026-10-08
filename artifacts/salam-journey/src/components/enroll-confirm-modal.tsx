@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useAuthModals } from "@/components/auth/auth-modals";
 import { Confetti } from "@/components/confetti";
 import { notify } from "@/lib/notify";
+import { apiJson } from "@/lib/api";
 
 export type CourseSummary = {
   id: string;
