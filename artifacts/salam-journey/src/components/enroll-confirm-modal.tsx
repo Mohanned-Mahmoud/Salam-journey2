@@ -78,33 +78,44 @@ export function EnrollConfirmModal({ course, isOpen, onClose }: Props) {
 
     try {
       setIsProcessing(true);
+
+      const amount = Number(course.rawPrice);
+      if (!amount || amount <= 0) {
+        notify.error(t(tx("سعر الدورة غير صحيح", "Invalid course price")));
+        return;
+      }
+
+      const payload = {
+        items: [
+          {
+            name: course.title.en || course.title.ar,
+            description: "Course Enrollment",
+            amount,
+            quantity: 1,
+          }
+        ],
+        metadata: {
+          type: "course",
+          courseId: String(course.id ?? ""),
+          userId: String(user.id ?? ""),
+        },
+        successUrl: `${window.location.origin}/payment-success`,
+        cancelUrl: `${window.location.origin}/payment-cancel`,
+      };
+
+      console.log("[Stripe] Creating checkout session with payload:", payload);
+
       const data = await apiJson("/stripe/create-checkout-session", {
         method: "POST",
-        body: JSON.stringify({
-          items: [
-            {
-              name: course.title.en || course.title.ar,
-              description: "Course Enrollment",
-              amount: course.rawPrice,
-              quantity: 1,
-            }
-          ],
-          metadata: {
-            type: "course",
-            courseId: course.id,
-            userId: user.id
-          },
-          successUrl: `${window.location.origin}/payment-success`,
-          cancelUrl: `${window.location.origin}/payment-cancel`,
-        })
+        body: JSON.stringify(payload),
       });
 
       if (data.url) {
         window.location.href = data.url;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      notify.error(t(tx("حدث خطأ أثناء معالجة الدفع", "Error processing payment")));
+      notify.error(`${t(tx("حدث خطأ أثناء معالجة الدفع", "Error processing payment"))}: ${err.message || ""}`);
     } finally {
       setIsProcessing(false);
     }
