@@ -1,19 +1,12 @@
 import { useRef, useState } from 'react';
 import { UploadCloud, CheckCircle, XCircle, Loader2, X } from 'lucide-react';
-import { apiJson } from '@/lib/api';
 
 interface R2FileUploaderProps {
-  /** The DB record ID (course or product). Can be undefined when adding a new record. */
   entityId?: string;
-  /** 'courses' | 'products' — determines which API endpoint to hit */
   entityType: 'courses' | 'products';
-  /** Currently saved fileKey (from R2). Used to display the existing file. */
   currentFileKey?: string | null;
-  /** Called with the new R2 fileKey after a successful upload */
   onUploaded: (fileKey: string) => void;
-  /** Label shown above the uploader */
   label?: string;
-  /** Accepted MIME types, e.g. 'video/*' or '.pdf,application/pdf' */
   accept?: string;
 }
 
@@ -42,36 +35,40 @@ export function R2FileUploader({
     setErrorMsg('');
 
     try {
-      // 1. Get a presigned upload URL from our API
-      const { uploadUrl, fileKey } = await apiJson<{ uploadUrl: string; fileKey: string }>(
-        `/${entityType}/${entityId}/upload-url`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ filename: file.name, contentType: file.type }),
-        },
-      );
+      // Upload via our own API server (avoids CORS with R2 directly)
+      const formData = new FormData();
+      formData.append('file', file);
 
-      // 2. Upload directly to R2 using XHR so we can track progress
-      await new Promise<void>((resolve, reject) => {
+      const result = await new Promise<{ fileKey: string }>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open('PUT', uploadUrl);
-        xhr.setRequestHeader('Content-Type', file.type);
+        xhr.open('POST', `/api/upload/${entityType}/${entityId}`);
         xhr.upload.onprogress = (ev) => {
           if (ev.lengthComputable) setProgress(Math.round((ev.loaded / ev.total) * 100));
         };
-        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`HTTP ${xhr.status}`)));
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try { resolve(JSON.parse(xhr.responseText)); }
+            catch { reject(new Error('Invalid server response')); }
+          } else {
+            try {
+              const err = JSON.parse(xhr.responseText);
+              reject(new Error(err.error ?? `HTTP ${xhr.status}`));
+            } catch {
+              reject(new Error(`HTTP ${xhr.status}`));
+            }
+          }
+        };
         xhr.onerror = () => reject(new Error('Network error'));
-        xhr.send(file);
+        xhr.send(formData);
       });
 
-      setUploadedKey(fileKey);
+      setUploadedKey(result.fileKey);
       setState('done');
-      onUploaded(fileKey);
+      onUploaded(result.fileKey);
     } catch (err: any) {
       setState('error');
       setErrorMsg(err?.message ?? 'فشل الرفع');
     } finally {
-      // Reset the file input so the same file can be re-selected if needed
       if (inputRef.current) inputRef.current.value = '';
     }
   }
@@ -84,7 +81,6 @@ export function R2FileUploader({
         {label}
       </label>
 
-      {/* Existing / uploaded file pill */}
       {uploadedKey && (
         <div
           className="flex items-center gap-2 px-3 py-2 rounded-xl mb-2 text-xs font-medium"
@@ -102,7 +98,6 @@ export function R2FileUploader({
         </div>
       )}
 
-      {/* Drop zone / click area */}
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
@@ -114,14 +109,14 @@ export function R2FileUploader({
           <>
             <Loader2 size={22} className="animate-spin" style={{ color: 'var(--sage)' }} />
             <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-              {progress}%
+              جاري الرفع… {progress}%
             </span>
           </>
         ) : state === 'error' ? (
           <>
             <XCircle size={22} style={{ color: '#B5524A' }} />
             <span className="text-xs" style={{ color: '#B5524A' }}>{errorMsg}</span>
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>اضغط لإعادة المحاولة</span>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>اضغط للمحاولة مرة أخرى</span>
           </>
         ) : (
           <>
@@ -132,6 +127,16 @@ export function R2FileUploader({
           </>
         )}
       </button>
+
+      {/* Progress bar */}
+      {state === 'uploading' && (
+        <div className="mt-2 rounded-full overflow-hidden" style={{ height: 4, background: 'rgba(127,169,155,0.2)' }}>
+          <div
+            className="h-full rounded-full transition-all"
+            style={{ width: `${progress}%`, background: 'var(--sage)' }}
+          />
+        </div>
+      )}
 
       <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={handleFileChange} />
     </div>
