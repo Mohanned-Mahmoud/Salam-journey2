@@ -63,7 +63,25 @@ router.post("/", async (req, res): Promise<any> => {
         logger.info({ userId: metadata.userId, productId: metadata.productId }, "Product delivered after payment");
 
       } else if (metadata?.type === "booking") {
-        logger.info({ bookingId: metadata.bookingId }, "Booking payment confirmed");
+        const { db, bookingsTable } = await import("@workspace/db");
+        await db
+          .insert(bookingsTable)
+          .values({
+            userId: metadata.userId === "guest" ? null : metadata.userId,
+            bookingKind: (metadata.bookingKind as any) || "single",
+            date: metadata.date,
+            slot: metadata.slot,
+            sessionType: metadata.sessionType,
+            packageSessionsTotal: metadata.packageSessionsTotal ? parseInt(metadata.packageSessionsTotal) : null,
+            packageSessionsRemaining: metadata.packageSessionsTotal ? parseInt(metadata.packageSessionsTotal) : null,
+            topic: metadata.topic || null,
+            notes: metadata.notes || null,
+            guestName: metadata.name || null,
+            guestEmail: metadata.email || null,
+            guestWhatsapp: metadata.whatsapp || null,
+            status: "confirmed"
+          });
+        logger.info({ date: metadata.date, slot: metadata.slot }, "Booking payment confirmed and saved to DB");
       } else {
         logger.warn({ metadata }, "Unknown payment type or missing metadata");
       }

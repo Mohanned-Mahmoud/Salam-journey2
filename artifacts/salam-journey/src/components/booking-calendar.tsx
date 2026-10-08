@@ -328,7 +328,12 @@ export function BookingCalendar({ onConfirmed }: Props) {
             slot: selectedSlot,
             userId: user?.id || "guest",
             email: form.email,
-            whatsapp: form.whatsapp
+            whatsapp: form.whatsapp,
+            name: form.name,
+            sessionType: form.sessionType.ar,
+            packageSessionsTotal: packageTotal ? String(packageTotal) : "",
+            topic: form.topic || "",
+            notes: (form.notes || "").slice(0, 499) // Stripe limits metadata values to 500 chars
           },
           successUrl: `${window.location.origin}/payment-success`,
           cancelUrl: `${window.location.origin}/payment-cancel`,
