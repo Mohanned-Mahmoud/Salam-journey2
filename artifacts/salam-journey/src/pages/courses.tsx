@@ -254,7 +254,7 @@ function formatCourseDuration(category: CourseCard["category"], duration: number
 function formatCoursePrice(price: string | number | null, lang: "ar" | "en") {
   const value = price ?? 0;
   if (String(value) === "0") return lang === "en" ? "Free" : "مجاناً";
-  return lang === "en" ? `${value} SAR` : `${value} ريال`;
+  return `$${value}`;
 }
 
 function getCourseGradient(category: CourseCard["category"]) {

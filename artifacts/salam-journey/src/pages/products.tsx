@@ -343,7 +343,7 @@ export default function Products() {
 function formatProductPrice(price: string | number | null, free: boolean | null, lang: "ar" | "en") {
   if (free) return lang === "en" ? "Free" : "مجاناً";
   const value = price ?? 0;
-  return lang === "en" ? `${value} SAR` : `${value} ريال`;
+  return `$${value}`;
 }
 
 function getProductGradient(type: ProductType) {

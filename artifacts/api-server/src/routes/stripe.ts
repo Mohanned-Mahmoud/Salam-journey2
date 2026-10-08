@@ -32,7 +32,7 @@ router.post("/stripe/create-checkout-session", async (req, res): Promise<any> =>
       mode: "payment",
       line_items: items.map((item: any) => ({
         price_data: {
-          currency: "sar",
+          currency: "usd",
           product_data: {
             name: item.name,
             description: item.description || "",
