@@ -169,8 +169,15 @@ router.post("/courses/:id/download-url", async (req, res) => {
     if (!fileKey) {
       return res.status(400).json({ error: "fileKey is required" });
     }
-    // Only allow fetching from the correct course folder to prevent accessing other files
-    if (!fileKey.startsWith(`courses/${req.params.id}/`)) {
+    // Check if the file belongs to the course's folder OR if it exactly matches the course's videoUrl
+    const courseInfo = await db
+      .select({ videoUrl: coursesTable.videoUrl })
+      .from(coursesTable)
+      .where(eq(coursesTable.id, req.params.id))
+      .limit(1);
+
+    const isVideoUrl = courseInfo.length > 0 && courseInfo[0].videoUrl === fileKey;
+    if (!fileKey.startsWith(`courses/${req.params.id}/`) && !isVideoUrl) {
        return res.status(403).json({ error: "Unauthorized access to this file" });
     }
 
