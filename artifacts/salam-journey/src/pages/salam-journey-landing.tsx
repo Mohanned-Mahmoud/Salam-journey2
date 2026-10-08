@@ -23,6 +23,32 @@ export default function EbookLanding() {
     document.title = 'دليل صغير، أثر كبير | Salam Journey';
     const description = document.querySelector('meta[name="description"]');
     description?.setAttribute('content', 'احصلي على دليل Salam Journey المجاني لتنشئة طفل واثق وسعيد، مكتوب بالعربية وبحب.');
+
+    // Inject Meta Pixel Code specifically for this page
+    const scriptId = 'meta-pixel-landing';
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.innerHTML = `
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '2147923472435483');
+        fbq('track', 'PageView');
+      `;
+      document.head.appendChild(script);
+
+      const noscript = document.createElement('noscript');
+      noscript.id = scriptId + '-ns';
+      noscript.innerHTML = `<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=2147923472435483&ev=PageView&noscript=1" />`;
+      document.head.appendChild(noscript);
+    }
+  }, []);
     
     Promise.all([
       apiJson<{value: string}>('/site-settings/whatsapp_number').catch(()=>({value:""})),
