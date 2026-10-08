@@ -310,9 +310,8 @@ export function BookingCalendar({ onConfirmed }: Props) {
       const priceString = sessionPrices[pkgKey as keyof typeof sessionPrices] || "50";
       const rawPrice = parseInt(priceString.toString().replace(/[^0-9]/g, "")) || 50;
 
-      const res = await fetch("http://localhost:3100/api/stripe/create-checkout-session", {
+      const data = await apiJson("/stripe/create-checkout-session", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: [
             {
@@ -336,9 +335,6 @@ export function BookingCalendar({ onConfirmed }: Props) {
         })
       });
 
-      if (!res.ok) throw new Error("Failed to create checkout session");
-      
-      const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
       }

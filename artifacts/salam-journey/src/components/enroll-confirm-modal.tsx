@@ -78,9 +78,8 @@ export function EnrollConfirmModal({ course, isOpen, onClose }: Props) {
 
     try {
       setIsProcessing(true);
-      const res = await fetch("http://localhost:3100/api/stripe/create-checkout-session", {
+      const data = await apiJson("/stripe/create-checkout-session", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: [
             {
@@ -100,9 +99,6 @@ export function EnrollConfirmModal({ course, isOpen, onClose }: Props) {
         })
       });
 
-      if (!res.ok) throw new Error("Failed to create checkout session");
-      
-      const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
       }
