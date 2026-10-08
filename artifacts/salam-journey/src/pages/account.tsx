@@ -512,14 +512,25 @@ function ProductsTab() {
                 {t(tx("تم الشراء في", "Purchased"))} {new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" }).format(new Date(p.purchasedAt))}
               </p>
               {p.downloadUrl && (
-                <a
-                  href={p.downloadUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="pill-btn pill-btn-primary text-sm py-2 mt-auto text-center"
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const res = await apiJson(`/products/${p.id}/download-url`, {
+                        method: "POST",
+                        body: JSON.stringify({ fileKey: p.downloadUrl })
+                      });
+                      if (res.downloadUrl) {
+                        window.open(res.downloadUrl, "_blank");
+                      }
+                    } catch (err) {
+                      console.error("Failed to get download URL", err);
+                    }
+                  }}
+                  className="pill-btn pill-btn-primary text-sm py-2 mt-auto text-center w-full"
                 >
                   {t(tx("فتح / تنزيل", "Open / Download"))} <ArrowRight size={14} className="inline-block" />
-                </a>
+                </button>
               )}
             </article>
           ))}
