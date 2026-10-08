@@ -396,7 +396,7 @@ function CoursesTab() {
                     }
                   } catch (err: any) {
                     console.error("Failed to get course video URL", err);
-                    alert(t(tx("حدث خطأ أثناء جلب الفيديو، يرجى المحاولة لاحقاً", "Failed to load video, please try again later.")));
+                    alert(`حدث خطأ: ${err.message || String(err)}`);
                   }
                 }}
               >
