@@ -4,7 +4,7 @@ import { apiJson } from '@/lib/api';
 import { R2FileUploader } from '@/components/admin/r2-file-uploader';
 import type { AdminCourse } from './types';
 
-type FormState = Omit<AdminCourse, 'id'> & { durationUnit?: string; descEn?: string };
+type FormState = Omit<AdminCourse, 'id'> & { durationUnit?: string; descEn?: string; videoUrl?: string; };
 
 const EMPTY_FORM: FormState = {
   coachId: '00000000-0000-0000-0000-000000000000', 
@@ -12,6 +12,7 @@ const EMPTY_FORM: FormState = {
   price: 0, duration: 0, status: 'active',
   gradient: 'linear-gradient(135deg, var(--sage-dark), var(--sage))',
   imageUrl: '',
+  videoUrl: '',
   students: '0',
   durationUnit: 'weeks'
 };
@@ -144,6 +145,7 @@ export function AdminCourses() {
       status: c.status,
       gradient: c.gradient ?? '',
       imageUrl: c.imageUrl || c.image_url || '',
+      videoUrl: c.videoUrl || c.video_url || '',
       durationUnit: c.durationUnit || c.duration_unit || 'weeks',
     });
     setModal({ mode: 'edit', id: c.id });
@@ -458,8 +460,16 @@ export function AdminCourses() {
                 entityType="courses"
                 currentFileKey={form.imageUrl || null}
                 onUploaded={(key) => setForm((f) => ({ ...f, imageUrl: key }))}
-                label="صورة / فيديو الغلاف (رفع إلى R2)"
-                accept="image/*,video/*"
+                label="صورة الغلاف (رفع إلى R2)"
+                accept="image/*"
+              />
+              <R2FileUploader
+                entityId={entityId}
+                entityType="courses"
+                currentFileKey={form.videoUrl || null}
+                onUploaded={(key) => setForm((f) => ({ ...f, videoUrl: key }))}
+                label="فيديو الغلاف / المحتوى (رفع إلى R2)"
+                accept="video/*"
               />
             </div>
             <div className="flex gap-3 px-6 pb-6">

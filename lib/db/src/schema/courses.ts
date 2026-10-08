@@ -20,6 +20,7 @@ export const coursesTable = pgTable("courses", {
   durationUnit: varchar("duration_unit", { length: 50 }),
   students: varchar("students", { length: 50 }),
   imageUrl: varchar("image_url", { length: 1024 }),
+  videoUrl: varchar("video_url", { length: 1024 }),
   status: courseStatusEnum("status").default("active"),
   gradient: varchar("gradient", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -4,11 +4,11 @@ import { apiJson } from '@/lib/api';
 import { R2FileUploader } from '@/components/admin/r2-file-uploader';
 import type { AdminProduct } from './types';
 
-type FormState = Omit<AdminProduct, 'id'>;
+type FormState = Omit<AdminProduct, 'id'> & { imageUrl?: string; };
 
 const EMPTY_FORM: FormState = {
   titleAr: '', titleEn: '', descAr: '', descEn: '', price: '', free: false,
-  type: 'pdf', downloadUrl: '', status: 'active',
+  type: 'pdf', downloadUrl: '', imageUrl: '', status: 'active',
 };
 
 const TYPE_LABELS: Record<AdminProduct['type'], string> = { pdf: 'PDF', printable: 'مطبوعات', guide: 'دليل', other: 'أخرى' };
@@ -77,6 +77,7 @@ export function AdminProducts() {
       free: p.free,
       type: p.type,
       downloadUrl: p.downloadUrl ?? '',
+      imageUrl: p.imageUrl ?? '',
       status: p.status,
     });
     setModal({ mode: 'edit', id: p.id });
@@ -224,14 +225,24 @@ export function AdminProducts() {
               <div className="grid grid-cols-2 gap-4">
                 <Field label="السعر" value={String(form.price ?? '')} onChange={(v) => setForm({ ...form, price: v })} />
               </div>
-              <R2FileUploader
-                entityId={entityId}
-                entityType="products"
-                currentFileKey={form.downloadUrl || null}
-                onUploaded={(key) => setForm((f) => ({ ...f, downloadUrl: key }))}
-                label="ملف المنتج (PDF / فيديو / غيره) - رفع إلى R2"
-                accept=".pdf,video/*,image/*,application/*"
-              />
+              <div className="grid grid-cols-2 gap-4 mt-6">
+                <R2FileUploader
+                  entityId={entityId}
+                  entityType="products"
+                  currentFileKey={form.imageUrl || null}
+                  onUploaded={(key) => setForm((f) => ({ ...f, imageUrl: key }))}
+                  label="صورة غلاف المنتج (رفع إلى R2)"
+                  accept="image/*"
+                />
+                <R2FileUploader
+                  entityId={entityId}
+                  entityType="products"
+                  currentFileKey={form.downloadUrl || null}
+                  onUploaded={(key) => setForm((f) => ({ ...f, downloadUrl: key }))}
+                  label="ملف المنتج (PDF / فيديو / غيره) - رفع إلى R2"
+                  accept=".pdf,video/*,image/*,application/*"
+                />
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-dark)' }}>نوع المنتج</label>

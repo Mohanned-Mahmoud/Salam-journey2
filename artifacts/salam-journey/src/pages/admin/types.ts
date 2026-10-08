@@ -68,6 +68,7 @@ export type AdminCourse = {
   gradient: string | null;
   students: string | null;
   imageUrl?: string | null;
+  videoUrl?: string | null;
   createdAt?: string;
 };
 
@@ -81,6 +82,7 @@ export type AdminProduct = {
   free: boolean;             // تقرأ من الحقل الجديد is_free
   type: 'pdf' | 'printable' | 'guide' | 'other';
   downloadUrl: string | null;
+  imageUrl?: string | null;
   status: 'active' | 'hidden';
   createdAt?: string;
 };

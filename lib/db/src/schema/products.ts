@@ -14,6 +14,7 @@ export const productsTable = pgTable("products", {
   isFree: boolean("is_free").default(false),
   type: productTypeEnum("type").notNull(),
   downloadUrl: varchar("download_url", { length: 500 }),
+  imageUrl: varchar("image_url", { length: 1024 }),
   status: productStatusEnum("status").default("active"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
