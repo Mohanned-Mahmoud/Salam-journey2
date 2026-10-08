@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Eye, EyeOff, X, Sparkles, ListPlus, Wand2 } from 'lucide-react';
-import { apiJson } from '@/lib/api'; 
+import { apiJson } from '@/lib/api';
+import { R2FileUploader } from '@/components/admin/r2-file-uploader';
 import type { AdminCourse } from './types';
 
 type FormState = Omit<AdminCourse, 'id'> & { durationUnit?: string; descEn?: string };
@@ -29,6 +30,7 @@ export function AdminCourses() {
   const [coaches, setCoaches] = useState<any[]>([]); 
   const [modal, setModal] = useState<{ mode: 'add' | 'edit'; id?: string } | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [entityId, setEntityId] = useState<string>(''); // used as R2 folder (real id for edit, temp uuid for add)
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -118,29 +120,31 @@ export function AdminCourses() {
     return () => { cancelled = true; };
   }, []);
 
-  function openAdd() { 
+  function openAdd() {
+    setEntityId(crypto.randomUUID()); // temp folder in R2 until record is saved
     setForm({
       ...EMPTY_FORM,
-      coachId: coaches.length > 0 ? coaches[0].id : EMPTY_FORM.coachId
-    }); 
-    setModal({ mode: 'add' }); 
+      coachId: coaches.length > 0 ? coaches[0].id : EMPTY_FORM.coachId,
+    });
+    setModal({ mode: 'add' });
   }
 
   function openEdit(c: any) {
-    setForm({ 
-      coachId: c.coachId || c.coach_id, 
-      titleAr: c.titleAr || c.title_ar, 
-      titleEn: c.titleEn || c.title_en, 
+    setEntityId(c.id); // real DB id for edit
+    setForm({
+      coachId: c.coachId || c.coach_id,
+      titleAr: c.titleAr || c.title_ar,
+      titleEn: c.titleEn || c.title_en,
       descAr: c.descAr || c.desc_ar || '',
       descEn: c.descEn || c.desc_en || '',
-      category: c.category, 
-      price: c.price ?? 0, 
-      duration: c.duration ?? 0, 
-      students: c.students ?? '0', 
-      status: c.status, 
-      gradient: c.gradient ?? '', 
+      category: c.category,
+      price: c.price ?? 0,
+      duration: c.duration ?? 0,
+      students: c.students ?? '0',
+      status: c.status,
+      gradient: c.gradient ?? '',
       imageUrl: c.imageUrl || c.image_url || '',
-      durationUnit: c.durationUnit || c.duration_unit || 'weeks'
+      durationUnit: c.durationUnit || c.duration_unit || 'weeks',
     });
     setModal({ mode: 'edit', id: c.id });
   }
@@ -449,10 +453,14 @@ export function AdminCourses() {
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold mb-1.5">صورة الغلاف (رابط)</label>
-                <input type="text" value={form.imageUrl ?? ''} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none" style={{ background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)' }} />
-              </div>
+              <R2FileUploader
+                entityId={entityId}
+                entityType="courses"
+                currentFileKey={form.imageUrl || null}
+                onUploaded={(key) => setForm((f) => ({ ...f, imageUrl: key }))}
+                label="صورة / فيديو الغلاف (رفع إلى R2)"
+                accept="image/*,video/*"
+              />
             </div>
             <div className="flex gap-3 px-6 pb-6">
               <button type="button" onClick={() => void handleSave()} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: 'var(--sage)' }}>حفظ</button>

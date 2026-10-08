@@ -117,4 +117,43 @@ router.delete("/courses/:id", async (req, res) => {
   }
 });
 
+import { getUploadUrl, getCourseFileUrl, deleteCourseFile } from "../lib/storage";
+
+// Generate presigned upload URL
+router.post("/courses/:id/upload-url", async (req, res) => {
+  try {
+    const { filename, contentType } = req.body;
+    if (!filename || !contentType) {
+      return res.status(400).json({ error: "Filename and contentType are required" });
+    }
+    const fileKey = `courses/${req.params.id}/${Date.now()}-${filename}`;
+    const uploadUrl = await getUploadUrl(fileKey, contentType);
+    
+    return res.json({ uploadUrl, fileKey });
+  } catch (error) {
+    console.error("Failed to generate upload URL:", error);
+    return res.status(500).json({ error: "Failed to generate upload URL" });
+  }
+});
+
+// Generate presigned view/download URL
+router.post("/courses/:id/download-url", async (req, res) => {
+  try {
+    const { fileKey } = req.body;
+    if (!fileKey) {
+      return res.status(400).json({ error: "fileKey is required" });
+    }
+    // Only allow fetching from the correct course folder to prevent accessing other files
+    if (!fileKey.startsWith(`courses/${req.params.id}/`)) {
+       return res.status(403).json({ error: "Unauthorized access to this file" });
+    }
+
+    const downloadUrl = await getCourseFileUrl(fileKey);
+    return res.json({ downloadUrl });
+  } catch (error) {
+    console.error("Failed to generate download URL:", error);
+    return res.status(500).json({ error: "Failed to generate download URL" });
+  }
+});
+
 export default router;

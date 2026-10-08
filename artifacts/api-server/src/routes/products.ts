@@ -74,4 +74,59 @@ router.get("/products/purchased/:userId", async (req, res) => {
   }
 });
 
+import { getUploadUrl, getFileUrl, deleteFile } from "../lib/storage";
+
+// Generate presigned upload URL for a product file
+router.post("/products/:id/upload-url", async (req, res) => {
+  try {
+    const { filename, contentType } = req.body as { filename?: string; contentType?: string };
+    if (!filename || !contentType) {
+      return res.status(400).json({ error: "filename and contentType are required" });
+    }
+    const fileKey = `products/${req.params.id}/${Date.now()}-${filename}`;
+    const uploadUrl = await getUploadUrl(fileKey, contentType);
+    return res.json({ uploadUrl, fileKey });
+  } catch (error) {
+    console.error("Failed to generate product upload URL:", error);
+    return res.status(500).json({ error: "Failed to generate upload URL" });
+  }
+});
+
+// Generate presigned download/view URL for a product file
+router.post("/products/:id/download-url", async (req, res) => {
+  try {
+    const { fileKey } = req.body as { fileKey?: string };
+    if (!fileKey) {
+      return res.status(400).json({ error: "fileKey is required" });
+    }
+    // Security: only allow keys that belong to this product
+    if (!fileKey.startsWith(`products/${req.params.id}/`)) {
+      return res.status(403).json({ error: "Unauthorized access to this file" });
+    }
+    const downloadUrl = await getFileUrl(fileKey);
+    return res.json({ downloadUrl });
+  } catch (error) {
+    console.error("Failed to generate product download URL:", error);
+    return res.status(500).json({ error: "Failed to generate download URL" });
+  }
+});
+
+// Delete a product file from R2
+router.delete("/products/:id/file", async (req, res) => {
+  try {
+    const { fileKey } = req.body as { fileKey?: string };
+    if (!fileKey) {
+      return res.status(400).json({ error: "fileKey is required" });
+    }
+    if (!fileKey.startsWith(`products/${req.params.id}/`)) {
+      return res.status(403).json({ error: "Unauthorized access to this file" });
+    }
+    await deleteFile(fileKey);
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("Failed to delete product file:", error);
+    return res.status(500).json({ error: "Failed to delete file" });
+  }
+});
+
 export default router;

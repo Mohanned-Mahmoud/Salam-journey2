@@ -1,6 +1,6 @@
 import { ArrowRight, LockKeyhole } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { useCreateLead } from '@workspace/api-client-react';
 import { COUNTRY_CODES } from './country-codes.ts';
 import './salam-journey-styles.css';
@@ -37,7 +37,7 @@ function validate(data: FormData): Errors {
 
 function RegisterLogo() {
   return (
-    <Link href="/salam-journey" data-testid="link-register-logo">
+    <Link href="/free-book" data-testid="link-register-logo">
       <img src="/images/logo.png" alt="Salam Journey" className="h-10 w-auto object-contain" />
     </Link>
   );
@@ -46,10 +46,16 @@ function RegisterLogo() {
 export default function EbookRegistration() {
   const [data, setData] = useState<FormData>({ name: '', phone: '', email: '', whatsappCountryCode: '+20' });
   const [errors, setErrors] = useState<Errors>({});
-  const [status, setStatus] = useState<Status>('form');
+  const [location, setLocation] = useLocation();
   const [serverError, setServerError] = useState('');
   const [leadId, setLeadId] = useState<string | null>(null);
   const createLead = useCreateLead();
+
+  const status: Status = location === '/free-book/booking' 
+    ? 'booking' 
+    : location === '/free-book/video' 
+      ? 'watching_video' 
+      : 'form';
 
   useEffect(() => {
     document.title = status === 'booking'
@@ -59,14 +65,8 @@ export default function EbookRegistration() {
     description?.setAttribute('content', 'سجّلي بياناتك واحجزي موعد استشارتك المجانية مع Salam Journey.');
   }, [status]);
 
-  useEffect(() => {
-    if (status !== 'watching_video') return;
-    // Don't auto-transition anymore; transition is handled by video onEnded
-  }, [status]);
-
   const handleVideoComplete = async () => {
-    // Email is now handled by backend Brevo form submission
-    setStatus('booking');
+    setLocation('/free-book/booking');
   };
 
   const update = (key: keyof FormData, value: string) => {
@@ -86,7 +86,7 @@ export default function EbookRegistration() {
         {
           onSuccess: (lead) => {
             setLeadId(lead.id);
-            setStatus('watching_video');
+            setLocation('/free-book/video');
           },
           onError: (error) => {
             setServerError(getErrorMessage(error, 'تعذر حفظ بياناتك الآن. حاولي مرة أخرى.'));
@@ -111,7 +111,7 @@ export default function EbookRegistration() {
 
         <main className="sj-register-main">
           <div className="sj-form-wrap">
-            <Link href="/salam-journey" className="sj-back" data-testid="link-back-home">
+            <Link href="/free-book" className="sj-back" data-testid="link-back-home">
               <ArrowRight size={14} aria-hidden="true" /> العودة إلى صفحة الهدية
             </Link>
             

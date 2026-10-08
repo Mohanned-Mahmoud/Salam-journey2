@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Eye, EyeOff, X, Wand2 } from 'lucide-react';
-import { apiJson } from '@/lib/api'; 
+import { apiJson } from '@/lib/api';
+import { R2FileUploader } from '@/components/admin/r2-file-uploader';
 import type { AdminProduct } from './types';
 
 type FormState = Omit<AdminProduct, 'id'>;
@@ -16,6 +17,7 @@ export function AdminProducts() {
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [modal, setModal] = useState<{ mode: 'add' | 'edit'; id?: string } | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [entityId, setEntityId] = useState<string>('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -63,18 +65,19 @@ export function AdminProducts() {
     };
   }, []);
 
-  function openAdd() { setForm(EMPTY_FORM); setModal({ mode: 'add' }); }
+  function openAdd() { setEntityId(crypto.randomUUID()); setForm(EMPTY_FORM); setModal({ mode: 'add' }); }
   function openEdit(p: AdminProduct) {
-    setForm({ 
-      titleAr: p.titleAr, 
-      titleEn: p.titleEn, 
-      descAr: p.descAr ?? '', 
+    setEntityId(p.id);
+    setForm({
+      titleAr: p.titleAr,
+      titleEn: p.titleEn,
+      descAr: p.descAr ?? '',
       descEn: p.descEn ?? '',
-      price: p.price ?? '', 
-      free: p.free, 
-      type: p.type, 
-      downloadUrl: p.downloadUrl ?? '', 
-      status: p.status 
+      price: p.price ?? '',
+      free: p.free,
+      type: p.type,
+      downloadUrl: p.downloadUrl ?? '',
+      status: p.status,
     });
     setModal({ mode: 'edit', id: p.id });
   }
@@ -220,8 +223,15 @@ export function AdminProducts() {
 
               <div className="grid grid-cols-2 gap-4">
                 <Field label="السعر" value={String(form.price ?? '')} onChange={(v) => setForm({ ...form, price: v })} />
-                <Field label="رابط التحميل" value={form.downloadUrl ?? ''} onChange={(v) => setForm({ ...form, downloadUrl: v })} />
               </div>
+              <R2FileUploader
+                entityId={entityId}
+                entityType="products"
+                currentFileKey={form.downloadUrl || null}
+                onUploaded={(key) => setForm((f) => ({ ...f, downloadUrl: key }))}
+                label="ملف المنتج (PDF / فيديو / غيره) - رفع إلى R2"
+                accept=".pdf,video/*,image/*,application/*"
+              />
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-dark)' }}>نوع المنتج</label>

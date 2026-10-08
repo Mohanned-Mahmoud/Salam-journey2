@@ -10,7 +10,7 @@ import About from '@/pages/about';
 
 function Logo() {
   return (
-    <Link href="/salam-journey" data-testid="link-logo">
+    <Link href="/free-book" data-testid="link-logo">
       <img src="/images/logo.png" alt="Salam Journey" className="h-10 w-auto object-contain" />
     </Link>
   );
@@ -71,7 +71,7 @@ export default function EbookLanding() {
             <p className="sj-lede">
               دليل عملي من 18 صفحة، صُمّم للأمهات والآباء الذين يريدون تربية أطفالهم بالحب والوعي… خطوة صغيرة كل يوم.
             </p>
-            <Link href="/salam-journey/register" className="sj-cta" data-testid="link-get-ebook">
+            <Link href="/free-book/register" className="sj-cta" data-testid="link-get-ebook">
               احصلي على نسختك المجانية
               <ArrowLeft size={17} aria-hidden="true" />
             </Link>

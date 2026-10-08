@@ -84,11 +84,13 @@ function Router() {
     );
   }
 
-  if (location.startsWith("/salam-journey")) {
+  if (location.startsWith("/free-book")) {
     return (
       <Switch>
-        <Route path="/salam-journey" component={EbookLanding} />
-        <Route path="/salam-journey/register" component={EbookRegistration} />
+        <Route path="/free-book" component={EbookLanding} />
+        <Route path="/free-book/register" component={EbookRegistration} />
+        <Route path="/free-book/video" component={EbookRegistration} />
+        <Route path="/free-book/booking" component={EbookRegistration} />
         <Route component={NotFound} />
       </Switch>
     );
@@ -110,8 +112,10 @@ function Router() {
       <Switch>
         <Route path="/" component={EbookLanding} />
         <Route path="/register" component={EbookRegistration} />
-        <Route path="/salam-journey" component={EbookLanding} />
-        <Route path="/salam-journey/register" component={EbookRegistration} />
+        <Route path="/free-book" component={EbookLanding} />
+        <Route path="/free-book/register" component={EbookRegistration} />
+        <Route path="/free-book/video" component={EbookRegistration} />
+        <Route path="/free-book/booking" component={EbookRegistration} />
         <Route path="/admin/login" component={AdminLoginPage} />
         <Route path="/about">
           <div className="flex flex-col min-h-screen">
