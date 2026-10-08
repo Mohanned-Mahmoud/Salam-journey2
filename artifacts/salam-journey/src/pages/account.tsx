@@ -17,6 +17,7 @@ import { useReveal } from "@/lib/use-reveal";
 import { useAuth, initialsOf } from "@/hooks/use-auth";
 import { useAuthModals } from "@/components/auth/auth-modals";
 import { notify } from "@/lib/notify";
+import { apiJson } from "@/lib/api";
 import { SoftBlob, SectionDivider } from "@/components/section-divider";
 
 type TabId = "profile" | "courses" | "bookings" | "password";
