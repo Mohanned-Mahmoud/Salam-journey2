@@ -19,7 +19,7 @@ router.post("/", async (req, res): Promise<any> => {
 
   try {
     event = stripe.webhooks.constructEvent(
-      req.body, 
+      req.body,
       sig,
       process.env.STRIPE_WEBHOOK_SECRET
     );
@@ -34,24 +34,42 @@ router.post("/", async (req, res): Promise<any> => {
     const session = event.data.object as Stripe.Checkout.Session;
     const metadata = session.metadata;
 
-    logger.info({ metadata }, "Payment succeeded for session");
-    
-    // Here we will handle fulfillment based on metadata (e.g. type: 'course', id: '123')
-    if (metadata?.type === 'course') {
-        // Handle course enrollment
-        logger.info(`Enrolling user in course ${metadata.courseId}`);
-    } else if (metadata?.type === 'booking') {
-        // Handle booking confirmation
-        logger.info(`Confirming booking ${metadata.bookingId}`);
-    } else if (metadata?.type === 'product' && metadata?.productId && metadata?.userId) {
-        // Handle digital product delivery
-        logger.info(`Delivering product ${metadata.productId} to user ${metadata.userId}`);
+    logger.info({ metadata, sessionId: session.id }, "Payment succeeded - processing fulfillment");
+
+    try {
+      if (metadata?.type === "course" && metadata?.courseId && metadata?.userId) {
+        // Enroll user in course
+        const { db, enrollmentsTable } = await import("@workspace/db");
+        await db
+          .insert(enrollmentsTable)
+          .values({
+            userId: metadata.userId,
+            courseId: metadata.courseId,
+          })
+          .onConflictDoNothing(); // Don't fail if already enrolled
+        logger.info({ userId: metadata.userId, courseId: metadata.courseId }, "User enrolled in course after payment");
+
+      } else if (metadata?.type === "product" && metadata?.productId && metadata?.userId) {
+        // Deliver digital product
         const { db, purchasedProductsTable } = await import("@workspace/db");
-        await db.insert(purchasedProductsTable).values({
-          productId: metadata.productId,
-          userId: metadata.userId,
-          paymentId: session.id
-        });
+        await db
+          .insert(purchasedProductsTable)
+          .values({
+            productId: metadata.productId,
+            userId: metadata.userId,
+            paymentId: session.id,
+          })
+          .onConflictDoNothing();
+        logger.info({ userId: metadata.userId, productId: metadata.productId }, "Product delivered after payment");
+
+      } else if (metadata?.type === "booking") {
+        logger.info({ bookingId: metadata.bookingId }, "Booking payment confirmed");
+      } else {
+        logger.warn({ metadata }, "Unknown payment type or missing metadata");
+      }
+    } catch (fulfillmentError: any) {
+      logger.error({ fulfillmentError: fulfillmentError.message, metadata }, "Fulfillment error after payment");
+      // Still return 200 so Stripe doesn't retry - fulfillment errors are logged and monitored
     }
   }
 
