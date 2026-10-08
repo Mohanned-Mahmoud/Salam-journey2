@@ -63,10 +63,16 @@ router.post("/", async (req, res): Promise<any> => {
         logger.info({ userId: metadata.userId, productId: metadata.productId }, "Product delivered after payment");
 
       } else if (metadata?.type === "booking") {
-        const { db, bookingsTable } = await import("@workspace/db");
+        const { db, bookingsTable, coachesTable } = await import("@workspace/db");
+        
+        // Ensure coachId is present (default to the first available coach)
+        const coach = await db.select({ id: coachesTable.id }).from(coachesTable).limit(1);
+        const coachId = coach[0]?.id;
+
         await db
           .insert(bookingsTable)
           .values({
+            coachId: coachId as string,
             userId: metadata.userId === "guest" ? null : metadata.userId,
             bookingKind: (metadata.bookingKind as any) || "single",
             date: metadata.date,
