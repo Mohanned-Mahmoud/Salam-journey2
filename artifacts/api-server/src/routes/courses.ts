@@ -128,6 +128,7 @@ router.get("/courses/enrolled/:userId", async (req, res) => {
         id: coursesTable.id,
         titleAr: coursesTable.titleAr,
         titleEn: coursesTable.titleEn,
+        videoUrl: coursesTable.videoUrl,
         progress: enrollmentsTable.progress,
         enrolledAt: enrollmentsTable.enrolledAt,
       })

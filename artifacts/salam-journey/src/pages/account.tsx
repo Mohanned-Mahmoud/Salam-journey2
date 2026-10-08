@@ -378,7 +378,27 @@ function CoursesTab() {
                   />
                 </div>
               </div>
-              <button type="button" className="pill-btn pill-btn-primary text-sm py-2 mt-auto">
+              <button 
+                type="button" 
+                className="pill-btn pill-btn-primary text-sm py-2 mt-auto"
+                onClick={async () => {
+                  if (!c.videoUrl) {
+                    alert(t(tx("الفيديو غير متوفر حالياً", "Video is not available currently")));
+                    return;
+                  }
+                  try {
+                    const res = await apiJson(`/courses/${c.id}/download-url`, {
+                      method: "POST",
+                      body: JSON.stringify({ fileKey: c.videoUrl })
+                    });
+                    if (res.downloadUrl) {
+                      window.open(res.downloadUrl, "_blank");
+                    }
+                  } catch (err) {
+                    console.error("Failed to get course video URL", err);
+                  }
+                }}
+              >
                 {t(tx("استمري", "Continue"))} <ArrowRight size={14} />
               </button>
             </article>

@@ -26,6 +26,7 @@ export type EnrolledCourse = {
   title: string;
   enrolledAt: string;
   progress: number;
+  videoUrl: string | null;
 };
 
 export type PurchasedProduct = {
@@ -160,6 +161,7 @@ function toPublicFromApi(
       title: c.titleAr || c.titleEn,
       enrolledAt: c.enrolledAt,
       progress: c.progress || 0,
+      videoUrl: c.videoUrl || null,
     })),
     purchasedProducts: purchasedProducts || [],
     createdAt: user.createdAt,
