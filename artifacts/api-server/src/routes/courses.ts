@@ -117,6 +117,31 @@ router.delete("/courses/:id", async (req, res) => {
   }
 });
 
+// Get enrolled courses for a user
+router.get("/courses/enrolled/:userId", async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const { enrollmentsTable } = await import("@workspace/db");
+    
+    const enrolled = await db
+      .select({
+        id: coursesTable.id,
+        titleAr: coursesTable.titleAr,
+        titleEn: coursesTable.titleEn,
+        progress: enrollmentsTable.progress,
+        enrolledAt: enrollmentsTable.enrolledAt,
+      })
+      .from(enrollmentsTable)
+      .innerJoin(coursesTable, eq(enrollmentsTable.courseId, coursesTable.id))
+      .where(eq(enrollmentsTable.userId, userId));
+      
+    res.json(enrolled);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch enrolled courses" });
+  }
+});
+
 import { getUploadUrl, getCourseFileUrl, deleteCourseFile } from "../lib/storage";
 
 // Generate presigned upload URL

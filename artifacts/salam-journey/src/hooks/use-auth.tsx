@@ -127,7 +127,12 @@ type BookingRecord = {
   createdAt: string;
 };
 
-function toPublicFromApi(user: UserRecord, bookings: BookingRecord[], purchasedProducts: PurchasedProduct[] = []): PublicUser {
+function toPublicFromApi(
+  user: UserRecord,
+  bookings: BookingRecord[],
+  purchasedProducts: PurchasedProduct[] = [],
+  enrolledCourses: any[] = []
+): PublicUser {
   return {
     id: user.id,
     name: user.name,
@@ -150,7 +155,12 @@ function toPublicFromApi(user: UserRecord, bookings: BookingRecord[], purchasedP
       whatsapp: booking.guestWhatsapp ?? undefined,
       createdAt: booking.createdAt,
     })),
-    enrolledCourses: [],
+    enrolledCourses: enrolledCourses.map((c: any) => ({
+      id: c.id,
+      title: c.titleAr || c.titleEn,
+      enrolledAt: c.enrolledAt,
+      progress: c.progress || 0,
+    })),
     purchasedProducts: purchasedProducts || [],
     createdAt: user.createdAt,
   };
@@ -158,12 +168,13 @@ function toPublicFromApi(user: UserRecord, bookings: BookingRecord[], purchasedP
 
 async function hydrateUser(userId: string): Promise<PublicUser | null> {
   try {
-    const [user, bookings, products] = await Promise.all([
+    const [user, bookings, products, courses] = await Promise.all([
       apiJson<UserRecord>(`/users/${userId}`),
       apiJson<BookingRecord[]>(`/bookings/user/${userId}`),
       apiJson<PurchasedProduct[]>(`/products/purchased/${userId}`).catch(() => []),
+      apiJson<any[]>(`/courses/enrolled/${userId}`).catch(() => []),
     ]);
-    return toPublicFromApi(user, bookings, products);
+    return toPublicFromApi(user, bookings, products, courses);
   } catch {
     return null;
   }
