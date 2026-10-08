@@ -48,8 +48,7 @@ export default function EbookLanding() {
       noscript.innerHTML = `<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=2147923472435483&ev=PageView&noscript=1" />`;
       document.head.appendChild(noscript);
     }
-  }, []);
-    
+
     Promise.all([
       apiJson<{value: string}>('/site-settings/whatsapp_number').catch(()=>({value:""})),
       apiJson<{value: string}>('/site-settings/instagram_url').catch(()=>({value:""})),
