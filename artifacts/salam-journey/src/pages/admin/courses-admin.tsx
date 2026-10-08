@@ -172,6 +172,7 @@ export function AdminCourses() {
       status: form.status,
       gradient: form.gradient,
       imageUrl: form.imageUrl ? form.imageUrl.trim() : null,
+      videoUrl: form.videoUrl ? form.videoUrl.trim() : null,
       durationUnit: form.durationUnit || 'weeks',
     };
 
