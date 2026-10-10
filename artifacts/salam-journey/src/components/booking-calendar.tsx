@@ -237,6 +237,7 @@ export function BookingCalendar({ onConfirmed }: Props) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     const stored = loadBooked();
     const seed = buildSeedBooked(today, timeSlotKeys);
     const merged: BookedMap = { ...seed };
@@ -244,7 +245,34 @@ export function BookingCalendar({ onConfirmed }: Props) {
       const set = new Set([...(merged[k] ?? []), ...v]);
       merged[k] = Array.from(set);
     }
+    
+    // Load real bookings from the database to ensure fully synced slot availability
+    async function fetchServerBookings() {
+      try {
+        const bookings = await apiJson<any[]>("/bookings");
+        if (cancelled) return;
+        
+        setBookedMap((prev) => {
+          const next = { ...prev };
+          bookings.forEach((b) => {
+            if (b.date && b.slot) {
+              const currentSlots = next[b.date] ?? [];
+              next[b.date] = Array.from(new Set([...currentSlots, b.slot]));
+            }
+          });
+          return next;
+        });
+      } catch (err) {
+        console.error("Failed to load server bookings", err);
+      }
+    }
+    
     setBookedMap(merged);
+    void fetchServerBookings();
+    
+    return () => {
+      cancelled = true;
+    };
   }, [today, timeSlotKeys]);
 
   const monthNames = lang === "ar" ? MONTH_NAMES_AR : MONTH_NAMES_EN;

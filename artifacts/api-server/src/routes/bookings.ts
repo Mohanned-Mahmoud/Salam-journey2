@@ -8,7 +8,7 @@ import { mapBookingToFrontend, mapBookingsToFrontend } from "../utils/booking-ma
 const router: IRouter = Router();
 
 // دالة مساعدة لإنشاء الحدث داخل تقويم جوجل
-async function createGoogleCalendarEvent(bookingData: any, adminRefreshToken: string) {
+export async function createGoogleCalendarEvent(bookingData: any, adminRefreshToken: string) {
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,

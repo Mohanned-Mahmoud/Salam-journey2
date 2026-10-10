@@ -64,12 +64,13 @@ router.post("/", async (req, res): Promise<any> => {
 
       } else if (metadata?.type === "booking") {
         const { db, bookingsTable, coachesTable } = await import("@workspace/db");
+        const { createGoogleCalendarEvent } = await import("./bookings");
         
         // Ensure coachId is present (default to the first available coach)
-        const coach = await db.select({ id: coachesTable.id }).from(coachesTable).limit(1);
+        const coach = await db.select().from(coachesTable).limit(1);
         const coachId = coach[0]?.id;
 
-        await db
+        const insertedBookings = await db
           .insert(bookingsTable)
           .values({
             coachId: coachId as string,
@@ -86,7 +87,19 @@ router.post("/", async (req, res): Promise<any> => {
             guestEmail: metadata.email || null,
             guestWhatsapp: metadata.whatsapp || null,
             status: "confirmed"
-          });
+          })
+          .returning();
+          
+        const currentBooking = insertedBookings[0];
+        
+        const coachRefreshToken = (coach[0] as any)?.googleRefreshToken || process.env.COACH_GOOGLE_REFRESH_TOKEN;
+
+        if (coachRefreshToken && currentBooking) {
+          createGoogleCalendarEvent(currentBooking, coachRefreshToken).catch(err =>
+            console.error("Background Calendar Error:", err)
+          );
+        }
+
         logger.info({ date: metadata.date, slot: metadata.slot }, "Booking payment confirmed and saved to DB");
       } else {
         logger.warn({ metadata }, "Unknown payment type or missing metadata");
