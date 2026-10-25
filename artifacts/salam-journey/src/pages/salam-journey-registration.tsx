@@ -167,27 +167,36 @@ export default function EbookRegistration() {
             )}
 
             {status === 'watching_video' && (
-              <div className="sj-state" role="status" aria-live="polite" data-testid="status-video">
+              <div className="sj-state" role="status" aria-live="polite" data-testid="status-video" style={{ textAlign: 'center', width: '100%', maxWidth: '1020px', margin: '0 auto' }}>
                 <div className="sj-form-step">فيديو قصير لكِ · لحظات</div>
-                <h2>نحضّر هديتك الآن…</h2>
-                <p>استغلي وقت الانتظار في سماع الفيديو</p>
-                <div style={{ margin: '20px 0', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 36px)', marginBottom: '10px' }}>نحضّر هديتك الآن…</h2>
+                <p style={{ fontSize: '15px', color: '#68766f', marginBottom: '24px' }}>استغلي وقت الانتظار في سماع هذا الفيديو</p>
+                <div style={{ 
+                  margin: '0 auto 28px', 
+                  borderRadius: '16px', 
+                  overflow: 'hidden', 
+                  boxShadow: '0 12px 36px rgba(0,0,0,0.18)', 
+                  background: '#000',
+                  width: '100%',
+                  maxWidth: '1020px'
+                }}>
                   <video 
                     src="/VSL.mp4" 
                     controls 
                     autoPlay 
                     playsInline 
-                    style={{ width: '100%', display: 'block' }}
+                    style={{ width: '100%', maxHeight: '78vh', display: 'block', margin: '0 auto' }}
                     onEnded={handleVideoComplete}
                   />
                 </div>
-                <div style={{ textAlign: 'center', marginTop: '20px' }} className="sj-fade-in">
+                <div style={{ textAlign: 'center', marginTop: '24px' }} className="sj-fade-in">
                   <button 
                     onClick={handleVideoComplete}
                     className="sj-cta"
+                    style={{ padding: '16px 36px', fontSize: '15px' }}
                     type="button"
                   >
-                    احجزي جلستك المجانية <ArrowRight size={17} aria-hidden="true" />
+                    احجزي جلستك المجانية <ArrowRight size={18} aria-hidden="true" />
                   </button>
                 </div>
               </div>
