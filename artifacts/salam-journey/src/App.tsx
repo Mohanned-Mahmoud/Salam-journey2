@@ -25,6 +25,7 @@ import FunnelPage from "@/pages/funnel-page";
 import NotFound from "@/pages/not-found";
 import EbookLanding from "@/pages/salam-journey-landing";
 import EbookRegistration from "@/pages/salam-journey-registration";
+import FreeBookCheckoutRedirect from "@/pages/free-book-checkout";
 import PaymentSuccess from "@/pages/payment-success";
 import PaymentCancel from "@/pages/payment-cancel";
 
@@ -91,6 +92,21 @@ function Router() {
         <Route path="/free-book/register" component={EbookRegistration} />
         <Route path="/free-book/video" component={EbookRegistration} />
         <Route path="/free-book/booking" component={EbookRegistration} />
+
+        {/* Stripe Instant Checkout Routes with Meta Pixel */}
+        <Route path="/free-book/warm-homes" component={() => <FreeBookCheckoutRedirect slug="warm-homes" />} />
+        <Route path="/free-book/reading-challenge" component={() => <FreeBookCheckoutRedirect slug="reading-challenge" />} />
+        <Route path="/free-book/pay-1" component={() => <FreeBookCheckoutRedirect slug="warm-homes" />} />
+        <Route path="/free-book/pay-2" component={() => <FreeBookCheckoutRedirect slug="reading-challenge" />} />
+        <Route path="/free-book/boyoot" component={() => <FreeBookCheckoutRedirect slug="warm-homes" />} />
+        <Route path="/free-book/challenge" component={() => <FreeBookCheckoutRedirect slug="reading-challenge" />} />
+        <Route path="/free-book/checkout/:slug">
+          {(params) => <FreeBookCheckoutRedirect slug={params.slug} />}
+        </Route>
+        <Route path="/free-book/pay/:slug">
+          {(params) => <FreeBookCheckoutRedirect slug={params.slug} />}
+        </Route>
+
         <Route component={NotFound} />
       </Switch>
     );

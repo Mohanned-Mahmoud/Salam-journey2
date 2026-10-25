@@ -9,6 +9,36 @@ export default function PaymentSuccess() {
   const [, navigate] = useLocation();
 
   useEffect(() => {
+    // Meta Pixel Purchase tracking
+    const scriptId = "meta-pixel-landing";
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement("script");
+      script.id = scriptId;
+      script.innerHTML = `
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '2147923472435483');
+      `;
+      document.head.appendChild(script);
+    }
+
+    try {
+      if (typeof (window as any).fbq === "function") {
+        (window as any).fbq("track", "PageView");
+        (window as any).fbq("track", "Purchase", {
+          currency: "USD",
+        });
+      }
+    } catch (e) {
+      console.warn("Meta Pixel Purchase tracking failed:", e);
+    }
+
     // Optionally redirect after a few seconds
     const timer = setTimeout(() => {
       navigate("/account");
