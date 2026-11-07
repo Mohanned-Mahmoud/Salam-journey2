@@ -31,19 +31,71 @@ function ensureMetaPixel() {
   }
 }
 
+const STATIC_PRODUCTS: StripeProductData[] = [
+  {
+    slug: "warm-homes",
+    aliases: ["boyoot", "pay-1", "product-1", "prod_vv8wxcaq8tgrn7"],
+    paymentLinkId: "plink_1UU8I4RwmR3yZTBekZGQdcig",
+    paymentLinkUrl: "https://buy.stripe.com/aFa3cx3WB2KabBo1otgw001",
+    productId: "prod_VV8WXCAq8tgrN7",
+    priceId: "price_1UU8FwRwmR3yZTBev3eLyM1m",
+    name: "بيوت دافئة",
+    description: "إثنا عشر محاضرة اسبوعية لمدة 3 أشهر مصممة خصيصا لجعلك أم واعية متمكنة تجيد التعامل مع تحديات أطفالها اليومية ",
+    images: [
+      "https://files.stripe.com/links/MDB8YWNjdF8xUkRUbWtSd21SM3laVEJlfGZsX2xpdmVfQ05RZ3JxQkZhZWk3TVVZbk1nMm5YaUVF005rn52Mmo",
+    ],
+    price: 200,
+    currency: "USD",
+    active: true,
+  },
+  {
+    slug: "reading-challenge",
+    aliases: ["challenge", "pay-2", "product-2", "prod_v2a6xnrbbtbvzju"],
+    paymentLinkId: "plink_1U2VubRwmR3yZTBexIEFdR4S",
+    paymentLinkUrl: "https://buy.stripe.com/aFadRb0Kp2KacFsd7bgw000",
+    productId: "prod_V2a6xNRBTbVzJu",
+    priceId: "price_1U2UwlRwmR3yZTBec4nwUPbC",
+    name: "Reading Challenge PDF",
+    description: null,
+    images: [
+      "https://files.stripe.com/links/MDB8YWNjdF8xUkRUbWtSd21SM3laVEJlfGZsX2xpdmVfUXJUNzVyTG9ON3FxOFUyNkNCOHFFWENY00jFxhaTYn",
+    ],
+    price: 3,
+    currency: "USD",
+    active: true,
+  },
+];
+
+function findFallbackProduct(s: string): StripeProductData | null {
+  const clean = s.toLowerCase().trim();
+  return (
+    STATIC_PRODUCTS.find(
+      (p) =>
+        p.slug.toLowerCase() === clean ||
+        p.productId.toLowerCase() === clean ||
+        p.aliases.some((a) => a.toLowerCase() === clean)
+    ) || null
+  );
+}
+
 interface FreeBookCheckoutRedirectProps {
   slug?: string;
 }
 
 export default function FreeBookCheckoutRedirect({ slug }: FreeBookCheckoutRedirectProps) {
   const [location, setLocation] = useLocation();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [product, setProduct] = useState<StripeProductData | null>(null);
-  const [modalOpen, setModalOpen] = useState(true);
 
-  // Derive slug from prop or url pathname
-  const effectiveSlug = (slug || location.split("/").pop() || "").toLowerCase().trim();
+  // Robust slug extraction supporting trailing slashes or subpaths
+  const cleanPath = location.replace(/\/+$/, "");
+  const segments = cleanPath.split("/").filter(Boolean);
+  const pathSlug = segments[segments.length - 1] || "";
+  const effectiveSlug = (slug || pathSlug).toLowerCase().trim();
+
+  const fallback = findFallbackProduct(effectiveSlug);
+  const [product, setProduct] = useState<StripeProductData | null>(fallback);
+  const [loading, setLoading] = useState(!fallback);
+  const [error, setError] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(true);
 
   useEffect(() => {
     ensureMetaPixel();
@@ -55,12 +107,14 @@ export default function FreeBookCheckoutRedirect({ slug }: FreeBookCheckoutRedir
       console.warn("Meta Pixel PageView error:", e);
     }
 
+    if (product) {
+      document.title = `${product.name} | رحلة سلام`;
+    }
+
     async function fetchStripeProduct() {
       try {
-        setLoading(true);
         setError(null);
-
-        // Retrieve product dynamically directly from Stripe backend endpoint
+        // Refresh product dynamically from Stripe backend endpoint
         const res = await apiJson<{ product: StripeProductData }>(
           `/stripe/products-preview/${encodeURIComponent(effectiveSlug)}`
         );
@@ -68,12 +122,14 @@ export default function FreeBookCheckoutRedirect({ slug }: FreeBookCheckoutRedir
         if (res && res.product) {
           setProduct(res.product);
           document.title = `${res.product.name} | رحلة سلام`;
-        } else {
+        } else if (!fallback) {
           setError("المنتج غير موجود");
         }
       } catch (err: any) {
-        console.error("Failed to fetch product preview from Stripe:", err);
-        setError(err.message || "تعذر جلب بيانات المنتج من Stripe");
+        if (!fallback) {
+          console.error("Failed to fetch product preview from Stripe:", err);
+          setError(err.message || "تعذر جلب بيانات المنتج من Stripe");
+        }
       } finally {
         setLoading(false);
       }
@@ -81,7 +137,7 @@ export default function FreeBookCheckoutRedirect({ slug }: FreeBookCheckoutRedir
 
     if (effectiveSlug) {
       fetchStripeProduct();
-    } else {
+    } else if (!fallback) {
       setLoading(false);
       setError("الرابط غير صحيح");
     }
