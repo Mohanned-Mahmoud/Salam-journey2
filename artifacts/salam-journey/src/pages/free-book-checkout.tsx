@@ -31,7 +31,7 @@ function ensureMetaPixel() {
   }
 }
 
-const STATIC_PRODUCTS: StripeProductData[] = [
+export const STATIC_PRODUCTS: StripeProductData[] = [
   {
     slug: "warm-homes",
     aliases: ["boyoot", "pay-1", "product-1", "prod_vv8wxcaq8tgrn7"],

@@ -140,6 +140,18 @@ function Router() {
         <Route path="/free-book/thankyou" component={FreeBookThankYou} />
         <Route path="/free-book/thank-you" component={FreeBookThankYou} />
         <Route path="/thankyou" component={FreeBookThankYou} />
+        <Route path="/warm-homes" component={() => <FreeBookCheckoutRedirect slug="warm-homes" />} />
+        <Route path="/reading-challenge" component={() => <FreeBookCheckoutRedirect slug="reading-challenge" />} />
+        <Route path="/pay-1" component={() => <FreeBookCheckoutRedirect slug="warm-homes" />} />
+        <Route path="/pay-2" component={() => <FreeBookCheckoutRedirect slug="reading-challenge" />} />
+        <Route path="/boyoot" component={() => <FreeBookCheckoutRedirect slug="warm-homes" />} />
+        <Route path="/challenge" component={() => <FreeBookCheckoutRedirect slug="reading-challenge" />} />
+        <Route path="/checkout/:slug">
+          {(params) => <FreeBookCheckoutRedirect slug={params.slug} />}
+        </Route>
+        <Route path="/pay/:slug">
+          {(params) => <FreeBookCheckoutRedirect slug={params.slug} />}
+        </Route>
         <Route path="/admin/login" component={AdminLoginPage} />
         <Route path="/about">
           <div className="flex flex-col min-h-screen">
@@ -172,6 +184,18 @@ function Router() {
           <Route path="/free-book/thankyou" component={FreeBookThankYou} />
           <Route path="/free-book/thank-you" component={FreeBookThankYou} />
           <Route path="/thankyou" component={FreeBookThankYou} />
+          <Route path="/warm-homes" component={() => <FreeBookCheckoutRedirect slug="warm-homes" />} />
+          <Route path="/reading-challenge" component={() => <FreeBookCheckoutRedirect slug="reading-challenge" />} />
+          <Route path="/pay-1" component={() => <FreeBookCheckoutRedirect slug="warm-homes" />} />
+          <Route path="/pay-2" component={() => <FreeBookCheckoutRedirect slug="reading-challenge" />} />
+          <Route path="/boyoot" component={() => <FreeBookCheckoutRedirect slug="warm-homes" />} />
+          <Route path="/challenge" component={() => <FreeBookCheckoutRedirect slug="reading-challenge" />} />
+          <Route path="/checkout/:slug">
+            {(params) => <FreeBookCheckoutRedirect slug={params.slug} />}
+          </Route>
+          <Route path="/pay/:slug">
+            {(params) => <FreeBookCheckoutRedirect slug={params.slug} />}
+          </Route>
           <Route component={NotFound} />
         </Switch>
       </main>
