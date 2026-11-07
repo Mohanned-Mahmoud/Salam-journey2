@@ -1168,19 +1168,6 @@ function InlinePreview({ blocks }: { blocks: FunnelBlock[] }) {
                 {d.caption && <p className="text-sm mt-3" style={{ color: 'var(--text-muted)' }}>{d.caption}</p>}
               </div>
             );
-          case 'registration_form' as any:
-            return (
-              <div key={block.id} className="px-8 py-10">
-                <div className="max-w-sm mx-auto bg-gray-50 rounded-2xl border p-6 text-center">
-                  <p className="font-bold text-sm mb-4" style={{ color: 'var(--text-dark)' }}>{d.title || 'نموذج تسجيل البيانات'}</p>
-                  <div className="space-y-2">
-                    <input disabled placeholder="الاسم" className="w-full px-3 py-2 text-sm border rounded-lg bg-white" />
-                    <input disabled placeholder="البريد الإلكتروني" className="w-full px-3 py-2 text-sm border rounded-lg bg-white" />
-                  </div>
-                  <span className="inline-block mt-4 px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold">{d.buttonText || 'إرسال'}</span>
-                </div>
-              </div>
-            );
           case 'video':
             return (
               <div key={block.id} className="px-8 py-6">

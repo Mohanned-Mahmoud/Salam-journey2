@@ -7,6 +7,7 @@ import { FaWhatsapp, FaInstagram, FaYoutube, FaFacebook, FaTiktok } from "react-
 import { apiJson } from "@/lib/api";
 import { Footer } from '@/components/layout/footer';
 import About from '@/pages/about';
+import { ProductPreviewModal, type StripeProductData } from "@/components/product-preview-modal";
 
 function Logo() {
   return (
@@ -18,11 +19,22 @@ function Logo() {
 
 export default function EbookLanding() {
   const [social, setSocial] = useState({ whatsapp: "", instagram: "", youtube: "", facebook: "", tiktok: "" });
+  const [stripeProducts, setStripeProducts] = useState<StripeProductData[]>([]);
+  const [previewModalProduct, setPreviewModalProduct] = useState<StripeProductData | null>(null);
 
   useEffect(() => {
     document.title = 'دليل صغير، أثر كبير | Salam Journey';
     const description = document.querySelector('meta[name="description"]');
     description?.setAttribute('content', 'احصلي على دليل Salam Journey المجاني لتنشئة طفل واثق وسعيد، مكتوب بالعربية وبحب.');
+
+    // Fetch dynamic products from Stripe backend
+    apiJson<{ products: StripeProductData[] }>('/stripe/products-preview')
+      .then((res) => {
+        if (res && res.products) {
+          setStripeProducts(res.products);
+        }
+      })
+      .catch((err) => console.warn('Could not load Stripe products preview:', err));
 
     // Inject Meta Pixel Code specifically for this page
     const scriptId = 'meta-pixel-landing';
@@ -144,6 +156,57 @@ export default function EbookLanding() {
           </div>
         </section>
 
+        {stripeProducts.length > 0 && (
+          <section className="sj-container" style={{ margin: '60px auto 40px' }} data-testid="section-stripe-products">
+            <div className="sj-content-heading" style={{ textAlign: 'center', marginBottom: '36px' }}>
+              <div className="sj-eyebrow">برامج وإصدارات سلام</div>
+              <h2>خطوات داعمة لرحلتكِ الأسرية</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+              {stripeProducts.map((prod) => (
+                <div
+                  key={prod.productId}
+                  className="bg-white rounded-3xl p-6 border border-[var(--border)] shadow-sm hover:shadow-md transition-all flex flex-col justify-between text-right"
+                >
+                  <div>
+                    {prod.images && prod.images.length > 0 && (
+                      <div className="rounded-2xl overflow-hidden bg-[var(--cream)] mb-4 max-h-52 flex items-center justify-center border border-[var(--border)]">
+                        <img
+                          src={prod.images[0]}
+                          alt={prod.name}
+                          className="w-full h-full object-contain max-h-52"
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <h3 className="text-xl font-bold text-[var(--text-dark)]">{prod.name}</h3>
+                      <span className="shrink-0 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-sm font-bold">
+                        ${prod.price.toFixed(2)} {prod.currency}
+                      </span>
+                    </div>
+                    {prod.description && (
+                      <p className="text-xs text-[var(--text-body)] line-clamp-3 mb-4 leading-relaxed whitespace-pre-line">
+                        {prod.description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="pt-4 mt-2 border-t border-[var(--border)]">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewModalProduct(prod)}
+                      className="w-full py-3 px-5 rounded-xl bg-[var(--sage-dark)] hover:bg-[var(--text-dark)] text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                    >
+                      <span>معاينة التفاصيل والطلب</span>
+                      <ArrowLeft size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="sj-quote-band" aria-label="رسالة من الدليل">
           <div className="sj-quote-mark" aria-hidden="true">“</div>
           <blockquote>
@@ -167,6 +230,13 @@ export default function EbookLanding() {
         </div>
         <p style={{ color: '#829089', fontSize: '12px', margin: 0 }}>© {new Date().getFullYear()} أكاديمية سلام | جميع الحقوق محفوظة</p>
       </footer>
+
+      {/* Dynamic Stripe Product Preview Modal */}
+      <ProductPreviewModal
+        isOpen={Boolean(previewModalProduct)}
+        onClose={() => setPreviewModalProduct(null)}
+        product={previewModalProduct}
+      />
     </div>
   );
 }

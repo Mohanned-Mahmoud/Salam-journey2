@@ -26,6 +26,7 @@ import NotFound from "@/pages/not-found";
 import EbookLanding from "@/pages/salam-journey-landing";
 import EbookRegistration from "@/pages/salam-journey-registration";
 import FreeBookCheckoutRedirect from "@/pages/free-book-checkout";
+import FreeBookThankYou from "@/pages/free-book-thank-you";
 import PaymentSuccess from "@/pages/payment-success";
 import PaymentCancel from "@/pages/payment-cancel";
 
@@ -93,6 +94,10 @@ function Router() {
         <Route path="/free-book/video" component={EbookRegistration} />
         <Route path="/free-book/booking" component={EbookRegistration} />
 
+        {/* Thank You Page with Meta Pixel Purchase Event */}
+        <Route path="/free-book/thankyou" component={FreeBookThankYou} />
+        <Route path="/free-book/thank-you" component={FreeBookThankYou} />
+
         {/* Stripe Instant Checkout Routes with Meta Pixel */}
         <Route path="/free-book/warm-homes" component={() => <FreeBookCheckoutRedirect slug="warm-homes" />} />
         <Route path="/free-book/reading-challenge" component={() => <FreeBookCheckoutRedirect slug="reading-challenge" />} />
@@ -132,6 +137,9 @@ function Router() {
         <Route path="/free-book/register" component={EbookRegistration} />
         <Route path="/free-book/video" component={EbookRegistration} />
         <Route path="/free-book/booking" component={EbookRegistration} />
+        <Route path="/free-book/thankyou" component={FreeBookThankYou} />
+        <Route path="/free-book/thank-you" component={FreeBookThankYou} />
+        <Route path="/thankyou" component={FreeBookThankYou} />
         <Route path="/admin/login" component={AdminLoginPage} />
         <Route path="/about">
           <div className="flex flex-col min-h-screen">
@@ -161,6 +169,9 @@ function Router() {
           <Route path="/account" component={Account} />
           <Route path="/payment-success" component={PaymentSuccess} />
           <Route path="/payment-cancel" component={PaymentCancel} />
+          <Route path="/free-book/thankyou" component={FreeBookThankYou} />
+          <Route path="/free-book/thank-you" component={FreeBookThankYou} />
+          <Route path="/thankyou" component={FreeBookThankYou} />
           <Route component={NotFound} />
         </Switch>
       </main>
