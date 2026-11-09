@@ -15,9 +15,14 @@ export function WhatsAppButton() {
     apiJson<{ key: string; value: string }>("/site-settings/whatsapp_number")
       .then((data) => {
         if (data && data.value) {
-          // تنظيف الرقم من أي رموز أو مسافات أو علامة + لضمان عمل اللينك
-          const cleanNumber = data.value.replace(/\D/g, "");
-          setWhatsappUrl(`https://wa.me/${cleanNumber}`);
+          // تنظيف الرقم وإضافة كود الدولة لمصر (20) إذا بدأ بـ 01
+          let cleanNumber = data.value.replace(/\D/g, "");
+          if (cleanNumber.startsWith("01") && cleanNumber.length === 11) {
+            cleanNumber = "20" + cleanNumber.slice(1);
+          }
+          if (cleanNumber) {
+            setWhatsappUrl(`https://wa.me/${cleanNumber}`);
+          }
         }
       })
       .catch((err) => {

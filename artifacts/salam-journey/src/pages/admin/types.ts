@@ -153,7 +153,7 @@ export function saveJson<T>(key: string, value: T): void {
 export const DEFAULT_SETTINGS: AdminSettings = {
   siteName: 'رحلة سلام',
   contactEmail: 'info@salamjourney.com',
-  whatsappNumber: '+447700000000',
+  whatsappNumber: '+201015473623',
   instagramUrl: 'https://instagram.com/salamjourney',
   youtubeUrl: 'https://youtube.com/@salamjourney',
   availableTimes: ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'],

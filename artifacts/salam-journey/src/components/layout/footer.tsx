@@ -39,7 +39,10 @@ export function Footer() {
       )
     ).then(([siteName, contactEmail, whatsapp, instagram, youtube, facebook, tiktok]) => {
       // تنظيف رقم الواتساب لضمان عمل الرابط بشكل رسمي وصحيح
-      const cleanNumber = whatsapp.value.replace(/\D/g, "");
+      let cleanNumber = whatsapp.value.replace(/\D/g, "");
+      if (cleanNumber.startsWith("01") && cleanNumber.length === 11) {
+        cleanNumber = "20" + cleanNumber.slice(1);
+      }
 
       setBrandSettings({
         siteName: siteName.value || "",

@@ -56,7 +56,10 @@ export default function EbookLanding() {
       apiJson<{value: string}>('/site-settings/facebook_url').catch(()=>({value:""})),
       apiJson<{value: string}>('/site-settings/tiktok_url').catch(()=>({value:""}))
     ]).then(([wa, ig, yt, fb, tk]) => {
-      const cleanWa = wa.value.replace(/\D/g, "") || "201015473623";
+      let cleanWa = wa.value.replace(/\D/g, "") || "201015473623";
+      if (cleanWa.startsWith("01") && cleanWa.length === 11) {
+        cleanWa = "20" + cleanWa.slice(1);
+      }
       setSocial({
         whatsapp: `https://wa.me/${cleanWa}`,
         instagram: ig.value,
