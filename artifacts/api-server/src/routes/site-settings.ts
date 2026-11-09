@@ -48,6 +48,7 @@ router.get("/site-settings/:key", async (req, res) => {
     if (!row) {
       const defaults: Record<string, string> = {
         display_mode: "full_website",
+        whatsapp_number: "+201015473623",
       };
       res.json({ key, value: defaults[key] ?? "" });
       return;

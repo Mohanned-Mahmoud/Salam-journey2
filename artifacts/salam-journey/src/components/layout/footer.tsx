@@ -12,7 +12,7 @@ export function Footer() {
   const [brandSettings, setBrandSettings] = useState({
     siteName: "",
     email: "hello@salamjourney.com",
-    whatsappUrl: "https://wa.me/",
+    whatsappUrl: "https://wa.me/201015473623",
     instagramUrl: "#",
     youtubeUrl: "#",
     facebookUrl: "",
@@ -44,7 +44,7 @@ export function Footer() {
       setBrandSettings({
         siteName: siteName.value || "",
         email: contactEmail.value || "hello@salamjourney.com",
-        whatsappUrl: cleanNumber ? `https://wa.me/${cleanNumber}` : "https://wa.me/",
+        whatsappUrl: cleanNumber ? `https://wa.me/${cleanNumber}` : "https://wa.me/201015473623",
         instagramUrl: instagram.value || "#",
         youtubeUrl: youtube.value || "#",
         facebookUrl: facebook.value || "",

@@ -7,8 +7,8 @@ export function WhatsAppButton() {
   const { t, lang } = useLanguage();
   const positionClass = lang === "ar" ? "left-6" : "right-6";
   
-  // 2. الـ state اللي هيشيل اللينك النهائي
-  const [whatsappUrl, setWhatsappUrl] = useState("https://wa.me/");
+  // 2. الـ state اللي هيشيل اللينك النهائي (مع قيمة افتراضية للرقم الجديد)
+  const [whatsappUrl, setWhatsappUrl] = useState("https://wa.me/201015473623");
 
   useEffect(() => {
     // 3. طلب رقم الواتساب من قاعدة البيانات مباشرة باستخدام المفتاح 'whatsapp_number'

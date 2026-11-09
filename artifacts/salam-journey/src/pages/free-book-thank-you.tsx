@@ -340,7 +340,7 @@ export default function FreeBookThankYou() {
               المحاولة مرة أخرى
             </Link>
             <a
-              href="https://wa.me/201143255551"
+              href="https://wa.me/201015473623"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl border border-[var(--border)] text-[var(--text-body)] text-xs hover:bg-[var(--cream)] transition-colors"
@@ -541,7 +541,7 @@ export default function FreeBookThankYou() {
             </a>
 
             <a
-              href="https://wa.me/201143255551"
+              href="https://wa.me/201015473623"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 w-full py-3 px-6 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 font-medium hover:bg-emerald-100 transition-colors text-sm"
