@@ -7,6 +7,7 @@ import { ProductPreviewModal, type StripeProductData } from "@/components/produc
 const PIXEL_ID = "2147923472435483";
 
 function ensureMetaPixel() {
+  if (typeof window !== "undefined" && (window as any).fbq) return;
   const scriptId = "meta-pixel-landing";
   if (!document.getElementById(scriptId)) {
     const script = document.createElement("script");

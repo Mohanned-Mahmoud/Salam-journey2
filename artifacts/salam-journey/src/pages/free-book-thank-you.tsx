@@ -56,8 +56,8 @@ function ensureMetaPixelLoaded(): Promise<void> {
       return;
     }
 
-    // Check if fbq is already fully initialized
-    if (window.fbq && (window.fbq.loaded || window.fbq.version)) {
+    // Check if fbq is already initialized
+    if (window.fbq) {
       resolve();
       return;
     }
@@ -99,12 +99,33 @@ export default function FreeBookThankYou() {
   const [error, setError] = useState<string | null>(null);
   const [orderData, setOrderData] = useState<StripeVerificationData | null>(null);
   const [pixelTracked, setPixelTracked] = useState(false);
+  const [isTestMode, setIsTestMode] = useState(false);
+  const [lastEventLogged, setLastEventLogged] = useState<string>("");
   const purchaseAttemptedRef = useRef(false);
+
+  const triggerPixelPurchase = (amount: number, currency: string, productName: string) => {
+    try {
+      if (typeof window !== "undefined" && typeof window.fbq === "function") {
+        window.fbq("track", "Purchase", {
+          value: amount,
+          currency: currency,
+          content_name: productName,
+          content_type: "product",
+        });
+        const msg = `تم إرسال حدث Purchase بنجاح بقيمة $${amount} ${currency} للمنتج: ${productName}`;
+        setLastEventLogged(msg);
+        setPixelTracked(true);
+        console.info(`[Meta Pixel] ${msg}`);
+      }
+    } catch (e) {
+      console.warn("Manual Pixel Purchase trigger error:", e);
+    }
+  };
 
   useEffect(() => {
     document.title = "شكراً لك | تم تأكيد طلبك بنجاح";
 
-    // Extract session_id from URL query string
+    // Extract session_id and optional test parameters from URL query string
     const searchParams = new URLSearchParams(window.location.search);
     const sessionId = (
       searchParams.get("session_id") ||
@@ -112,14 +133,66 @@ export default function FreeBookThankYou() {
       ""
     ).trim();
 
-    if (!sessionId) {
-      setLoading(false);
-      return;
-    }
-
     // Guard against multiple executions in React StrictMode
     if (purchaseAttemptedRef.current) return;
     purchaseAttemptedRef.current = true;
+
+    // Direct access without Stripe session (Test/Configuration Mode as requested)
+    if (!sessionId) {
+      setIsTestMode(true);
+      const testAmount = parseFloat(
+        searchParams.get("amount") || searchParams.get("value") || "200"
+      );
+      const testCurrency = (searchParams.get("currency") || "USD").toUpperCase();
+      const testProduct = searchParams.get("product") || "بيوت دافئة";
+
+      const previewData: StripeVerificationData = {
+        paid: true,
+        status: "complete",
+        paymentStatus: "paid",
+        sessionId: "test_preview_mode",
+        amount: testAmount,
+        currency: testCurrency,
+        customerEmail: "client-test@salamjourney.com",
+        customerName: "معاينة واختبار",
+        items: [
+          {
+            description: testProduct,
+            amount: testAmount,
+            currency: testCurrency,
+            quantity: 1,
+          },
+        ],
+      };
+
+      setOrderData(previewData);
+      setLoading(false);
+
+      // Ensure Meta Pixel base code is active and fire PageView & Purchase immediately
+      ensureMetaPixelLoaded().then(() => {
+        try {
+          if (typeof window.fbq === "function") {
+            window.fbq("track", "PageView");
+            window.fbq("track", "Purchase", {
+              value: previewData.amount,
+              currency: previewData.currency,
+              content_name: testProduct,
+              content_type: "product",
+            });
+            setPixelTracked(true);
+            setLastEventLogged(
+              `تم إرسال حدث Purchase تلقائياً بقيمة $${previewData.amount} ${previewData.currency} (${testProduct})`
+            );
+            console.info(
+              `[Meta Pixel Test Mode] Purchase event tracked: value=${previewData.amount} ${previewData.currency}`
+            );
+          }
+        } catch (e) {
+          console.warn("Meta Pixel Test Mode error:", e);
+        }
+      });
+      return;
+    }
 
     async function verifyAndTrack() {
       try {
@@ -236,46 +309,9 @@ export default function FreeBookThankYou() {
     );
   }
 
-  // Case 1: Visited without a session_id
+  // Case 1: Visited without a session_id - Fallback to test & setup mode
   if (!orderData && !error) {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center bg-[var(--cream)] px-4"
-        dir="rtl"
-      >
-        <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-sm border border-[var(--border)] text-center">
-          <div className="mb-6 flex justify-center">
-            <img src="/images/logo.png" alt="Salam Journey" className="h-12 w-auto object-contain" />
-          </div>
-          <div className="w-16 h-16 rounded-full bg-[var(--cream-dark)] text-[var(--sage-dark)] flex items-center justify-center mx-auto mb-4">
-            <PackageCheck className="w-8 h-8" />
-          </div>
-          <h1 className="text-2xl font-bold text-[var(--text-dark)] mb-3">
-            صفحة تأكيد الطلب
-          </h1>
-          <p className="text-sm text-[var(--text-body)] mb-6 leading-relaxed">
-            تُعرض هذه الصفحة تلقائياً لتأكيد إتمام عمليات الشراء بعد الدفع مباشرة عبر Stripe. إذا كنت قد أتممت عملية شراء مؤخراً، يمكنك مراجعة بريدك الإلكتروني للحصول على تفاصيل الدفع.
-          </p>
-          <div className="flex flex-col gap-3">
-            <Link
-              href="/free-book"
-              className="w-full py-3 px-6 rounded-xl bg-[var(--sage-dark)] text-white font-medium hover:bg-[var(--text-dark)] transition-colors text-sm"
-            >
-              العودة إلى الصفحة الرئيسية
-            </Link>
-            <a
-              href="https://wa.me/201143255551"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl border border-[var(--border)] text-[var(--text-body)] text-xs hover:bg-[var(--cream)] transition-colors"
-            >
-              <MessageCircle className="w-4 h-4 text-emerald-600" />
-              <span>تواصل مع الدعم الفني عبر واتساب</span>
-            </a>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   // Case 2: Error verifying session
@@ -412,6 +448,86 @@ export default function FreeBookThankYou() {
               )}
             </div>
           </div>
+
+          {/* Test & Meta Pixel Configuration Controls (Only active in test/direct access mode) */}
+          {isTestMode && (
+            <div className="mt-6 p-4 rounded-2xl bg-amber-50/90 border border-amber-200 text-right text-xs">
+              <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                <span className="font-bold text-amber-900 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                  <span>لوحة اختبار وضبط Meta Pixel (مفتوحة بدون دفع)</span>
+                </span>
+                <span className="text-[10px] font-mono bg-white px-2 py-0.5 rounded border border-amber-200 text-amber-800">
+                  Pixel ID: {PIXEL_ID}
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-800 mb-3 leading-relaxed">
+                تم فتح هذه الصفحة مباشرة في وضع الاختبار، وتم إرسال حدث <strong className="font-mono">Purchase</strong> تلقائياً لتتمكن من فحصه وضبطه في Meta Events Manager و Meta Pixel Helper بكل حرية.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOrderData((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            amount: 200,
+                            currency: "USD",
+                            items: [
+                              {
+                                description: "بيوت دافئة",
+                                amount: 200,
+                                currency: "USD",
+                                quantity: 1,
+                              },
+                            ],
+                          }
+                        : null
+                    );
+                    triggerPixelPurchase(200, "USD", "بيوت دافئة");
+                  }}
+                  className="py-2.5 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5"
+                >
+                  <span>🎯 إرسال حدث شراء بيوت دافئة ($200)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOrderData((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            amount: 3,
+                            currency: "USD",
+                            items: [
+                              {
+                                description: "Reading Challenge PDF",
+                                amount: 3,
+                                currency: "USD",
+                                quantity: 1,
+                              },
+                            ],
+                          }
+                        : null
+                    );
+                    triggerPixelPurchase(3, "USD", "Reading Challenge PDF");
+                  }}
+                  className="py-2.5 px-3 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5"
+                >
+                  <span>🎯 إرسال حدث شراء تحدي القراءة ($3)</span>
+                </button>
+              </div>
+
+              {lastEventLogged && (
+                <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 font-mono">
+                  ✅ {lastEventLogged}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Quick Action Buttons */}
           <div className="space-y-3">
