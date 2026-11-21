@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from "react";
 import { Link } from "wouter";
-import { Sparkles, Heart, Bell, Send, CheckCircle2, MessageCircle, ArrowLeft, Lock, BookOpen, Compass, ShieldCheck } from "lucide-react";
+import { Sparkles, Heart, Bell, Send, CheckCircle2, MessageCircle, ArrowLeft, BookOpen, Compass, ShieldCheck } from "lucide-react";
 import { FaWhatsapp, FaInstagram, FaYoutube, FaFacebook, FaTiktok } from "react-icons/fa";
 import { Confetti } from "@/components/confetti";
 import { useCreateLead } from "@workspace/api-client-react";
@@ -362,17 +362,6 @@ export default function ComingSoonPage() {
               <FaTiktok size={14} />
             </a>
           )}
-        </div>
-
-        {/* Subtle Admin Link */}
-        <div>
-          <Link
-            href="/admin/login"
-            className="inline-flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-dark)] transition-colors hover:underline"
-          >
-            <Lock className="w-3 h-3" />
-            <span>دخول الإدارة</span>
-          </Link>
         </div>
       </footer>
     </div>
