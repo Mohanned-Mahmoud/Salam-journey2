@@ -97,4 +97,63 @@ router.put("/admin/site-settings/:key", isAdminAuthenticated, async (req, res) =
   }
 });
 
+// Bulk update site settings (both admin-prefixed and root-level)
+router.put("/admin/site-settings", isAdminAuthenticated, async (req, res): Promise<any> => {
+  try {
+    const body = req.body as any;
+    const settings = body.settings || body;
+    if (!settings || typeof settings !== "object") {
+      return res.status(400).json({ error: "settings must be an object of key-value pairs" });
+    }
+
+    const updatedKeys: string[] = [];
+    for (const [key, value] of Object.entries(settings)) {
+      if (typeof value === "string" || typeof value === "number") {
+        const valStr = String(value);
+        await db
+          .insert(siteSettingsTable)
+          .values({ key, value: valStr, updatedAt: new Date() })
+          .onConflictDoUpdate({
+            target: siteSettingsTable.key,
+            set: { value: valStr, updatedAt: new Date() },
+          });
+        updatedKeys.push(key);
+      }
+    }
+
+    res.json({ success: true, updated: updatedKeys });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Failed to update settings" });
+  }
+});
+
+router.put("/site-settings", isAdminAuthenticated, async (req, res): Promise<any> => {
+  try {
+    const body = req.body as any;
+    const settings = body.settings || body;
+    if (!settings || typeof settings !== "object") {
+      return res.status(400).json({ error: "settings must be an object of key-value pairs" });
+    }
+
+    const updatedKeys: string[] = [];
+    for (const [key, value] of Object.entries(settings)) {
+      if (typeof value === "string" || typeof value === "number") {
+        const valStr = String(value);
+        await db
+          .insert(siteSettingsTable)
+          .values({ key, value: valStr, updatedAt: new Date() })
+          .onConflictDoUpdate({
+            target: siteSettingsTable.key,
+            set: { value: valStr, updatedAt: new Date() },
+          });
+        updatedKeys.push(key);
+      }
+    }
+
+    res.json({ success: true, updated: updatedKeys });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Failed to update settings" });
+  }
+});
+
 export default router;

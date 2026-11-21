@@ -117,19 +117,18 @@ export function AdminOrders() {
     e.preventDefault();
     try {
       setSettingsLoading(true);
-      await apiJson("/site-settings", {
+      await apiJson("/admin/orders/config", {
         method: "PUT",
         body: JSON.stringify({
-          settings: {
-            instapay_username: config.instapayUsername,
-            instapay_phone: config.instapayPhone,
-            instapay_link: config.instapayLink,
-            usd_to_egp_rate: String(config.usdToEgpRate),
-          },
+          instapayUsername: config.instapayUsername,
+          instapayPhone: config.instapayPhone,
+          instapayLink: config.instapayLink,
+          usdToEgpRate: config.usdToEgpRate,
         }),
       });
       notify.success("تم حفظ إعدادات انستا باي وسعر الصرف بنجاح! ⚡");
       setShowSettings(false);
+      void loadConfig(true);
     } catch (err: any) {
       console.error(err);
       notify.error("حدث خطأ أثناء حفظ الإعدادات");

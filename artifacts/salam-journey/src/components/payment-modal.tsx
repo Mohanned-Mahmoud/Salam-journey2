@@ -138,17 +138,11 @@ export function PaymentModal({ isOpen, onClose, item }: PaymentModalProps) {
   };
 
   // InstaPay Manual Transfer
-  const handleInstaPaySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleInstaPaySubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
 
-    if (!customerName.trim()) {
-      notify.error("يرجى كتابة الاسم بالكامل");
-      return;
-    }
-    if (!customerEmail.trim()) {
-      notify.error("يرجى كتابة البريد الإلكتروني");
-      return;
-    }
+    const finalName = (customerName || user?.name || "عميل سلام").trim();
+    const finalEmail = (customerEmail || user?.email || "customer@salamjourney.com").trim();
 
     try {
       setIsProcessing(true);
@@ -156,8 +150,8 @@ export function PaymentModal({ isOpen, onClose, item }: PaymentModalProps) {
         method: "POST",
         body: JSON.stringify({
           userId: user?.id || null,
-          customerName: customerName.trim(),
-          customerEmail: customerEmail.trim(),
+          customerName: finalName,
+          customerEmail: finalEmail,
           customerPhone: customerPhone.trim() || null,
           itemType: item.type,
           itemId: item.id,
@@ -175,7 +169,7 @@ export function PaymentModal({ isOpen, onClose, item }: PaymentModalProps) {
           if (res.whatsappUrl) {
             window.open(res.whatsappUrl, "_blank");
           }
-        }, 1200);
+        }, 1000);
       }
     } catch (err: any) {
       console.error(err);
@@ -231,23 +225,39 @@ export function PaymentModal({ isOpen, onClose, item }: PaymentModalProps) {
         {/* Price & Currency Conversion Banner */}
         <div className="bg-[#FAF8F5] p-3.5 px-5 border-b border-[rgba(127,169,155,0.15)] flex items-center justify-between shrink-0">
           <div>
-            <span className="text-xs text-[var(--text-muted)] block font-medium">المبلغ الإجمالي</span>
+            <span className="text-xs text-[var(--text-muted)] block font-medium">المبلغ المطلوب</span>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-[var(--sage-dark)]">
-                {egpAmount} ج.م
-              </span>
-              <span className="text-sm font-bold text-stone-500">
-                (${item.priceUsd.toFixed(2)})
-              </span>
+              {method === "card" ? (
+                <span className="text-2xl font-black text-[var(--sage-dark)]">
+                  ${item.priceUsd.toFixed(2)}
+                </span>
+              ) : (
+                <>
+                  <span className="text-2xl font-black text-purple-900">
+                    {egpAmount} ج.م
+                  </span>
+                  <span className="text-xs font-bold text-stone-400">
+                    (${item.priceUsd.toFixed(2)})
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
           <div className="text-left">
-            <span className="text-[10px] text-stone-400 block font-medium">سعر الصرف الحي</span>
-            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-flex items-center gap-1.5 shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>1$ = {config.usdToEgpRate} ج.م (تلقائي)</span>
-            </span>
+            {method === "card" ? (
+              <span className="text-xs font-bold text-stone-600 bg-stone-100 px-3 py-1.5 rounded-lg border border-stone-200 inline-flex items-center gap-1.5 shadow-2xs">
+                <span>دفع دولي بالدولار (Stripe)</span>
+              </span>
+            ) : (
+              <div>
+                <span className="text-[10px] text-stone-400 block font-medium">سعر الصرف الحي</span>
+                <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-flex items-center gap-1.5 shadow-2xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>1$ = {config.usdToEgpRate} ج.م (تلقائي)</span>
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -267,7 +277,7 @@ export function PaymentModal({ isOpen, onClose, item }: PaymentModalProps) {
                     onClick={() => setMethod("instapay")}
                     className={`p-3.5 rounded-2xl border-2 text-right transition-all cursor-pointer flex flex-col justify-between ${
                       method === "instapay"
-                        ? "border-[var(--sage-dark)] bg-[var(--cream)]/50 ring-2 ring-[var(--sage)]/30 shadow-xs"
+                        ? "border-purple-600 bg-purple-50/40 ring-2 ring-purple-400/20 shadow-xs"
                         : "border-stone-200 bg-white hover:border-stone-300"
                     }`}
                   >
@@ -276,7 +286,7 @@ export function PaymentModal({ isOpen, onClose, item }: PaymentModalProps) {
                         ⚡
                       </span>
                       {method === "instapay" && (
-                        <CheckCircle2 className="w-4 h-4 text-[var(--sage-dark)]" />
+                        <CheckCircle2 className="w-4 h-4 text-purple-700" />
                       )}
                     </div>
                     <div>
@@ -316,28 +326,24 @@ export function PaymentModal({ isOpen, onClose, item }: PaymentModalProps) {
               {/* ══════════════════════════════════════════════════════════ */}
               {method === "instapay" && (
                 <div className="space-y-4 animate-in fade-in duration-200">
-                  {/* Transfer Details Box */}
-                  <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-50/70 to-stone-50 border border-purple-200/60 space-y-3">
+                  {/* Clean InstaPay Info Card */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-50/80 via-white to-purple-50/50 border border-purple-200/70 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-extrabold text-purple-900 flex items-center gap-1.5">
-                        <span>بيانات التحويل عبر InstaPay</span>
-                        <span className="text-[10px] bg-purple-200 text-purple-900 px-2 py-0.5 rounded-full font-bold">مصر 🇪🇬</span>
+                      <p className="font-bold text-purple-900 flex items-center gap-1.5 text-xs sm:text-sm">
+                        <Zap className="w-4 h-4 text-purple-600 fill-purple-600" />
+                        <span>تحويل فوري عبر تطبيق InstaPay (مصر 🇪🇬)</span>
+                      </p>
+                      <span className="text-[11px] font-extrabold text-purple-800 bg-purple-100 px-2 py-0.5 rounded-md">
+                        {egpAmount} ج.م
                       </span>
-
-                      {/* Open InstaPay App Link */}
-                      <a
-                        href={config.instapayLink || "https://ipn.eg"}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs font-bold text-purple-700 hover:text-purple-900 flex items-center gap-1 hover:underline"
-                      >
-                        <span>فتح انستا باي</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
                     </div>
 
+                    <p className="text-xs text-stone-600 leading-relaxed">
+                      اضغطي الزر بالأسفل للانتقال لتطبيق انستا باي مباشرة لدفع <b className="text-purple-900 font-extrabold">{egpAmount} ج.م</b>، أو انسخي بيانات التحويل أدناه:
+                    </p>
+
                     {/* Field 1: IPA Address */}
-                    <div className="flex items-center justify-between bg-white p-2.5 px-3.5 rounded-xl border border-purple-100 shadow-2xs">
+                    <div className="flex items-center justify-between bg-white p-2.5 px-3 rounded-xl border border-purple-100 shadow-2xs">
                       <div className="flex flex-col">
                         <span className="text-[10px] text-stone-400 font-medium">عنوان الدفع (IPA)</span>
                         <span className="text-xs sm:text-sm font-bold text-[var(--text-dark)] font-mono dir-ltr select-all">
@@ -347,7 +353,7 @@ export function PaymentModal({ isOpen, onClose, item }: PaymentModalProps) {
                       <button
                         type="button"
                         onClick={() => copyToClipboard(config.instapayUsername, "عنوان انستا باي")}
-                        className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1 transition-colors"
+                        className="px-2.5 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border border-purple-200"
                       >
                         <Copy className="w-3.5 h-3.5" />
                         <span>{copiedField === "عنوان انستا باي" ? "تم النسخ" : "نسخ"}</span>
@@ -356,7 +362,7 @@ export function PaymentModal({ isOpen, onClose, item }: PaymentModalProps) {
 
                     {/* Field 2: Phone Number */}
                     {config.instapayPhone && (
-                      <div className="flex items-center justify-between bg-white p-2.5 px-3.5 rounded-xl border border-purple-100 shadow-2xs">
+                      <div className="flex items-center justify-between bg-white p-2.5 px-3 rounded-xl border border-purple-100 shadow-2xs">
                         <div className="flex flex-col">
                           <span className="text-[10px] text-stone-400 font-medium">أو عبر رقم الهاتف</span>
                           <span className="text-xs sm:text-sm font-bold text-[var(--text-dark)] font-mono dir-ltr select-all">
@@ -366,7 +372,7 @@ export function PaymentModal({ isOpen, onClose, item }: PaymentModalProps) {
                         <button
                           type="button"
                           onClick={() => copyToClipboard(config.instapayPhone, "رقم الهاتف")}
-                          className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold flex items-center gap-1 transition-colors"
+                          className="px-2.5 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer border border-purple-200"
                         >
                           <Copy className="w-3.5 h-3.5" />
                           <span>{copiedField === "رقم الهاتف" ? "تم النسخ" : "نسخ"}</span>
@@ -374,72 +380,64 @@ export function PaymentModal({ isOpen, onClose, item }: PaymentModalProps) {
                       </div>
                     )}
 
-                    <div className="text-[11px] text-stone-600 bg-white/60 p-2 rounded-lg leading-relaxed">
-                      💡 حوّلي مبلغ <b className="text-purple-900">{egpAmount} ج.م</b>، ثم املئي بياناتك أدناه واضغطي زر <b>«تم التحويل»</b> لإرسال صورة إثبات التحويل عبر الواتساب وتأكيد طلبك فوراً.
-                    </div>
+                    {/* Guest Contact Details (if not logged in) */}
+                    {!user && (
+                      <div className="pt-2 border-t border-purple-100/80 space-y-2">
+                        <span className="text-[11px] font-bold text-stone-600 block">
+                          بياناتك لاستلام الطلب وتفعيله:
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            value={customerName}
+                            onChange={(e) => setCustomerName(e.target.value)}
+                            placeholder="الاسم بالكامل"
+                            className="w-full px-3 py-1.5 rounded-xl border border-purple-200 bg-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-400"
+                          />
+                          <input
+                            type="email"
+                            value={customerEmail}
+                            onChange={(e) => setCustomerEmail(e.target.value)}
+                            placeholder="البريد الإلكتروني"
+                            className="w-full px-3 py-1.5 rounded-xl border border-purple-200 bg-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-400 dir-ltr text-right"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Customer Info Form */}
-                  <form onSubmit={handleInstaPaySubmit} className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-[var(--text-dark)] mb-1">
-                        الاسم بالكامل <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder="اكتبي اسمك هنا"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sage)]/50 focus:border-[var(--sage-dark)]"
-                      />
-                    </div>
+                  {/* Primary CTA: Open InstaPay Directly with EGP price */}
+                  <a
+                    href={config.instapayLink || "https://ipn.eg"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 active:scale-[0.99] text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer text-center"
+                  >
+                    <Zap className="w-4 h-4 fill-amber-300 text-amber-300" />
+                    <span>الانتقال لتطبيق انستا باي للدفع ({egpAmount} ج.م)</span>
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-[var(--text-dark)] mb-1">
-                          البريد الإلكتروني <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="email"
-                          required
-                          value={customerEmail}
-                          onChange={(e) => setCustomerEmail(e.target.value)}
-                          placeholder="example@mail.com"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sage)]/50 focus:border-[var(--sage-dark)] dir-ltr text-right"
-                        />
-                      </div>
+                  {/* Secondary Confirmation CTA: Send Proof via WhatsApp */}
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    onClick={() => handleInstaPaySubmit()}
+                    className="w-full py-3 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs hover:shadow-md transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isProcessing ? (
+                      <span>جاري تسجيل الطلب...</span>
+                    ) : (
+                      <>
+                        <MessageCircle className="w-4 h-4" />
+                        <span>تم التحويل — إرسال إثبات الدفع عبر واتساب</span>
+                      </>
+                    )}
+                  </button>
 
-                      <div>
-                        <label className="block text-xs font-semibold text-[var(--text-dark)] mb-1">
-                          رقم الواتساب (للتواصل والتأكيد)
-                        </label>
-                        <input
-                          type="tel"
-                          value={customerPhone}
-                          onChange={(e) => setCustomerPhone(e.target.value)}
-                          placeholder="010XXXXXXXX"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--sage)]/50 focus:border-[var(--sage-dark)] dir-ltr text-right"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Submit Button */}
-                    <button
-                      type="submit"
-                      disabled={isProcessing}
-                      className="w-full py-3.5 px-6 rounded-2xl bg-[#5A8A80] hover:bg-[#436760] active:scale-[0.99] text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer disabled:opacity-50 mt-2"
-                    >
-                      {isProcessing ? (
-                        <span>جاري تسجيل الطلب...</span>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4" />
-                          <span>تم التحويل — إرسال إثبات الدفع عبر واتساب</span>
-                        </>
-                      )}
-                    </button>
-                  </form>
+                  <p className="text-[11px] text-center text-stone-500">
+                    بعد إتمام التحويل في تطبيق انستا باي، اضغطي زر «تم التحويل» لإرسال صورة التحويل عبر الواتساب وتأكيد طلبك فوراً 🌿
+                  </p>
                 </div>
               )}
 
@@ -458,6 +456,7 @@ export function PaymentModal({ isOpen, onClose, item }: PaymentModalProps) {
                     </p>
                   </div>
 
+                  {/* Stripe Button: Dollar Price Only! */}
                   <button
                     type="button"
                     disabled={isProcessing}

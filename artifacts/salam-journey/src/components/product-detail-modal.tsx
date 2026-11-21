@@ -103,8 +103,8 @@ export function ProductDetailModal({
     product.images && product.images.length > 0
       ? product.images
       : product.imageUrl
-      ? [product.imageUrl]
-      : [];
+        ? [product.imageUrl]
+        : [];
 
   const displayImages = rawImages.map((img) => resolveMediaUrl(img));
   const hasImages = displayImages.length > 0;
@@ -148,11 +148,11 @@ export function ProductDetailModal({
     product.features && product.features.length > 0
       ? product.features
       : [
-          "ملف رقمي عالي الدقة (300 DPI) مناسب للقراءة والطباعة",
-          "تصميم هادئ وعملي يراعي راحة الأم وسلاسة الاستخدام",
-          "متوافق مع الهواتف الذكية والأجهزة اللوحية وتطبيقات الملاحظات",
-          "تحميل مباشر وفوري مع صلاحية استخدام دائمة",
-        ];
+        "ملف رقمي عالي الدقة (300 DPI) مناسب للقراءة والطباعة",
+        "تصميم هادئ وعملي يراعي راحة الأم وسلاسة الاستخدام",
+        "متوافق مع الهواتف الذكية والأجهزة اللوحية وتطبيقات الملاحظات",
+        "تحميل مباشر وفوري مع صلاحية استخدام دائمة",
+      ];
 
   const extendedDesc = product.details?.ar || product.desc.ar;
 
@@ -179,11 +179,10 @@ export function ProductDetailModal({
       {/* Main Modal Container */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative bg-white w-full shadow-2xl overflow-hidden z-10 transition-all duration-300 ease-out flex flex-col ${
-          isExpanded
+        className={`relative bg-white w-full shadow-2xl overflow-hidden z-10 transition-all duration-300 ease-out flex flex-col ${isExpanded
             ? "h-[90dvh] max-h-[90dvh] sm:h-[90vh] md:h-[84vh] md:max-h-[720px] max-w-full md:max-w-4xl lg:max-w-5xl rounded-t-[28px] sm:rounded-3xl"
             : "max-h-[88dvh] max-w-full sm:max-w-md md:max-w-lg rounded-t-[28px] sm:rounded-3xl"
-        }`}
+          }`}
         style={{
           boxShadow: "0 25px 60px -15px rgba(26, 46, 42, 0.4)",
           border: "1px solid rgba(127, 169, 155, 0.2)",
@@ -386,11 +385,10 @@ export function ProductDetailModal({
                         key={idx}
                         type="button"
                         onClick={() => setSelectedImageIndex(idx)}
-                        className={`relative w-14 h-14 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
-                          selectedImageIndex === idx
+                        className={`relative w-14 h-14 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${selectedImageIndex === idx
                             ? "border-[var(--sage-dark)] ring-2 ring-[var(--sage)]/40 scale-105"
                             : "border-stone-200 opacity-60 hover:opacity-100"
-                        }`}
+                          }`}
                       >
                         <img
                           src={img}
@@ -597,11 +595,10 @@ export function ProductDetailModal({
                       {displayImages.map((_, idx) => (
                         <div
                           key={idx}
-                          className={`h-1.5 rounded-full transition-all duration-300 ${
-                            selectedImageIndex === idx
+                          className={`h-1.5 rounded-full transition-all duration-300 ${selectedImageIndex === idx
                               ? "w-5 bg-[var(--sage-dark)]"
                               : "w-1.5 bg-black/25"
-                          }`}
+                            }`}
                         />
                       ))}
                     </div>
@@ -616,11 +613,10 @@ export function ProductDetailModal({
                         key={idx}
                         type="button"
                         onClick={() => setSelectedImageIndex(idx)}
-                        className={`relative w-12 h-12 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
-                          selectedImageIndex === idx
+                        className={`relative w-12 h-12 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${selectedImageIndex === idx
                             ? "border-[var(--sage-dark)] ring-2 ring-[var(--sage)]/40 scale-105"
                             : "border-stone-200 opacity-60"
-                        }`}
+                          }`}
                       >
                         <img
                           src={img}

@@ -166,6 +166,49 @@ router.get("/orders/config", async (req, res) => {
 });
 
 /**
+ * Admin endpoint: Update InstaPay settings & exchange rate
+ */
+router.put("/admin/orders/config", async (req, res): Promise<any> => {
+  try {
+    const { instapayUsername, instapayPhone, instapayLink, usdToEgpRate } = req.body;
+
+    const updates: { key: string; value: string }[] = [];
+    if (instapayUsername !== undefined) {
+      updates.push({ key: "instapay_username", value: String(instapayUsername) });
+    }
+    if (instapayPhone !== undefined) {
+      updates.push({ key: "instapay_phone", value: String(instapayPhone) });
+    }
+    if (instapayLink !== undefined) {
+      updates.push({ key: "instapay_link", value: String(instapayLink) });
+    }
+    if (usdToEgpRate !== undefined && !isNaN(parseFloat(usdToEgpRate))) {
+      updates.push({ key: "usd_to_egp_rate", value: String(usdToEgpRate) });
+      cachedLiveRate = {
+        rate: parseFloat(usdToEgpRate),
+        fetchedAt: Date.now(),
+        provider: "تم التعيين يدوياً من الإدارة",
+      };
+    }
+
+    for (const item of updates) {
+      await db
+        .insert(siteSettingsTable)
+        .values({ key: item.key, value: item.value, updatedAt: new Date() })
+        .onConflictDoUpdate({
+          target: siteSettingsTable.key,
+          set: { value: item.value, updatedAt: new Date() },
+        });
+    }
+
+    res.json({ success: true, message: "تم حفظ إعدادات انستا باي بنجاح" });
+  } catch (error: any) {
+    logger.error({ error }, "Error updating orders config");
+    res.status(500).json({ error: error.message || "Failed to update orders config" });
+  }
+});
+
+/**
  * Public endpoint: Submit an InstaPay order
  */
 router.post("/orders/instapay", async (req, res): Promise<any> => {
