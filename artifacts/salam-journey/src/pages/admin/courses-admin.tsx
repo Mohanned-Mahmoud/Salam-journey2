@@ -1859,24 +1859,66 @@ export function AdminCourses() {
                 multiline
               />
 
-              {/* Attachment Download (PDF) */}
-              <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
-                <label className="block text-xs font-bold text-[var(--text-dark)]">
-                  ملف مرفق للتحميل مع الدرس (ورقة عمل PDF) - اختياري
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <FormField
-                    label="اسم الملف الظاهر للأم"
-                    placeholder="مثال: ورقة_عمل_جلسة_الغضب.pdf"
-                    value={lessonForm.attachmentName || ''}
-                    onChange={(v) => setLessonForm({ ...lessonForm, attachmentName: v })}
+              {/* Attachment Download (PDF via Cloudflare R2) */}
+              <div className="p-4 rounded-2xl bg-[var(--cream)]/40 border border-stone-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-[var(--text-dark)] flex items-center gap-1.5">
+                    <FileText size={14} className="text-amber-600" />
+                    <span>ملف مرفق للتحميل مع الدرس (ورقة عمل PDF أو ملفات تدريبية) - اختياري</span>
+                  </label>
+                  {lessonForm.attachmentUrl && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                      <Check size={10} /> تم إرفاق ملف
+                    </span>
+                  )}
+                </div>
+
+                {/* File Display Name */}
+                <FormField
+                  label="اسم الملف الظاهر للأم (مثال: ورقة_عمل_جلسة_الغضب.pdf)"
+                  placeholder="مثال: ورقة عمل وتطبيقات الدرس.pdf"
+                  value={lessonForm.attachmentName || ''}
+                  onChange={(v) => setLessonForm({ ...lessonForm, attachmentName: v })}
+                />
+
+                {/* Direct R2 Upload for Attachment */}
+                <div className="pt-1">
+                  <R2FileUploader
+                    entityId={entityId}
+                    entityType="courses"
+                    currentFileKey={lessonForm.attachmentUrl || null}
+                    onUploaded={(key) => {
+                      const defaultName = key.split('/').pop()?.replace(/^\d+-/, '') || 'ورقة_عمل_الدرس.pdf';
+                      setLessonForm((f) => ({
+                        ...f,
+                        attachmentUrl: key,
+                        attachmentName: f.attachmentName || defaultName,
+                      }));
+                    }}
+                    label="رفع ملف ورقة العمل (PDF / أوراق عمل) إلى Cloudflare R2"
+                    accept=".pdf,.doc,.docx,.epub,.zip,application/pdf"
                   />
-                  <FormField
-                    label="رابط الملف المرفق"
-                    placeholder="https://... أو courses/..."
+                </div>
+
+                {/* Manual fallback input & delete button */}
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="text"
                     value={lessonForm.attachmentUrl || ''}
-                    onChange={(v) => setLessonForm({ ...lessonForm, attachmentUrl: v })}
+                    onChange={(e) => setLessonForm({ ...lessonForm, attachmentUrl: e.target.value })}
+                    placeholder="رابط الملف المرفق أو مسار R2 (courses/...)"
+                    className="flex-1 rounded-xl px-3 py-2 text-xs bg-white border border-stone-200 outline-none font-mono text-[var(--text-dark)]"
                   />
+                  {lessonForm.attachmentUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setLessonForm({ ...lessonForm, attachmentUrl: '', attachmentName: '' })}
+                      className="px-3 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer shrink-0"
+                      title="حذف الملف المرفق"
+                    >
+                      إزالة المرفق
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
