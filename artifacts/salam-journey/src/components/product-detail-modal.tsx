@@ -181,7 +181,7 @@ export function ProductDetailModal({
         onClick={(e) => e.stopPropagation()}
         className={`relative bg-white w-full shadow-2xl overflow-hidden z-10 transition-all duration-300 ease-out flex flex-col ${
           isExpanded
-            ? "h-[88dvh] max-h-[88dvh] sm:h-[90vh] md:h-[86vh] max-w-full md:max-w-5xl lg:max-w-6xl rounded-t-[28px] sm:rounded-3xl"
+            ? "h-[90dvh] max-h-[90dvh] sm:h-[90vh] md:h-[84vh] md:max-h-[720px] max-w-full md:max-w-4xl lg:max-w-5xl rounded-t-[28px] sm:rounded-3xl"
             : "max-h-[88dvh] max-w-full sm:max-w-md md:max-w-lg rounded-t-[28px] sm:rounded-3xl"
         }`}
         style={{
@@ -315,26 +315,16 @@ export function ProductDetailModal({
             {/* ──────────────────────────────────────────────────────────── */}
             {/* DESKTOP VIEW (≥ 768px): المتصفح والشاشة المقسمة                */}
             {/* ──────────────────────────────────────────────────────────── */}
-            <div className="hidden md:flex w-full h-full">
-              {/* Floating Close Button for Desktop */}
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="إغلاق"
-                className="absolute top-4 left-4 z-40 w-9 h-9 rounded-full bg-white/95 hover:bg-white text-[var(--text-dark)] flex items-center justify-center shadow-md transition-all hover:scale-105 border border-black/5"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
+            <div className="hidden md:flex w-full h-full relative">
               {/* RIGHT SIDE (Desktop): معرض الصور الموسع */}
-              <div className="w-1/2 relative bg-[#FBF9F5] flex flex-col justify-between p-6 shrink-0 border-l border-[rgba(127,169,155,0.18)] overflow-hidden">
-                <div className="relative rounded-2xl overflow-hidden bg-white border border-[rgba(127,169,155,0.2)] shadow-xs flex items-center justify-center flex-1 group">
+              <div className="w-1/2 relative bg-[#FBF9F5] flex flex-col p-6 shrink-0 border-l border-[rgba(127,169,155,0.18)] overflow-hidden">
+                <div className="relative rounded-2xl overflow-hidden bg-white border border-[rgba(127,169,155,0.2)] shadow-xs flex items-center justify-center flex-1 min-h-0 group">
                   {hasImages && currentImage ? (
                     <img
                       key={currentImage}
                       src={currentImage}
                       alt={product.title.ar}
-                      className="w-full h-full object-contain max-h-[440px] p-3 transition-all duration-500 ease-out"
+                      className="w-full h-full object-contain p-3 transition-all duration-300 ease-out"
                     />
                   ) : (
                     <div
@@ -368,7 +358,7 @@ export function ProductDetailModal({
                         type="button"
                         onClick={prevImage}
                         aria-label="الصورة السابقة"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-[var(--text-dark)] shadow-md flex items-center justify-center transition-all hover:scale-105 z-20 border border-black/5"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-[var(--text-dark)] shadow-md flex items-center justify-center transition-all hover:scale-105 z-20 border border-black/5 cursor-pointer"
                       >
                         <ChevronRight className="w-5 h-5" />
                       </button>
@@ -376,21 +366,21 @@ export function ProductDetailModal({
                         type="button"
                         onClick={nextImage}
                         aria-label="الصورة التالية"
-                        className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-[var(--text-dark)] shadow-md flex items-center justify-center transition-all hover:scale-105 z-20 border border-black/5"
+                        className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-[var(--text-dark)] shadow-md flex items-center justify-center transition-all hover:scale-105 z-20 border border-black/5 cursor-pointer"
                       >
                         <ChevronLeft className="w-5 h-5" />
                       </button>
 
-                      <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-full bg-black/60 text-white text-[11px] font-medium backdrop-blur-xs z-10">
-                        {selectedImageIndex + 1} / {displayImages.length}
+                      <div className="absolute bottom-3 left-3 px-3 py-1 rounded-full bg-black/60 text-white text-xs font-semibold backdrop-blur-xs z-10">
+                        {selectedImageIndex + 1} من {displayImages.length}
                       </div>
                     </>
                   )}
                 </div>
 
-                {/* Thumbnails */}
+                {/* Thumbnails (Always visible, never cut off) */}
                 {displayImages.length > 1 && (
-                  <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1 px-0.5 scrollbar-thin">
+                  <div className="shrink-0 mt-3 flex items-center gap-2 overflow-x-auto pb-1 px-0.5 scrollbar-thin">
                     {displayImages.map((img, idx) => (
                       <button
                         key={idx}
@@ -413,23 +403,33 @@ export function ProductDetailModal({
                 )}
               </div>
 
-              {/* LEFT SIDE (Desktop): التفاصيل الموسعة الكاملة */}
-              <div className="w-1/2 flex flex-col justify-between overflow-y-auto p-8 bg-white relative z-10">
-                <div className="space-y-6">
-                  <div>
-                    <div className="flex items-center justify-between gap-3 mb-2">
-                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-[var(--cream)] text-[var(--sage-dark)] border border-[rgba(127,169,155,0.2)]">
-                        {getProductTypeLabel()}
-                      </span>
+              {/* LEFT SIDE (Desktop): التفاصيل الموسعة الكاملة مع شريط إجراءات ثابت */}
+              <div className="w-1/2 flex flex-col h-full bg-white relative z-10 overflow-hidden">
+                {/* Scrollable Details Body */}
+                <div className="flex-1 overflow-y-auto p-6 lg:p-7 space-y-4">
+                  {/* Top Header Row with Category, Price, and Close Button */}
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-[var(--cream)] text-[var(--sage-dark)] border border-[rgba(127,169,155,0.2)]">
+                      {getProductTypeLabel()}
+                    </span>
+                    <div className="flex items-center gap-3">
                       <span className="text-2xl font-black text-[var(--sage-dark)]">
                         {product.price.ar}
                       </span>
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label="إغلاق"
+                        className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center justify-center transition-all hover:scale-105 border border-stone-200 cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
-
-                    <h1 className="text-2xl lg:text-3xl font-black text-[var(--text-dark)] leading-snug">
-                      {product.title.ar}
-                    </h1>
                   </div>
+
+                  <h1 className="text-2xl lg:text-3xl font-black text-[var(--text-dark)] leading-snug">
+                    {product.title.ar}
+                  </h1>
 
                   {/* Description */}
                   <div className="p-4 rounded-2xl bg-[var(--cream)]/50 border border-[rgba(127,169,155,0.18)]">
@@ -447,11 +447,11 @@ export function ProductDetailModal({
                       <Sparkles className="w-4 h-4 text-amber-600" />
                       <span>ماذا يتضمن هذا المنتج وكيف يفيدك؟</span>
                     </h3>
-                    <ul className="space-y-2.5">
+                    <ul className="space-y-2">
                       {featuresList.map((item, idx) => (
                         <li
                           key={idx}
-                          className="flex items-start gap-2 text-sm text-[var(--text-body)]"
+                          className="flex items-start gap-2 text-xs lg:text-sm text-[var(--text-body)]"
                         >
                           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                           <span className="leading-relaxed">{item}</span>
@@ -461,69 +461,60 @@ export function ProductDetailModal({
                   </div>
 
                   {/* Specs */}
-                  <div className="grid grid-cols-3 gap-3 pt-1">
-                    <div className="p-3 rounded-2xl bg-[var(--cream)]/40 border border-[rgba(127,169,155,0.15)] text-center">
+                  <div className="grid grid-cols-3 gap-2.5 pt-1">
+                    <div className="p-2.5 rounded-2xl bg-[var(--cream)]/40 border border-[rgba(127,169,155,0.15)] text-center">
                       <FileText className="w-4 h-4 text-[var(--sage-dark)] mx-auto mb-1" />
-                      <span className="block text-[11px] text-[var(--text-muted)]">الصيغة</span>
+                      <span className="block text-[10px] text-[var(--text-muted)]">الصيغة</span>
                       <span className="block text-xs font-bold text-[var(--text-dark)]">
                         PDF عالي الدقة
                       </span>
                     </div>
-                    <div className="p-3 rounded-2xl bg-[var(--cream)]/40 border border-[rgba(127,169,155,0.15)] text-center">
+                    <div className="p-2.5 rounded-2xl bg-[var(--cream)]/40 border border-[rgba(127,169,155,0.15)] text-center">
                       <Zap className="w-4 h-4 text-amber-600 mx-auto mb-1" />
-                      <span className="block text-[11px] text-[var(--text-muted)]">التسليم</span>
+                      <span className="block text-[10px] text-[var(--text-muted)]">التسليم</span>
                       <span className="block text-xs font-bold text-[var(--text-dark)]">
                         فوري ومباشر
                       </span>
                     </div>
-                    <div className="p-3 rounded-2xl bg-[var(--cream)]/40 border border-[rgba(127,169,155,0.15)] text-center">
+                    <div className="p-2.5 rounded-2xl bg-[var(--cream)]/40 border border-[rgba(127,169,155,0.15)] text-center">
                       <Smartphone className="w-4 h-4 text-[var(--sage-dark)] mx-auto mb-1" />
-                      <span className="block text-[11px] text-[var(--text-muted)]">التوافق</span>
+                      <span className="block text-[10px] text-[var(--text-muted)]">التوافق</span>
                       <span className="block text-xs font-bold text-[var(--text-dark)]">
                         الهاتف والطباعة
                       </span>
                     </div>
                   </div>
-
-                  {/* Guarantee */}
-                  <div className="flex items-center gap-2 text-xs text-[#718079] p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/60">
-                    <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
-                    <span>دفع آمن ومشفّر بالكامل مع تحميل فوري ومباشر للملفات.</span>
-                  </div>
                 </div>
 
-                {/* Desktop Action Bar */}
-                <div className="pt-5 mt-6 border-t border-[rgba(127,169,155,0.18)] flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsExpanded(false)}
-                    title="العودة للعرض السريع"
-                    className="py-3 px-4 rounded-2xl border border-[rgba(127,169,155,0.3)] bg-[var(--cream)] hover:bg-white text-[var(--text-dark)] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Minimize2 className="w-3.5 h-3.5" />
-                    <span>تصغير</span>
-                  </button>
+                {/* Fixed Sticky Desktop Action Bar (Always visible at bottom!) */}
+                <div className="shrink-0 p-4 lg:p-5 bg-white/95 backdrop-blur-md border-t border-[rgba(127,169,155,0.18)] shadow-[0_-4px_20px_rgba(0,0,0,0.04)] space-y-2">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      disabled={isProcessing}
+                      onClick={() => onBuy(product)}
+                      className="flex-1 py-3.5 px-6 rounded-2xl bg-[var(--sage-dark)] hover:bg-[var(--text-dark)] text-white font-black text-base flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                    >
+                      {isProcessing ? (
+                        <span>جاري التحويل...</span>
+                      ) : isPurchased || product.free ? (
+                        <>
+                          <span>فتح / تنزيل الملف الآن</span>
+                          <Download className="w-4 h-4" />
+                        </>
+                      ) : (
+                        <>
+                          <span>شراء الآن ({product.price.ar})</span>
+                          <ExternalLink className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
+                  </div>
 
-                  <button
-                    type="button"
-                    disabled={isProcessing}
-                    onClick={() => onBuy(product)}
-                    className="flex-1 py-3.5 px-6 rounded-2xl bg-[var(--sage-dark)] hover:bg-[var(--text-dark)] text-white font-black text-base flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-[0.99] disabled:opacity-50 cursor-pointer"
-                  >
-                    {isProcessing ? (
-                      <span>جاري التحويل...</span>
-                    ) : isPurchased || product.free ? (
-                      <>
-                        <span>فتح / تنزيل الملف الآن</span>
-                        <Download className="w-4 h-4" />
-                      </>
-                    ) : (
-                      <>
-                        <span>شراء الآن ({product.price.ar})</span>
-                        <ExternalLink className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center justify-center gap-1.5 text-[11px] text-[#718079]">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                    <span>دفع آمن ومشفّر بالكامل مع تحميل مباشر للملفات.</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -596,7 +587,7 @@ export function ProductDetailModal({
                   {/* Mobile Counter Pill */}
                   {displayImages.length > 1 && (
                     <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-full bg-black/60 text-white text-[11px] font-semibold backdrop-blur-xs z-20">
-                      {selectedImageIndex + 1} / {displayImages.length}
+                      {selectedImageIndex + 1} من {displayImages.length}
                     </div>
                   )}
 

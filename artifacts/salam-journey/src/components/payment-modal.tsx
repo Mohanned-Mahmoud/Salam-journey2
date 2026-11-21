@@ -243,9 +243,10 @@ export function PaymentModal({ isOpen, onClose, item }: PaymentModalProps) {
           </div>
 
           <div className="text-left">
-            <span className="text-[10px] text-stone-400 block font-medium">سعر الصرف التلقائي</span>
-            <span className="text-xs font-bold text-[var(--text-dark)] bg-white px-2 py-0.5 rounded-md border border-stone-200 inline-block shadow-2xs">
-              1$ = {config.usdToEgpRate} ج.م
+            <span className="text-[10px] text-stone-400 block font-medium">سعر الصرف الحي</span>
+            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 inline-flex items-center gap-1.5 shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>1$ = {config.usdToEgpRate} ج.م (تلقائي)</span>
             </span>
           </div>
         </div>

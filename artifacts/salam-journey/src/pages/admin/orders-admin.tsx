@@ -36,7 +36,9 @@ export function AdminOrders() {
     instapayPhone: "01015473623",
     instapayLink: "https://ipn.eg",
     usdToEgpRate: 50.0,
+    rateProvider: "أسواق الصرف العالمية",
   });
+  const [rateRefreshing, setRateRefreshing] = useState(false);
 
   const loadOrders = async () => {
     try {
@@ -51,19 +53,26 @@ export function AdminOrders() {
     }
   };
 
-  const loadConfig = async () => {
+  const loadConfig = async (refresh = false) => {
     try {
-      const data = await apiJson<any>("/orders/config");
+      if (refresh) setRateRefreshing(true);
+      const data = await apiJson<any>(`/orders/config${refresh ? "?refresh=true" : ""}`);
       if (data) {
         setConfig({
           instapayUsername: data.instapayUsername || "",
           instapayPhone: data.instapayPhone || "",
           instapayLink: data.instapayLink || "",
           usdToEgpRate: data.usdToEgpRate || 50.0,
+          rateProvider: data.rateProvider || "أسواق الصرف العالمية",
         });
+        if (refresh) {
+          notify.success(`تم تحديث سعر الصرف التلقائي بنجاح: 1$ = ${data.usdToEgpRate} ج.م 🟢`);
+        }
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      if (refresh) setRateRefreshing(false);
     }
   };
 
@@ -162,7 +171,22 @@ export function AdminOrders() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Live Automatic Exchange Rate Pill */}
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-2xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>سعر الصرف التلقائي الآن: 1$ = {config.usdToEgpRate} ج.م</span>
+            <button
+              type="button"
+              onClick={() => void loadConfig(true)}
+              title="تحديث السعر المباشر الآن"
+              disabled={rateRefreshing}
+              className="p-1 hover:bg-emerald-100 rounded-md transition-colors cursor-pointer text-emerald-700"
+            >
+              <RefreshCw size={12} className={rateRefreshing ? "animate-spin" : ""} />
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={() => setShowSettings(!showSettings)}
@@ -301,9 +325,15 @@ export function AdminOrders() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold mb-1 text-[var(--text-dark)]">
-                سعر صرف الدولار (EGP/USD)
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-[var(--text-dark)]">
+                  سعر صرف الدولار (EGP/USD)
+                </label>
+                <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  محدّث تلقائياً لحظياً
+                </span>
+              </div>
               <input
                 type="number"
                 step="0.01"
@@ -312,6 +342,9 @@ export function AdminOrders() {
                 onChange={(e) => setConfig({ ...config, usdToEgpRate: parseFloat(e.target.value) || 50.0 })}
                 className="w-full px-3 py-2 text-xs rounded-xl border border-stone-300 font-mono dir-ltr text-right"
               />
+              <span className="text-[10px] text-stone-500 block mt-1">
+                يتم جلب سعر الصرف تلقائياً من أسواق الصرف العالمية لحظة بلحظة دون أي تدخل.
+              </span>
             </div>
 
             <div className="sm:col-span-2 lg:col-span-4 flex justify-end pt-2">
