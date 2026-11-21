@@ -9,6 +9,7 @@ import {
   maskApiKey,
   testGeminiApiKey,
   invalidateGeminiApiKeyCache,
+  getActiveGeminiModel,
 } from "../lib/gemini";
 
 const router = Router();
@@ -152,8 +153,10 @@ ${fullKnowledge}`;
         parts: [{ text: m.content }],
       }));
 
+    const activeModel = await getActiveGeminiModel(apiKey);
+
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${encodeURIComponent(apiKey)}`,
       {
         method: "POST",
         headers: {
@@ -282,13 +285,14 @@ router.get("/admin/ai/status", requireAdmin, async (_req, res) => {
     const apiKey = await getGeminiApiKey();
     const source = await getGeminiApiKeySource();
     const hasKey = Boolean(apiKey && apiKey.length > 0);
+    const activeModel = hasKey ? await getActiveGeminiModel(apiKey) : "gemini-2.0-flash";
 
     res.json({
       configured: hasKey,
       maskedKey: hasKey ? maskApiKey(apiKey) : "",
       source,
       provider: "Google Gemini",
-      model: "gemini-1.5-flash",
+      model: activeModel,
       services: {
         chat: hasKey,
         translation: hasKey,

@@ -44,6 +44,7 @@ type TestConnectionResult = {
   message: string;
   error?: string;
   model?: string;
+  availableModels?: string[];
 };
 
 function Card({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) {
@@ -485,7 +486,7 @@ export function AdminAiKnowledge() {
               </div>
 
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                المزود: Google Gemini 1.5 Flash • المحرك: Google AI Cloud Engine
+                النموذج: {testResult?.model || aiStatus?.model || 'Google Gemini (Auto Flash)'} • المحرك: Google AI Cloud Engine
                 {testResult?.latencyMs ? ` • الاستجابة: ${testResult.latencyMs}ms` : ''}
               </p>
             </div>
@@ -494,7 +495,7 @@ export function AdminAiKnowledge() {
           {/* Test Connection Button */}
           <button
             type="button"
-            onClick={() => runTestPing()}
+            onClick={() => runTestPing(apiKeyInput.trim() || undefined)}
             disabled={isTesting}
             className="flex items-center justify-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all disabled:opacity-50 shrink-0 shadow-xs"
             style={{
@@ -527,8 +528,26 @@ export function AdminAiKnowledge() {
               <p className="font-semibold">{testResult.message}</p>
               {testResult.latencyMs > 0 && (
                 <p className="text-xs opacity-80 mt-0.5">
-                  تم اختبار الرد بنجاح في {testResult.latencyMs} مللي ثانية عبر نموذج {testResult.model || 'Gemini 1.5 Flash'}.
+                  تم اختبار الرد بنجاح في {testResult.latencyMs} مللي ثانية عبر نموذج {testResult.model || 'Gemini Flash'}.
                 </p>
+              )}
+              {testResult.availableModels && testResult.availableModels.length > 0 && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[11px] font-semibold opacity-90">النماذج المدعومة في حسابك:</span>
+                  {testResult.availableModels.map((m) => (
+                    <span
+                      key={m}
+                      className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold"
+                      style={{
+                        background: m === testResult.model ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.8)',
+                        color: m === testResult.model ? '#065F46' : 'var(--text-dark)',
+                        border: '1px solid rgba(127,169,155,0.3)',
+                      }}
+                    >
+                      {m} {m === testResult.model ? '✓ (المختار)' : ''}
+                    </span>
+                  ))}
+                </div>
               )}
               {testResult.error && (
                 <p className="text-xs font-mono mt-1 opacity-75 dir-ltr text-left bg-white/60 p-2 rounded-xl">

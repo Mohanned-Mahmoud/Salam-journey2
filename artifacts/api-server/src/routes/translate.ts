@@ -2,7 +2,7 @@ import { Router } from "express";
 import { createHash } from "crypto";
 import { db, translationsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { getGeminiApiKey } from "../lib/gemini";
+import { getGeminiApiKey, getActiveGeminiModel } from "../lib/gemini";
 
 const router = Router();
 
@@ -47,8 +47,10 @@ router.post("/translate", async (req, res) => {
       return;
     }
 
+    const activeModel = await getActiveGeminiModel(apiKey);
+
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${encodeURIComponent(apiKey)}`,
       {
         method: "POST",
         headers: {
