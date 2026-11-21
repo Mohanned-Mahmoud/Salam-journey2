@@ -630,7 +630,7 @@ export function AdminFunnelBuilder() {
     }
   }, [blocks, activePage]);
 
-  const updateDisplayMode = useCallback(async (next: 'full_website' | 'funnel_page' | 'salam_journey') => {
+  const updateDisplayMode = useCallback(async (next: 'full_website' | 'funnel_page' | 'salam_journey' | 'coming_soon') => {
     setTogglingMode(true);
     try {
       await apiJson('/admin/site-settings/display_mode', { method: 'PUT', body: JSON.stringify({ value: next }) });
@@ -780,6 +780,7 @@ export function AdminFunnelBuilder() {
               }}
             >
               <option value="full_website">الموقع الكامل</option>
+              <option value="coming_soon">صفحة قريباً (Coming Soon)</option>
               <option value="funnel_page">الصفحة التسويقية</option>
               <option value="salam_journey">مشروع سلام جيرني</option>
             </select>

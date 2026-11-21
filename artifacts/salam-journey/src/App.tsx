@@ -29,6 +29,7 @@ import FreeBookCheckoutRedirect from "@/pages/free-book-checkout";
 import FreeBookThankYou from "@/pages/free-book-thank-you";
 import PaymentSuccess from "@/pages/payment-success";
 import PaymentCancel from "@/pages/payment-cancel";
+import ComingSoonPage from "@/pages/coming-soon";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,7 +40,7 @@ const queryClient = new QueryClient({
 function Router() {
   const [location] = useLocation();
   const { user, isAuthenticated, isLoading } = useAuth();
-  const [displayMode, setDisplayMode] = useState<'full_website' | 'funnel_page' | 'salam_journey' | null>(null);
+  const [displayMode, setDisplayMode] = useState<'full_website' | 'funnel_page' | 'salam_journey' | 'coming_soon' | null>(null);
 
   const isUserAdmin = isAuthenticated && (user as any)?.role === "admin";
   const isAdminRoute = location === "/admin" || location.startsWith("/admin/");
@@ -48,7 +49,8 @@ function Router() {
     if (isAdminRoute) return;
     apiJson<{ value: string }>("/site-settings/display_mode")
       .then((res) => {
-        if (res.value === "funnel_page") setDisplayMode("funnel_page");
+        if (res.value === "coming_soon") setDisplayMode("coming_soon");
+        else if (res.value === "funnel_page") setDisplayMode("funnel_page");
         else if (res.value === "salam_journey") setDisplayMode("salam_journey");
         else setDisplayMode("full_website");
       })
@@ -117,6 +119,20 @@ function Router() {
     );
   }
 
+  if (displayMode === "coming_soon") {
+    return (
+      <Switch>
+        <Route path="/" component={ComingSoonPage} />
+        <Route path="/coming-soon" component={ComingSoonPage} />
+        <Route path="/admin/login" component={AdminLoginPage} />
+        <Route path="/free-book/thankyou" component={FreeBookThankYou} />
+        <Route path="/free-book/thank-you" component={FreeBookThankYou} />
+        <Route path="/thankyou" component={FreeBookThankYou} />
+        <Route component={ComingSoonPage} />
+      </Switch>
+    );
+  }
+
   if (displayMode === "funnel_page") {
     return (
       <Switch>
@@ -152,6 +168,7 @@ function Router() {
         <Route path="/pay/:slug">
           {(params) => <FreeBookCheckoutRedirect slug={params.slug} />}
         </Route>
+        <Route path="/coming-soon" component={ComingSoonPage} />
         <Route path="/admin/login" component={AdminLoginPage} />
         <Route path="/about">
           <div className="flex flex-col min-h-screen">
@@ -184,6 +201,7 @@ function Router() {
           <Route path="/free-book/thankyou" component={FreeBookThankYou} />
           <Route path="/free-book/thank-you" component={FreeBookThankYou} />
           <Route path="/thankyou" component={FreeBookThankYou} />
+          <Route path="/coming-soon" component={ComingSoonPage} />
           <Route path="/warm-homes" component={() => <FreeBookCheckoutRedirect slug="warm-homes" />} />
           <Route path="/reading-challenge" component={() => <FreeBookCheckoutRedirect slug="reading-challenge" />} />
           <Route path="/pay-1" component={() => <FreeBookCheckoutRedirect slug="warm-homes" />} />
