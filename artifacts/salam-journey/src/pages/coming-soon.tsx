@@ -129,18 +129,25 @@ export default function ComingSoonPage() {
 
       {/* ── Main Hero & Content ── */}
       <main className="relative z-10 max-w-4xl mx-auto px-6 py-8 md:py-12 flex flex-col items-center text-center">
-        {/* Beacon Badge */}
-        <div
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold mb-6 shadow-sm animate-fade-in"
-          style={{
-            background: "rgba(127, 169, 155, 0.15)",
-            color: "var(--sage-dark)",
-            border: "1px solid rgba(127, 169, 155, 0.28)",
-          }}
-        >
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
-          <span>مساحة دافئة قيد التكوين · قريباً جداً</span>
-          <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+        {/* Grand Typography for "قريباً" */}
+        <div className="relative mb-4 md:mb-6 select-none animate-fade-in">
+          <h2
+            className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tight leading-none"
+            style={{
+              fontFamily: "var(--font-heading)",
+              background: "linear-gradient(135deg, var(--text-dark) 0%, #355A53 45%, var(--sage-dark) 75%, #C97A63 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              filter: "drop-shadow(0 6px 20px rgba(45, 74, 69, 0.12))",
+            }}
+          >
+            قـريـبـاً
+          </h2>
+          <div className="flex items-center justify-center gap-3 mt-3">
+            <span className="h-[2px] w-12 sm:w-16 rounded-full bg-gradient-to-r from-transparent via-[var(--sage)] to-transparent" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+            <span className="h-[2px] w-12 sm:w-16 rounded-full bg-gradient-to-r from-transparent via-[var(--sage)] to-transparent" />
+          </div>
         </div>
 
         {/* Master Headline */}
