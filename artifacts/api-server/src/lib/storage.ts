@@ -67,6 +67,14 @@ export async function deleteFile(fileKey: string) {
   return { success: true };
 }
 
+export async function getFileStream(fileKey: string) {
+  const command = new GetObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: fileKey,
+  });
+  return r2Client.send(command);
+}
+
 // ─── Backward-compatible aliases for courses ────────────────────────────────
 export const uploadCourseFile = (key: string, buf: Buffer, ct: string) => uploadFile(key, buf, ct);
 export const getCourseFileUrl = (key: string, exp?: number) => getFileUrl(key, exp);

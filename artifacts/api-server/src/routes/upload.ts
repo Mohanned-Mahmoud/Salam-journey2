@@ -1,9 +1,39 @@
 import { Router, type IRouter } from "express";
 import multer from "multer";
-import { uploadFile } from "../lib/storage";
+import { uploadFile, getFileStream } from "../lib/storage";
 
 const router: IRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } }); // 500MB max
+
+/**
+ * GET /storage/*
+ * Streams public/uploaded assets from Cloudflare R2
+ */
+router.get("/storage/*", async (req, res) => {
+  try {
+    const fileKey = (req.params as any)[0] as string;
+    if (!fileKey) {
+      return res.status(400).send("File key missing");
+    }
+
+    const obj = await getFileStream(fileKey);
+    if (!obj.Body) {
+      return res.status(404).send("File not found");
+    }
+
+    if (obj.ContentType) res.setHeader("Content-Type", obj.ContentType);
+    if (obj.ContentLength) res.setHeader("Content-Length", obj.ContentLength);
+    res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=86400");
+
+    (obj.Body as any).pipe(res);
+  } catch (err: any) {
+    if (err?.name === "NoSuchKey") {
+      return res.status(404).send("File not found");
+    }
+    console.error("Storage stream error:", err);
+    return res.status(500).send("Failed to stream file");
+  }
+});
 
 /**
  * POST /upload/:entityType/:entityId

@@ -78,11 +78,18 @@ export type AdminProduct = {
   titleEn: string;
   descAr: string | null;
   descEn: string | null;
+  detailsAr?: string | null;
+  detailsEn?: string | null;
   price: string | number;
   free: boolean;             // تقرأ من الحقل الجديد is_free
   type: 'pdf' | 'printable' | 'guide' | 'other';
   downloadUrl: string | null;
   imageUrl?: string | null;
+  images?: string[];
+  featuresAr?: string[];
+  featuresEn?: string[];
+  badgeAr?: string | null;
+  badgeEn?: string | null;
   status: 'active' | 'hidden';
   createdAt?: string;
 };

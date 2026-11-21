@@ -4,16 +4,11 @@ import { useLanguage, tx, type Bilingual } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import { useAuthModals } from "@/components/auth/auth-modals";
 import { useReveal } from "@/lib/use-reveal";
-import { apiJson } from "@/lib/api";
+import { apiJson, resolveMediaUrl } from "@/lib/api";
 import { SoftBlob, SectionDivider } from "@/components/section-divider";
+import { ProductDetailModal, type ProductModalData } from "@/components/product-detail-modal";
 
-type ProductCard = {
-  id: string;
-  title: Bilingual;
-  desc: Bilingual;
-  price: Bilingual;
-  rawPrice: number;
-  free: boolean;
+type ProductCard = ProductModalData & {
   Icon: React.ComponentType<{ size?: number; className?: string }>;
   gradient: string;
 };
@@ -47,10 +42,19 @@ export default function Products() {
           titleEn: string;
           descAr: string | null;
           descEn: string | null;
+          detailsAr?: string | null;
+          detailsEn?: string | null;
+          featuresAr?: string[] | null;
+          featuresEn?: string[] | null;
+          badgeAr?: string | null;
+          badgeEn?: string | null;
           price: string | number | null;
           isFree: boolean | null;
           type: ProductType;
           status: string | null;
+          imageUrl?: string | null;
+          images?: string[] | null;
+          downloadUrl?: string | null;
         }>>("/products");
 
         if (cancelled) return;
@@ -58,16 +62,29 @@ export default function Products() {
         setProducts(
           data
             .filter((product) => product.status !== "hidden")
-            .map((product) => ({
-              id: product.id,
-              title: tx(product.titleAr, product.titleEn),
-              desc: tx(product.descAr ?? "", product.descEn ?? product.descAr ?? ""),
-              price: tx(formatProductPrice(product.price, product.isFree, "ar"), formatProductPrice(product.price, product.isFree, "en")),
-              rawPrice: Number(product.price ?? 0),
-              free: Boolean(product.isFree),
-              Icon: getProductIcon(product.type),
-              gradient: getProductGradient(product.type),
-            })),
+            .map((product) => {
+              const rawImages = Array.isArray(product.images) && product.images.length > 0
+                ? product.images
+                : (product.imageUrl ? [product.imageUrl] : []);
+
+              return {
+                id: product.id,
+                title: tx(product.titleAr, product.titleEn),
+                desc: tx(product.descAr ?? "", product.descEn ?? product.descAr ?? ""),
+                details: tx(product.detailsAr ?? product.descAr ?? "", product.detailsEn ?? product.descEn ?? product.descAr ?? ""),
+                features: Array.isArray(product.featuresAr) ? product.featuresAr : [],
+                badge: product.badgeAr ? tx(product.badgeAr, product.badgeEn ?? product.badgeAr) : null,
+                price: tx(formatProductPrice(product.price, product.isFree, "ar"), formatProductPrice(product.price, product.isFree, "en")),
+                rawPrice: Number(product.price ?? 0),
+                free: Boolean(product.isFree),
+                type: product.type,
+                imageUrl: product.imageUrl ?? null,
+                images: rawImages,
+                downloadUrl: product.downloadUrl ?? null,
+                Icon: getProductIcon(product.type),
+                gradient: getProductGradient(product.type),
+              };
+            }),
         );
       } catch {
         if (!cancelled) setProducts([]);
@@ -190,21 +207,38 @@ export default function Products() {
                 data-reveal-delay={i * 80}
                 style={{ background: "var(--white)" }}
               >
-                <div className="h-40 relative overflow-hidden cursor-pointer" style={{ background: p.gradient }} onClick={() => setSelectedProduct(p)}>
-                  <SoftBlob
-                    color="rgba(255,255,255,0.2)"
-                    className="absolute -top-10 -start-10 w-[200px] h-[200px] animate-drift pointer-events-none"
-                  />
-                  <div className="relative h-full flex items-center justify-center">
-                    <span
-                      className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                      style={{ background: "rgba(255,255,255,0.85)", color: "var(--sage-dark)" }}
-                    >
-                      <p.Icon size={26} />
+                <div className="h-44 relative overflow-hidden cursor-pointer bg-[var(--cream)]" onClick={() => setSelectedProduct(p)}>
+                  {p.imageUrl ? (
+                    <img
+                      src={resolveMediaUrl(p.imageUrl)}
+                      alt={t(p.title)}
+                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="relative h-full flex items-center justify-center" style={{ background: p.gradient }}>
+                      <SoftBlob
+                        color="rgba(255,255,255,0.2)"
+                        className="absolute -top-10 -start-10 w-[200px] h-[200px] animate-drift pointer-events-none"
+                      />
+                      <span
+                        className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm"
+                        style={{ background: "rgba(255,255,255,0.85)", color: "var(--sage-dark)" }}
+                      >
+                        <p.Icon size={26} />
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Badge */}
+                  {p.badge && (
+                    <span className="absolute top-3.5 start-3.5 px-3 py-1 rounded-full text-xs font-bold bg-white/95 text-[var(--sage-dark)] shadow-sm">
+                      {t(p.badge)}
                     </span>
-                  </div>
+                  )}
+
                   <span
-                    className="absolute top-4 end-4 px-3 py-1 rounded-full text-xs font-semibold"
+                    className="absolute top-3.5 end-3.5 px-3 py-1 rounded-full text-xs font-semibold shadow-xs"
                     style={{
                       background: p.free ? "var(--sage-dark)" : "var(--white)",
                       color: p.free ? "var(--white)" : "var(--sage-dark)",
@@ -252,57 +286,21 @@ export default function Products() {
         </div>
       </section>
 
-      {/* Product Details Modal */}
-      {selectedProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(45,74,69,0.5)" }}>
-          <div className="rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto flex flex-col" style={{ background: "var(--white)" }}>
-            <div className="h-48 relative shrink-0" style={{ background: selectedProduct.gradient }}>
-              <button 
-                type="button" 
-                onClick={() => setSelectedProduct(null)}
-                className="absolute top-4 end-4 p-2 rounded-full hover:bg-black/10 transition-colors"
-                style={{ color: "var(--sage-dark)" }}
-              >
-                <X size={20} />
-              </button>
-              <div className="relative h-full flex items-center justify-center">
-                <span
-                  className="w-20 h-20 rounded-3xl flex items-center justify-center"
-                  style={{ background: "rgba(255,255,255,0.85)", color: "var(--sage-dark)" }}
-                >
-                  <selectedProduct.Icon size={32} />
-                </span>
-              </div>
-            </div>
-            
-            <div className="p-6 md:p-8 flex-1 flex flex-col">
-              <h2 className="text-2xl font-bold mb-3">{t(selectedProduct.title)}</h2>
-              <p className="text-base leading-relaxed mb-6 flex-1 whitespace-pre-wrap" style={{ color: "var(--text-body)" }}>
-                {t(selectedProduct.desc)}
-              </p>
-              
-              <div className="flex items-center justify-between gap-4 pt-4 mt-auto border-t" style={{ borderColor: "var(--cream-dark)" }}>
-                <span className="font-bold text-2xl" style={{ color: "var(--sage-dark)" }}>
-                  {t(selectedProduct.price)}
-                </span>
-                
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleProductAction(selectedProduct);
-                    setSelectedProduct(null);
-                  }}
-                  className="pill-btn pill-btn-primary py-3 px-8 text-base"
-                >
-                  {(selectedProduct.free || purchasedProductIds.has(selectedProduct.id))
-                    ? t(tx("فتح / تنزيل", "Open / Download")) 
-                    : t(tx("شراء المنتج", "Buy Product"))}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Product Details Modal (Interactive Split-View with Smoky Transition) */}
+      <ProductDetailModal
+        isOpen={Boolean(selectedProduct)}
+        onClose={() => setSelectedProduct(null)}
+        product={selectedProduct}
+        onBuy={(prod) => {
+          const match = products.find((p) => p.id === prod.id) || selectedProduct;
+          if (match) {
+            handleProductAction(match);
+          }
+          setSelectedProduct(null);
+        }}
+        isProcessing={processingId === selectedProduct?.id}
+        isPurchased={selectedProduct ? (selectedProduct.free || purchasedProductIds.has(selectedProduct.id)) : false}
+      />
 
       {/* Purchase Confirmation Modal */}
       {buyConfirmProduct && (

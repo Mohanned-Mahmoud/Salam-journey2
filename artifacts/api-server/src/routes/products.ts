@@ -15,23 +15,45 @@ router.get("/products", async (_req, res) => {
 
 router.post("/products", async (req, res) => {
   try {
-    const validated = insertProductSchema.parse(req.body);
+    const body = { ...req.body };
+    if (body.free !== undefined && body.isFree === undefined) {
+      body.isFree = Boolean(body.free);
+    }
+    delete body.free;
+    if (typeof body.price === "number") {
+      body.price = String(body.price);
+    } else if (body.price === "" || body.price === undefined) {
+      body.price = body.isFree ? "0" : null;
+    }
+    const validated = insertProductSchema.parse(body);
     const product = await db.insert(productsTable).values(validated).returning();
     res.status(201).json(product[0]);
-  } catch {
-    res.status(400).json({ error: "Invalid product data" });
+  } catch (error) {
+    console.error("Failed to create product:", error);
+    res.status(400).json({ error: "Invalid product data", details: String(error) });
   }
 });
 
 router.put("/products/:id", async (req, res) => {
   try {
     const id = req.params.id as string;
-    const validated = insertProductSchema.partial().parse(req.body);
+    const body = { ...req.body };
+    if (body.free !== undefined && body.isFree === undefined) {
+      body.isFree = Boolean(body.free);
+    }
+    delete body.free;
+    if (typeof body.price === "number") {
+      body.price = String(body.price);
+    } else if (body.price === "") {
+      body.price = body.isFree ? "0" : null;
+    }
+    const validated = insertProductSchema.partial().parse(body);
     const product = await db.update(productsTable).set(validated).where(eq(productsTable.id, id)).returning();
     if (!product.length) return res.status(404).json({ error: "Product not found" });
     return res.json(product[0]);
-  } catch {
-    return res.status(400).json({ error: "Invalid product data" });
+  } catch (error) {
+    console.error("Failed to update product:", error);
+    return res.status(400).json({ error: "Invalid product data", details: String(error) });
   }
 });
 

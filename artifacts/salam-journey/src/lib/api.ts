@@ -121,3 +121,21 @@ export async function apiJson<T>(path: string, init: RequestInit = {}): Promise<
 
   return payload as T;
 }
+
+export function resolveMediaUrl(key?: string | null): string {
+  if (!key) return "";
+  const trimmed = key.trim();
+  if (!trimmed) return "";
+  if (
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("blob:")
+  ) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("/")) {
+    return trimmed;
+  }
+  return `/api/storage/${trimmed}`;
+}
