@@ -1,6 +1,8 @@
 import { Router, type IRouter } from "express";
 import { db, coursesTable, courseRoomsTable, coachesTable, insertCourseSchema, usersTable, enrollmentsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { r2Client } from "../lib/storage";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
 
 const router: IRouter = Router();
 
@@ -381,12 +383,120 @@ router.post("/courses/:id/download-url", async (req, res) => {
       });
     }
 
-    // Short-lived 15 minutes inline URL (Anti-download)
-    const downloadUrl = await getCourseFileUrl(fileKey, 900, true);
+    // Return the secure internal streaming endpoint (Never exposes Cloudflare R2 URLs)
+    const downloadUrl = `/api/courses/${req.params.id}/stream?fileKey=${encodeURIComponent(fileKey)}`;
     return res.json({ downloadUrl });
   } catch (error) {
     console.error("Failed to generate download URL:", error);
     return res.status(500).json({ error: "Failed to generate download URL" });
+  }
+});
+
+// Secure In-Platform Video Streaming Gateway (Blocks direct tab open, downloads, and DevTools inspections)
+router.get("/courses/:id/stream", async (req, res): Promise<any> => {
+  try {
+    const courseId = req.params.id as string;
+    const fileKey = (req.query.fileKey as string);
+    const userId = (req as any).userId || (req.headers["x-user-id"] as string);
+
+    // 1. Anti-Tab Navigation Guard:
+    // If a user copies this link into a new browser tab or address bar,
+    // all modern browsers send sec-fetch-mode: navigate or sec-fetch-dest: document.
+    const secFetchMode = req.headers["sec-fetch-mode"];
+    const secFetchDest = req.headers["sec-fetch-dest"];
+    if (secFetchMode === "navigate" || secFetchDest === "document") {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return res.status(403).send(`
+        <!DOCTYPE html>
+        <html dir="rtl" lang="ar">
+        <head><meta charset="UTF-8"><title>محتوى تعليمي محمي - رحلة سلام</title></head>
+        <body style="margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #0c1a17; color: #fff; font-family: system-ui, sans-serif; text-align: center; padding: 20px;">
+          <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); padding: 40px; border-radius: 24px; max-width: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+            <div style="font-size: 48px; margin-bottom: 16px;">🛡️</div>
+            <h2 style="font-size: 22px; margin-bottom: 12px; color: #f87171;">غير مسموح بفتح أو تحميل هذا الفيديو خارج المنصة</h2>
+            <p style="font-size: 15px; color: #d1d5db; line-height: 1.6; margin-bottom: 24px;">هذا المحتوى التعليمي محمي بحقوق النشر ومتاح للمشاهدة حصرياً داخل مشغل منصة رحلة سلام.</p>
+            <a href="https://www.salamjourney.com" style="display: inline-block; padding: 12px 28px; background: #2d5a52; color: #fff; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 14px;">العودة للمنصة</a>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    if (!fileKey) {
+      return res.status(400).json({ error: "fileKey parameter is required" });
+    }
+
+    // 2. Fetch course & check permissions
+    const courseInfo = await db
+      .select({
+        id: coursesTable.id,
+        videoUrl: coursesTable.videoUrl,
+        lessons: coursesTable.lessons,
+        category: coursesTable.category,
+        price: coursesTable.price,
+      })
+      .from(coursesTable)
+      .where(eq(coursesTable.id, courseId))
+      .limit(1);
+
+    if (!courseInfo.length) {
+      return res.status(404).json({ error: "Course not found" });
+    }
+
+    const course = courseInfo[0];
+    const isFreePreview =
+      Array.isArray(course.lessons) &&
+      course.lessons.some(
+        (l) => (l.videoUrl === fileKey || l.attachmentUrl === fileKey) && l.isFreePreview
+      );
+
+    const authorized = isFreePreview || (await isUserAuthorizedForCourse(userId, courseId, course));
+    if (!authorized) {
+      return res.status(403).json({ error: "هذا المحتوى محمي. يرجى الاشتراك في الدورة أولاً." });
+    }
+
+    // 3. Range request streaming from Cloudflare R2
+    const bucket = process.env.R2_BUCKET_NAME as string;
+    const range = req.headers.range;
+
+    const command = new GetObjectCommand({
+      Bucket: bucket,
+      Key: fileKey,
+      Range: range,
+    });
+
+    const s3Response = await r2Client.send(command);
+
+    res.setHeader("Content-Type", s3Response.ContentType || "video/mp4");
+    res.setHeader("Content-Disposition", "inline");
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Cache-Control", "private, no-cache, no-store, must-revalidate");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+
+    if (s3Response.ContentRange) {
+      res.status(206);
+      res.setHeader("Content-Range", s3Response.ContentRange);
+    }
+    if (s3Response.ContentLength !== undefined) {
+      res.setHeader("Content-Length", s3Response.ContentLength.toString());
+    }
+
+    req.on("close", () => {
+      try {
+        (s3Response.Body as any)?.destroy?.();
+      } catch {}
+    });
+
+    if (s3Response.Body) {
+      (s3Response.Body as any).pipe(res);
+    } else {
+      res.status(404).end();
+    }
+  } catch (error: any) {
+    console.error("Stream error:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to stream video" });
+    }
   }
 });
 

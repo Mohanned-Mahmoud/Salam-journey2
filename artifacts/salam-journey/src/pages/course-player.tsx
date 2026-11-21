@@ -91,23 +91,7 @@ export default function CoursePlayer() {
   // Direct video signed download URL cache (if R2 signed URL is needed)
   const [signedVideoUrl, setSignedVideoUrl] = useState<string | null>(null);
   const [loadingSignedUrl, setLoadingSignedUrl] = useState(false);
-
-  // Anti-Piracy Dynamic Watermark: shifts positions across screen every 20s
-  const [watermarkPosIndex, setWatermarkPosIndex] = useState(0);
-  const watermarkPositions = [
-    { top: "12%", right: "8%" },
-    { bottom: "16%", left: "8%" },
-    { top: "18%", left: "10%" },
-    { bottom: "18%", right: "10%" },
-    { top: "45%", left: "30%" },
-  ];
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setWatermarkPosIndex((prev) => (prev + 1) % watermarkPositions.length);
-    }, 20000);
-    return () => clearInterval(timer);
-  }, []);
+  const videoElementRef = useRef<HTMLVideoElement | null>(null);
 
   // Anti-Inspect Keyboard Guard: blocks F12, Ctrl+Shift+I/J/C, Ctrl+U, Ctrl+S
   useEffect(() => {
@@ -232,40 +216,63 @@ export default function CoursePlayer() {
     return resolveVideoSource(activeLesson.videoUrl || course?.videoUrl);
   }, [activeLesson, course?.videoUrl]);
 
-  // If active lesson is a direct storage file (R2 key), fetch download URL
+  // Secure In-Memory Blob Streaming: loads via authenticated stream and converts to blob: URL
+  // This completely conceals direct cloud storage endpoints and prevents opening or downloading in new tabs
   useEffect(() => {
     let cancelled = false;
+    let activeBlob: string | null = null;
     setSignedVideoUrl(null);
 
     const videoSource = activeLesson?.videoUrl || course?.videoUrl;
     if (!videoSource || resolvedVideo.isEmbed) return;
 
-    if (videoSource.startsWith("courses/")) {
-      setLoadingSignedUrl(true);
-      apiJson<{ downloadUrl: string }>(`/courses/${courseId}/download-url`, {
-        method: "POST",
-        body: JSON.stringify({ fileKey: videoSource }),
-      })
-        .then((res) => {
-          if (!cancelled && res.downloadUrl) {
-            setSignedVideoUrl(res.downloadUrl);
+    async function loadSecureStream() {
+      if (videoSource.startsWith("courses/") || videoSource.startsWith("/api/courses/")) {
+        setLoadingSignedUrl(true);
+        try {
+          const fileParam = videoSource.startsWith("courses/")
+            ? videoSource
+            : videoSource.split("fileKey=")[1] || videoSource;
+
+          const streamUrl = `/api/courses/${courseId}/stream?fileKey=${encodeURIComponent(decodeURIComponent(fileParam))}`;
+          const token = localStorage.getItem("token") || "";
+          const headers: Record<string, string> = {};
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+          if (user?.id) headers["X-User-Id"] = user.id;
+
+          const res = await fetch(streamUrl, { headers });
+          if (!res.ok) {
+            throw new Error(`Failed to load video stream (${res.status})`);
           }
-        })
-        .catch(() => {
-          // Fallback to resolveMediaUrl
-          if (!cancelled) setSignedVideoUrl(resolveMediaUrl(videoSource));
-        })
-        .finally(() => {
+
+          const blob = await res.blob();
+          if (!cancelled) {
+            const blobUrl = URL.createObjectURL(blob);
+            activeBlob = blobUrl;
+            setSignedVideoUrl(blobUrl);
+          }
+        } catch (err) {
+          console.warn("Blob conversion fallback to secure stream endpoint:", err);
+          if (!cancelled) {
+            setSignedVideoUrl(`/api/courses/${courseId}/stream?fileKey=${encodeURIComponent(videoSource)}`);
+          }
+        } finally {
           if (!cancelled) setLoadingSignedUrl(false);
-        });
-    } else {
-      setSignedVideoUrl(resolveMediaUrl(videoSource));
+        }
+      } else {
+        setSignedVideoUrl(resolveMediaUrl(videoSource));
+      }
     }
+
+    void loadSecureStream();
 
     return () => {
       cancelled = true;
+      if (activeBlob) {
+        URL.revokeObjectURL(activeBlob);
+      }
     };
-  }, [activeLesson?.id, activeLesson?.videoUrl, courseId, resolvedVideo.isEmbed, course?.videoUrl]);
+  }, [activeLesson?.id, activeLesson?.videoUrl, courseId, resolvedVideo.isEmbed, course?.videoUrl, user?.id]);
 
   // Check if active lesson is accessible
   const isLessonUnlocked = useMemo(() => {
@@ -560,27 +567,6 @@ export default function CoursePlayer() {
               boxShadow: "0 20px 50px -10px rgba(26, 46, 42, 0.35)",
             }}
           >
-            {/* Dynamic Forensic Watermark Overlay (Anti-Leak & Screen Recording deterrence) */}
-            {isLessonUnlocked && (
-              <div
-                className="absolute z-30 pointer-events-none select-none transition-all duration-1000 ease-in-out px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-2xs border border-white/10 flex flex-col items-center"
-                style={{
-                  ...watermarkPositions[watermarkPosIndex],
-                  opacity: 0.38,
-                }}
-              >
-                <div className="flex items-center gap-1.5 text-[10px] text-white font-mono tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  <span>{user?.name || user?.email || "جلسة موثقة"}</span>
-                  <span>•</span>
-                  <span>{user?.phone || user?.email || "منصة رحلة سلام"}</span>
-                </div>
-                <div className="text-[8px] text-white/70 font-sans mt-0.5">
-                  محتوى خاص ومحمي بحقوق النشر © رحلة سلام
-                </div>
-              </div>
-            )}
-
             {isLessonUnlocked ? (
               /* UNLOCKED: VIDEO PLAYING */
               resolvedVideo.isEmbed && resolvedVideo.embedUrl ? (
@@ -593,19 +579,37 @@ export default function CoursePlayer() {
                   allowFullScreen
                 />
               ) : signedVideoUrl ? (
-                <video
-                  key={signedVideoUrl}
-                  src={signedVideoUrl}
-                  controls
-                  playsInline
-                  controlsList="nodownload noremoteplayback"
-                  disablePictureInPicture
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    return false;
-                  }}
-                  className="w-full h-full object-contain bg-black select-none pointer-events-auto"
-                />
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <video
+                    ref={videoElementRef}
+                    key={signedVideoUrl}
+                    src={signedVideoUrl}
+                    controls
+                    playsInline
+                    controlsList="nodownload noremoteplayback"
+                    disablePictureInPicture
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      return false;
+                    }}
+                    className="w-full h-full object-contain bg-black select-none pointer-events-auto"
+                  />
+                  {/* Transparent Security Shield: intercepts inspect clicks & contextmenu */}
+                  <div
+                    className="absolute inset-x-0 top-0 bottom-16 z-10 cursor-pointer"
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      return false;
+                    }}
+                    onClick={() => {
+                      const v = videoElementRef.current;
+                      if (v) {
+                        if (v.paused) v.play();
+                        else v.pause();
+                      }
+                    }}
+                  />
+                </div>
               ) : loadingSignedUrl ? (
                 <div className="flex flex-col items-center justify-center text-white/80 p-6 text-center">
                   <div className="w-10 h-10 border-3 border-white/20 border-t-white rounded-full animate-spin mb-3" />
