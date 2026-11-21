@@ -270,30 +270,7 @@ export function ProductDetailModal({
             {/* ──────────────────────────────────────────────────────────── */}
             {/* RIGHT SIDE (الجزء اليمين): معرض الصور الموسع                 */}
             {/* ──────────────────────────────────────────────────────────── */}
-            <div className="w-full md:w-1/2 relative bg-[#FBF9F5] flex flex-col justify-between p-3.5 sm:p-5 md:p-6 shrink-0 border-b md:border-b-0 border-[rgba(127,169,155,0.18)]">
-              {/* 
-                SMOKY / MISTY ATMOSPHERIC TRANSITION:
-                Only placed along the INNER divider between the Image Column and the Details Column!
-                In RTL, the left edge of the right column meets the details column.
-                Therefore it is strictly placed at `left-0` with NO overlay on the right side!
-              */}
-              <div
-                className="hidden md:block absolute top-0 bottom-0 left-0 w-16 pointer-events-none z-20"
-                style={{
-                  background:
-                    "linear-gradient(to left, transparent 0%, rgba(255, 255, 255, 0.5) 45%, rgba(255, 255, 255, 0.95) 85%, #FFFFFF 100%)",
-                  backdropFilter: "blur(2px)",
-                }}
-              />
-
-              {/* Mobile Soft Misty Divider at the bottom of the image container */}
-              <div
-                className="md:hidden absolute bottom-0 inset-x-0 h-8 pointer-events-none z-20"
-                style={{
-                  background: "linear-gradient(to bottom, transparent 0%, rgba(255, 255, 255, 0.8) 60%, #FFFFFF 100%)",
-                }}
-              />
-
+            <div className="w-full md:w-1/2 relative bg-[#FBF9F5] flex flex-col justify-between p-3.5 sm:p-5 md:p-6 shrink-0 border-b md:border-b-0 md:border-l border-[rgba(127,169,155,0.18)]">
               {/* Main Expanded Image View */}
               <div className="relative rounded-2xl overflow-hidden bg-white border border-[rgba(127,169,155,0.2)] shadow-xs flex items-center justify-center min-h-[220px] sm:min-h-[280px] md:min-h-[380px] md:flex-1 group">
                 {hasImages && currentImage ? (
