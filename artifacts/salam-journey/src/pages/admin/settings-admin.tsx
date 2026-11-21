@@ -110,17 +110,24 @@ export function AdminSettings() {
   }
 
   async function handleDisplayModeChange(nextMode: string) {
+    if (modeSaving || displayMode === nextMode) return;
     setModeSaving(true);
+    const prevMode = displayMode;
+    // Optimistic update
+    setDisplayMode(nextMode);
+
     try {
       await apiJson('/admin/site-settings/display_mode', {
         method: 'PUT',
         body: JSON.stringify({ value: nextMode }),
       });
-      setDisplayMode(nextMode);
       setModeSuccess(true);
       setTimeout(() => setModeSuccess(false), 3000);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to update display mode:", err);
+      // Revert if error
+      setDisplayMode(prevMode);
+      alert("تعذر حفظ وضع العرض: " + (err?.message || "يرجى التحقق من الاتصال بالخادم"));
     } finally {
       setModeSaving(false);
     }

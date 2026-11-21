@@ -632,15 +632,17 @@ export function AdminFunnelBuilder() {
 
   const updateDisplayMode = useCallback(async (next: 'full_website' | 'funnel_page' | 'salam_journey' | 'coming_soon') => {
     setTogglingMode(true);
+    const prev = displayMode;
+    setDisplayMode(next);
     try {
       await apiJson('/admin/site-settings/display_mode', { method: 'PUT', body: JSON.stringify({ value: next }) });
-      setDisplayMode(next);
     } catch {
+      setDisplayMode(prev);
       setError('فشل تغيير وضع العرض.');
     } finally {
       setTogglingMode(false);
     }
-  }, []);
+  }, [displayMode]);
 
   function addBlock(type: FunnelBlockType) {
     const newBlock: FunnelBlock = { id: genId(), type, data: { ...BLOCK_DEFAULTS[type] } };

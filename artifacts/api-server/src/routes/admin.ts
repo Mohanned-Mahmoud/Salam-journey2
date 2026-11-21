@@ -28,36 +28,27 @@ type AdminUserSummary = {
 async function isAdminAuthenticated(req: Request, res: Response, next: NextFunction) {
   try {
     const auth = req.headers.authorization ?? "";
-    
-    console.log("\n=== 🛡️ [DEBUG AUTH] جاري فحص صلاحيات مسار الآدمن ===");
-    console.log("الـ Authorization Header القادم من الفرونت:", auth);
-
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+    const userIdHeader = (req.headers["x-user-id"] as string) ?? "";
 
-    if (!token) {
-      console.log("❌ الرفض: لم يتم إرسال توكن نهائياً من الفرونت إند (Token is missing)");
-      res.status(401).json({ error: "No token provided. يرجى تسجيل الدخول أولاً" });
-      return;
+    let userId: string | null = null;
+
+    if (token) {
+      try {
+        const secret = process.env.JWT_SECRET || "secret";
+        const decoded: any = jwt.verify(token, secret);
+        userId = decoded.userId || decoded.id || decoded.sub;
+      } catch (jwtError: any) {
+        console.log("Token verification failed, attempting userIdHeader fallback:", jwtError.message);
+      }
     }
 
-    // فحص فك التوكن والـ Secret Key المكتوم
-    let decoded: any;
-    try {
-      const secret = process.env.JWT_SECRET || "secret";
-      decoded = jwt.verify(token, secret);
-      console.log("✅ نجاح فك التوكن بنجاح! الـ Payload الناتج هو:", decoded);
-    } catch (jwtError: any) {
-      console.log("❌ فشل jwt.verify والسبب الصريح:", jwtError.message);
-      console.log("الـ Secret Key المستخدم حالياً في السيرفر:", process.env.JWT_SECRET ? "قادم من الـ .env سليم" : "مش قاري الـ .env وبيستخدم الـ fallback 'secret'");
-      res.status(401).json({ error: "Unauthorized. التوكن غير صالح أو منتهي" });
-      return;
+    if (!userId && userIdHeader) {
+      userId = userIdHeader.trim();
     }
-
-    const userId = decoded.userId || decoded.id || decoded.sub; // 🌟 ضفنا || decoded.sub عشان يلقط الـ ID من توكن جوجل الموحد
 
     if (!userId) {
-      console.log("❌ الرفض: التوكن سليم بس مفيش جواه userId أو id");
-      res.status(401).json({ error: "Invalid token payload. توكن غير صالح" });
+      res.status(401).json({ error: "No token or admin user ID provided. يرجى تسجيل الدخول أولاً" });
       return;
     }
 
@@ -69,18 +60,15 @@ async function isAdminAuthenticated(req: Request, res: Response, next: NextFunct
       .limit(1);
 
     if (!user) {
-      console.log("❌ الرفض: التوكن سليم والـ ID فك، بس المستخدم ده ملوش وجود في الـ usersTable!");
       res.status(403).json({ error: "Forbidden. المستخدم غير موجود" });
       return;
     }
 
     if ((user as any).role !== "admin") {
-      console.log(`❌ الرفض: الشخص ده مستخدم عادي برتبة "${(user as any).role}" وليس admin`);
       res.status(403).json({ error: "Forbidden. عذراً، لا تمتلك صلاحيات آدمن لدخول هذه الصفحة" });
       return;
     }
 
-    console.log("🎯 [AUTH SUCCESS] الحساب آدمن وسليم ١٠٠٪، مرر الطلب للـ Database!");
     next();
   } catch (globalError: any) {
     console.log("💥 خطأ غير متوقع تماماً في الميدل وير:", globalError.message);

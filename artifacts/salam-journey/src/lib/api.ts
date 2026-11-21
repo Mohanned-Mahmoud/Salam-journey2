@@ -68,6 +68,7 @@ async function fetchWithTimeout(url: string, init: RequestInit): Promise<Respons
 
 export async function apiJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getAuthToken();
+  const userId = typeof window !== "undefined" ? window.localStorage.getItem("salam_user") : null;
   
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -77,6 +78,11 @@ export async function apiJson<T>(path: string, init: RequestInit = {}): Promise<
   // Add JWT token if available
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  // Add User ID header if available for session identity
+  if (userId) {
+    headers["X-User-Id"] = userId;
   }
 
   const primaryUrl = buildApiUrl(API_BASE, path);

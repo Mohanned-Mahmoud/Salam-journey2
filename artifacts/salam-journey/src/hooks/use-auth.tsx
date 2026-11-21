@@ -211,10 +211,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback<AuthContextValue["login"]>(async (email, password) => {
     try {
-      const response = await apiJson<{ user: UserRecord }>("/auth/login", {
+      const response = await apiJson<{
+        user: UserRecord;
+        access_token?: string;
+        expires_in?: number;
+      }>("/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
+
+      if (response.access_token && typeof window !== "undefined") {
+        window.localStorage.setItem("auth_token", response.access_token);
+        window.localStorage.setItem(
+          "auth_token_expires",
+          String(Date.now() + (response.expires_in || 7 * 24 * 3600) * 1000)
+        );
+      }
 
       writeCurrentId(response.user.id);
       const hydrated = await hydrateUser(response.user.id);

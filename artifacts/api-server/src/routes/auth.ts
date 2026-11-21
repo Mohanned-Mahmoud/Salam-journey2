@@ -194,7 +194,14 @@ router.post("/auth/login", async (req, res) => {
       return res.status(401).json({ error: "wrong_password" });
     }
 
-    return res.json({ user: sanitizeUser(record) });
+    const accessToken = createAccessToken({ sub: record.id });
+
+    return res.json({
+      access_token: accessToken,
+      token_type: "Bearer",
+      expires_in: 7 * 24 * 60 * 60,
+      user: sanitizeUser(record),
+    });
   } catch (error) {
     return res.status(500).json({ error: "Failed to login" });
   }
