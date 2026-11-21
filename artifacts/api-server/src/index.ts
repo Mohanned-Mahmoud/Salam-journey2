@@ -8,11 +8,15 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
+const host = "0.0.0.0";
 
-  logger.info({ port }, "Server listening");
+const server = app.listen(port, host, () => {
+  logger.info({ host, port }, "Server listening");
+  console.log(`🚀 Salam-journey Server listening on ${host}:${port}`);
+});
+
+server.on("error", (err) => {
+  logger.error({ err }, "Server error");
+  console.error("❌ Server error:", err);
+  process.exit(1);
 });
