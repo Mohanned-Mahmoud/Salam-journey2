@@ -67,7 +67,7 @@ export default function Courses() {
         setCourses(
           data
             .filter((course) => course.status !== "hidden")
-            .map((course) => {
+            .map((course: any) => {
               const rawImages = Array.isArray(course.images) && course.images.length > 0
                 ? course.images
                 : (course.imageUrl ? [course.imageUrl] : []);
@@ -94,6 +94,7 @@ export default function Courses() {
                 images: rawImages,
                 features: Array.isArray(course.featuresAr) ? course.featuresAr : [],
                 videoUrl: course.videoUrl ?? null,
+                lessons: Array.isArray(course.lessons) ? course.lessons : [],
               };
             }),
         );
@@ -119,7 +120,7 @@ export default function Courses() {
   const handleEnrollAction = (c: CourseModalData) => {
     const enrolled = enrolledIds.has(c.id);
     if (enrolled) {
-      navigate("/account?tab=courses");
+      navigate(`/courses/${c.id}/learn`);
       return;
     }
     if (c.free) {

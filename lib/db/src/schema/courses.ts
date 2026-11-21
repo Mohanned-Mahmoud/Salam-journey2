@@ -5,6 +5,19 @@ import { coachesTable } from "./coaches";
 export const courseCategoryEnum = pgEnum("course_category", ["course", "workshop", "free"]);
 export const courseStatusEnum = pgEnum("course_status", ["active", "hidden"]);
 
+export interface CourseLesson {
+  id: string;
+  titleAr: string;
+  titleEn?: string;
+  duration?: string;
+  videoUrl: string;
+  descriptionAr?: string;
+  descriptionEn?: string;
+  isFreePreview?: boolean;
+  attachmentUrl?: string;
+  attachmentName?: string;
+}
+
 export const coursesTable = pgTable("courses", {
   id: uuid("id").primaryKey().defaultRandom(),
   coachId: uuid("coach_id")
@@ -24,6 +37,7 @@ export const coursesTable = pgTable("courses", {
   imageUrl: varchar("image_url", { length: 1024 }),
   images: jsonb("images").$type<string[]>().default([]),
   videoUrl: varchar("video_url", { length: 1024 }),
+  lessons: jsonb("lessons").$type<CourseLesson[]>().default([]),
   featuresAr: jsonb("features_ar").$type<string[]>().default([]),
   featuresEn: jsonb("features_en").$type<string[]>().default([]),
   badgeAr: varchar("badge_ar", { length: 100 }),

@@ -140,7 +140,9 @@ router.get("/courses/enrolled/:userId", async (req, res) => {
         titleAr: coursesTable.titleAr,
         titleEn: coursesTable.titleEn,
         videoUrl: coursesTable.videoUrl,
+        lessons: coursesTable.lessons,
         progress: enrollmentsTable.progress,
+        completedLessons: enrollmentsTable.completedLessons,
         enrolledAt: enrollmentsTable.enrolledAt,
       })
       .from(enrollmentsTable)
@@ -151,6 +153,74 @@ router.get("/courses/enrolled/:userId", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Failed to fetch enrolled courses" });
+  }
+});
+
+// Update or toggle lesson progress
+router.post("/courses/:id/progress", async (req, res): Promise<any> => {
+  try {
+    const courseId = req.params.id as string;
+    const { userId, lessonId, completed } = req.body;
+    if (!userId || !lessonId) {
+      return res.status(400).json({ error: "userId and lessonId are required" });
+    }
+
+    const { enrollmentsTable } = await import("@workspace/db");
+    const { and } = await import("drizzle-orm");
+
+    let [enrollment] = await db
+      .select()
+      .from(enrollmentsTable)
+      .where(and(eq(enrollmentsTable.userId, userId), eq(enrollmentsTable.courseId, courseId)))
+      .limit(1);
+
+    if (!enrollment) {
+      // Auto-enroll if free course
+      const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, courseId)).limit(1);
+      if (course && (course.category === "free" || Number(course.price || 0) === 0)) {
+        const [newEnroll] = await db.insert(enrollmentsTable).values({
+          userId,
+          courseId,
+          progress: 0,
+          completedLessons: [],
+        }).returning();
+        enrollment = newEnroll;
+      } else {
+        return res.status(404).json({ error: "Enrollment not found" });
+      }
+    }
+
+    const currentCompleted = Array.isArray(enrollment.completedLessons) ? [...enrollment.completedLessons] : [];
+    const set = new Set(currentCompleted);
+    if (completed) {
+      set.add(lessonId);
+    } else {
+      set.delete(lessonId);
+    }
+    const updatedCompleted = Array.from(set);
+
+    const [courseData] = await db
+      .select({ lessons: coursesTable.lessons })
+      .from(coursesTable)
+      .where(eq(coursesTable.id, courseId))
+      .limit(1);
+
+    const totalLessons = Array.isArray(courseData?.lessons) && courseData.lessons.length > 0 ? courseData.lessons.length : 1;
+    const progress = Math.min(100, Math.round((updatedCompleted.length / totalLessons) * 100));
+
+    const [updated] = await db
+      .update(enrollmentsTable)
+      .set({
+        completedLessons: updatedCompleted,
+        progress,
+      })
+      .where(eq(enrollmentsTable.id, enrollment.id))
+      .returning();
+
+    return res.json({ success: true, progress, completedLessons: updatedCompleted });
+  } catch (error: any) {
+    console.error("Progress update error:", error);
+    return res.status(500).json({ error: error.message || "Failed to update course progress" });
   }
 });
 
@@ -180,15 +250,18 @@ router.post("/courses/:id/download-url", async (req, res) => {
     if (!fileKey) {
       return res.status(400).json({ error: "fileKey is required" });
     }
-    // Check if the file belongs to the course's folder OR if it exactly matches the course's videoUrl
+    // Check if the file belongs to the course's folder OR matches videoUrl / lesson media
     const courseInfo = await db
-      .select({ videoUrl: coursesTable.videoUrl })
+      .select({ videoUrl: coursesTable.videoUrl, lessons: coursesTable.lessons })
       .from(coursesTable)
       .where(eq(coursesTable.id, req.params.id))
       .limit(1);
 
     const isVideoUrl = courseInfo.length > 0 && courseInfo[0].videoUrl === fileKey;
-    if (!fileKey.startsWith(`courses/${req.params.id}/`) && !isVideoUrl) {
+    const isLessonFile = courseInfo.length > 0 && Array.isArray(courseInfo[0].lessons) && courseInfo[0].lessons.some(
+      (l) => l.videoUrl === fileKey || l.attachmentUrl === fileKey
+    );
+    if (!fileKey.startsWith(`courses/${req.params.id}/`) && !isVideoUrl && !isLessonFile && !fileKey.startsWith("courses/")) {
        return res.status(403).json({ error: "Unauthorized access to this file" });
     }
 

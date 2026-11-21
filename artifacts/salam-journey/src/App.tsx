@@ -15,6 +15,7 @@ import { apiJson } from "@/lib/api";
 
 import Home from "@/pages/home";
 import Courses from "@/pages/courses";
+import CoursePlayer from "@/pages/course-player";
 import Sessions from "@/pages/sessions";
 import Products from "@/pages/products";
 import About from "@/pages/about";
@@ -101,6 +102,16 @@ function Router() {
           جاري تحميل الصفحة...
         </p>
       </div>
+    );
+  }
+
+  if (location.startsWith("/courses/") && location !== "/courses") {
+    return (
+      <Switch>
+        <Route path="/courses/:id/learn" component={CoursePlayer} />
+        <Route path="/courses/:id" component={CoursePlayer} />
+        <Route component={CoursePlayer} />
+      </Switch>
     );
   }
 
@@ -209,6 +220,8 @@ function Router() {
           <Route path="/" component={Home} />
           <Route path="/test" component={Home} />
           <Route path="/courses" component={Courses} />
+          <Route path="/courses/:id/learn" component={CoursePlayer} />
+          <Route path="/courses/:id" component={CoursePlayer} />
           <Route path="/sessions" component={Sessions} />
           <Route path="/products" component={Products} />
           <Route path="/about">{() => <About />}</Route>

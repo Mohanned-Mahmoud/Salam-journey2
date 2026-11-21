@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import {
   X,
   Sparkles,
@@ -13,6 +14,8 @@ import {
   Minimize2,
   ExternalLink,
   Users,
+  Play,
+  Lock,
 } from "lucide-react";
 import { resolveMediaUrl } from "@/lib/api";
 
@@ -33,6 +36,17 @@ export interface CourseModalData {
   images?: string[];
   gradient?: string;
   videoUrl?: string | null;
+  lessons?: Array<{
+    id: string;
+    titleAr: string;
+    titleEn?: string;
+    duration?: string;
+    videoUrl?: string;
+    descriptionAr?: string;
+    isFreePreview?: boolean;
+    attachmentUrl?: string;
+    attachmentName?: string;
+  }>;
 }
 
 interface CourseDetailModalProps {
@@ -54,8 +68,23 @@ export function CourseDetailModal({
   isEnrolled = false,
   initialExpanded = false,
 }: CourseDetailModalProps) {
+  const [, navigate] = useLocation();
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  const handleActionClick = () => {
+    if (isEnrolled || course?.free) {
+      onClose();
+      navigate(`/courses/${course?.id}/learn`);
+      return;
+    }
+    if (course) onEnroll(course);
+  };
+
+  const handlePreviewLesson = (lessonId: string) => {
+    onClose();
+    navigate(`/courses/${course?.id}/learn?lesson=${lessonId}`);
+  };
 
   // Touch swipe support for mobile
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -293,15 +322,15 @@ export function CourseDetailModal({
                 <button
                   type="button"
                   disabled={isProcessing}
-                  onClick={() => onEnroll(course)}
+                  onClick={handleActionClick}
                   className="w-full sm:flex-1 py-3 px-4 rounded-2xl bg-[var(--sage-dark)] hover:bg-[var(--text-dark)] text-white font-extrabold text-sm flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-[0.99] disabled:opacity-50"
                 >
                   {isProcessing ? (
                     <span>جاري التحويل...</span>
                   ) : isEnrolled ? (
-                    <span>استمري في الدورة 🌿</span>
+                    <span>دخول الدورة ومتابعة التعلّم ➔</span>
                   ) : course.free ? (
-                    <span>ابدئي مجاناً الآن</span>
+                    <span>ابدئي مجاناً الآن ➔</span>
                   ) : (
                     <>
                       <span>اشتركي الآن ({course.price.ar})</span>
@@ -465,6 +494,56 @@ export function CourseDetailModal({
                     </ul>
                   </div>
 
+                  {/* Curriculum Breakdown */}
+                  {course.lessons && course.lessons.length > 0 && (
+                    <div className="pt-2">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-extrabold text-[var(--text-dark)] flex items-center gap-2">
+                          <BookOpen className="w-4 h-4 text-[var(--sage-dark)]" />
+                          <span>محاور وفهرس الدورة</span>
+                        </h3>
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--sage-dark)]">
+                          {course.lessons.length} دروس فيديو
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 max-h-44 overflow-y-auto pr-1 scrollbar-thin">
+                        {course.lessons.map((lesson, idx) => (
+                          <div
+                            key={lesson.id}
+                            className="p-2.5 rounded-xl border border-stone-100 bg-[#FAF8F5] flex items-center justify-between gap-3 text-xs"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="w-6 h-6 rounded-lg bg-white border border-stone-200 text-[10px] font-bold text-stone-600 flex items-center justify-center shrink-0">
+                                {idx + 1}
+                              </span>
+                              <span className="font-bold text-stone-800 truncate">
+                                {lesson.titleAr}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              {lesson.duration && (
+                                <span className="text-[10px] text-stone-500 font-medium">
+                                  {lesson.duration}
+                                </span>
+                              )}
+                              {lesson.isFreePreview && (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePreviewLesson(lesson.id)}
+                                  className="px-2 py-0.5 rounded-full bg-purple-100 hover:bg-purple-200 text-purple-800 text-[10px] font-bold transition-all cursor-pointer"
+                                >
+                                  معاينة مجانية 👁️
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Specs */}
                   <div className="grid grid-cols-3 gap-2.5 pt-1">
                     <div className="p-2.5 rounded-2xl bg-[var(--cream)]/40 border border-[rgba(127,169,155,0.15)] text-center">
@@ -499,15 +578,15 @@ export function CourseDetailModal({
                     <button
                       type="button"
                       disabled={isProcessing}
-                      onClick={() => onEnroll(course)}
+                      onClick={handleActionClick}
                       className="flex-1 py-3.5 px-6 rounded-2xl bg-[var(--sage-dark)] hover:bg-[var(--text-dark)] text-white font-black text-base flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-[0.99] disabled:opacity-50 cursor-pointer"
                     >
                       {isProcessing ? (
                         <span>جاري التحويل...</span>
                       ) : isEnrolled ? (
-                        <span>استمري في الدورة 🌿</span>
+                        <span>دخول الدورة ومتابعة التعلّم ➔</span>
                       ) : course.free ? (
-                        <span>ابدئي مجاناً الآن</span>
+                        <span>دخول الدورة مجاناً ➔</span>
                       ) : (
                         <>
                           <span>اشتركي الآن في الدورة ({course.price.ar})</span>
@@ -683,6 +762,56 @@ export function CourseDetailModal({
                     </div>
                   </div>
 
+                  {/* Mobile Curriculum Breakdown */}
+                  {course.lessons && course.lessons.length > 0 && (
+                    <div className="pt-2">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-xs sm:text-sm font-extrabold text-[var(--text-dark)] flex items-center gap-1.5">
+                          <BookOpen className="w-4 h-4 text-[var(--sage-dark)]" />
+                          <span>محاور وفهرس الدورة</span>
+                        </h3>
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[var(--cream)] text-[var(--sage-dark)]">
+                          {course.lessons.length} دروس فيديو
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {course.lessons.map((lesson, idx) => (
+                          <div
+                            key={lesson.id}
+                            className="p-2.5 rounded-xl border border-stone-100 bg-[#FAF8F5] flex items-center justify-between gap-2.5 text-xs"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="w-5 h-5 rounded-md bg-white border border-stone-200 text-[10px] font-bold text-stone-600 flex items-center justify-center shrink-0">
+                                {idx + 1}
+                              </span>
+                              <span className="font-bold text-stone-800 truncate text-[11px]">
+                                {lesson.titleAr}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {lesson.duration && (
+                                <span className="text-[10px] text-stone-500 font-medium">
+                                  {lesson.duration}
+                                </span>
+                              )}
+                              {lesson.isFreePreview && (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePreviewLesson(lesson.id)}
+                                  className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-bold"
+                                >
+                                  معاينة 👁️
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Specs: Clean spacious horizontal items on mobile */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
                     <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--cream)]/40 border border-[rgba(127,169,155,0.15)]">
@@ -743,15 +872,15 @@ export function CourseDetailModal({
                   <button
                     type="button"
                     disabled={isProcessing}
-                    onClick={() => onEnroll(course)}
+                    onClick={handleActionClick}
                     className="w-full py-3 px-5 rounded-xl bg-[var(--sage-dark)] active:bg-[var(--text-dark)] text-white font-black text-sm flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all disabled:opacity-50"
                   >
                     {isProcessing ? (
                       <span>جاري التحويل...</span>
                     ) : isEnrolled ? (
-                      <span>استمري في الدورة 🌿</span>
+                      <span>دخول الدورة ومتابعة التعلّم ➔</span>
                     ) : course.free ? (
-                      <span>ابدئي مجاناً الآن</span>
+                      <span>دخول الدورة مجاناً ➔</span>
                     ) : (
                       <>
                         <span>اشتركي الآن في الدورة</span>

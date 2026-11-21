@@ -14,11 +14,30 @@ import {
   Star,
   Layers,
   BookOpen,
+  ArrowUp,
+  ArrowDown,
+  Video,
+  Play,
+  FileText,
+  Lock,
 } from 'lucide-react';
 import { apiJson, resolveMediaUrl } from '@/lib/api';
 import { R2FileUploader } from '@/components/admin/r2-file-uploader';
 import { CourseDetailModal, type CourseModalData } from '@/components/course-detail-modal';
 import type { AdminCourse } from './types';
+
+export interface CourseLesson {
+  id: string;
+  titleAr: string;
+  titleEn?: string;
+  duration?: string;
+  videoUrl: string;
+  descriptionAr?: string;
+  descriptionEn?: string;
+  isFreePreview?: boolean;
+  attachmentUrl?: string;
+  attachmentName?: string;
+}
 
 type FormState = {
   coachId: string;
@@ -42,6 +61,7 @@ type FormState = {
   imageUrl: string;
   images: string[];
   videoUrl: string;
+  lessons: CourseLesson[];
 };
 
 const EMPTY_FORM: FormState = {
@@ -66,6 +86,7 @@ const EMPTY_FORM: FormState = {
   imageUrl: '',
   images: [],
   videoUrl: '',
+  lessons: [],
 };
 
 const CATEGORY_LABELS: Record<AdminCourse['category'], string> = {
@@ -89,6 +110,23 @@ export function AdminCourses() {
   // New feature & image input states
   const [newFeatureText, setNewFeatureText] = useState('');
   const [newImageUrl, setNewImageUrl] = useState('');
+
+  // Lesson manager sub-state
+  const [editingLessonIndex, setEditingLessonIndex] = useState<number | null>(null);
+  const [lessonForm, setLessonForm] = useState<CourseLesson>({
+    id: '',
+    titleAr: '',
+    titleEn: '',
+    duration: '',
+    videoUrl: '',
+    descriptionAr: '',
+    descriptionEn: '',
+    isFreePreview: false,
+    attachmentUrl: '',
+    attachmentName: '',
+  });
+  const [showLessonDialog, setShowLessonDialog] = useState(false);
+  const [newLessonVideoUrl, setNewLessonVideoUrl] = useState('');
 
   // Live preview modal state
   const [previewCourse, setPreviewCourse] = useState<CourseModalData | null>(null);
@@ -236,10 +274,85 @@ export function AdminCourses() {
       images: existingImages,
       videoUrl: c.videoUrl || c.video_url || '',
       durationUnit: c.durationUnit || c.duration_unit || 'weeks',
+      lessons: Array.isArray(c.lessons) ? [...c.lessons] : [],
     });
     setNewFeatureText('');
     setNewImageUrl('');
     setModal({ mode: 'edit', id: c.id });
+  }
+
+  // Lesson helper functions
+  function openAddLesson() {
+    setLessonForm({
+      id: crypto.randomUUID(),
+      titleAr: '',
+      titleEn: '',
+      duration: '',
+      videoUrl: '',
+      descriptionAr: '',
+      descriptionEn: '',
+      isFreePreview: form.lessons.length === 0,
+      attachmentUrl: '',
+      attachmentName: '',
+    });
+    setNewLessonVideoUrl('');
+    setEditingLessonIndex(null);
+    setShowLessonDialog(true);
+  }
+
+  function openEditLesson(index: number) {
+    const l = form.lessons[index];
+    if (!l) return;
+    setLessonForm({ ...l });
+    setNewLessonVideoUrl(l.videoUrl || '');
+    setEditingLessonIndex(index);
+    setShowLessonDialog(true);
+  }
+
+  function saveLesson() {
+    if (!lessonForm.titleAr.trim()) {
+      alert('يرجى إدخال عنوان الدرس بالعربية');
+      return;
+    }
+    const finalVideo = newLessonVideoUrl.trim() || lessonForm.videoUrl;
+    const finalLesson: CourseLesson = {
+      ...lessonForm,
+      id: lessonForm.id || crypto.randomUUID(),
+      titleAr: lessonForm.titleAr.trim(),
+      videoUrl: finalVideo,
+    };
+
+    setForm((prev) => {
+      const next = [...prev.lessons];
+      if (editingLessonIndex !== null && editingLessonIndex >= 0) {
+        next[editingLessonIndex] = finalLesson;
+      } else {
+        next.push(finalLesson);
+      }
+      return { ...prev, lessons: next };
+    });
+    setShowLessonDialog(false);
+    setEditingLessonIndex(null);
+  }
+
+  function removeLesson(index: number) {
+    if (!confirm('هل أنتِ متأكدة من حذف هذا الدرس من الدورة؟')) return;
+    setForm((prev) => ({
+      ...prev,
+      lessons: prev.lessons.filter((_, i) => i !== index),
+    }));
+  }
+
+  function moveLesson(index: number, direction: 'up' | 'down') {
+    setForm((prev) => {
+      const next = [...prev.lessons];
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= next.length) return prev;
+      const temp = next[index];
+      next[index] = next[targetIndex];
+      next[targetIndex] = temp;
+      return { ...prev, lessons: next };
+    });
   }
 
   // Feature bullet points
@@ -333,6 +446,7 @@ export function AdminCourses() {
       images: form.images.filter(Boolean),
       videoUrl: form.videoUrl ? form.videoUrl.trim() : null,
       durationUnit: form.durationUnit || 'weeks',
+      lessons: Array.isArray(form.lessons) ? form.lessons : [],
     };
 
     try {
@@ -345,6 +459,7 @@ export function AdminCourses() {
             images: Array.isArray(created.images) ? created.images : (created.imageUrl ? [created.imageUrl] : []),
             featuresAr: Array.isArray(created.featuresAr) ? created.featuresAr : [],
             featuresEn: Array.isArray(created.featuresEn) ? created.featuresEn : [],
+            lessons: Array.isArray(created.lessons) ? created.lessons : form.lessons,
           },
         ]);
       } else if (modal?.id) {
@@ -357,6 +472,7 @@ export function AdminCourses() {
                   images: Array.isArray(updated.images) ? updated.images : (updated.imageUrl ? [updated.imageUrl] : []),
                   featuresAr: Array.isArray(updated.featuresAr) ? updated.featuresAr : [],
                   featuresEn: Array.isArray(updated.featuresEn) ? updated.featuresEn : [],
+                  lessons: Array.isArray(updated.lessons) ? updated.lessons : form.lessons,
                 }
               : course
           )
@@ -449,6 +565,7 @@ export function AdminCourses() {
       images: rawImages,
       gradient: c.gradient || 'linear-gradient(135deg, var(--sage-dark), var(--sage))',
       videoUrl: c.videoUrl || c.video_url || null,
+      lessons: (form.lessons && form.lessons.length > 0) ? form.lessons : (Array.isArray(c.lessons) ? c.lessons : []),
     };
 
     setPreviewCourse(modalData);
@@ -1226,24 +1343,146 @@ export function AdminCourses() {
                 </div>
               </div>
 
-              {/* SECTION 4: فيديو الدورة */}
+              {/* SECTION 4: دروس وفيديوهات الدورة التفاعلية */}
               <div className="space-y-4 pt-2">
-                <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: 'rgba(127,169,155,0.15)' }}>
-                  <span className="w-2 h-2 rounded-full" style={{ background: 'var(--sage-dark)' }} />
-                  <h3 className="font-bold text-sm" style={{ color: 'var(--text-dark)' }}>
-                    4. فيديو تعريفي / ملف الدورة (اختياري)
-                  </h3>
+                <div className="flex items-center justify-between pb-2 border-b" style={{ borderColor: 'rgba(127,169,155,0.15)' }}>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full" style={{ background: 'var(--sage-dark)' }} />
+                    <h3 className="font-bold text-sm" style={{ color: 'var(--text-dark)' }}>
+                      4. دروس وفيديوهات الدورة (قاعة التعلّم التفاعلية)
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openAddLesson}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-xs transition-all hover:opacity-95 cursor-pointer"
+                    style={{ background: 'var(--sage-dark)' }}
+                  >
+                    <Plus size={14} /> إضافة درس جديد
+                  </button>
                 </div>
 
-                <div className="p-4 rounded-2xl border" style={{ borderColor: 'rgba(127,169,155,0.2)', background: 'white' }}>
-                  <R2FileUploader
-                    entityId={entityId}
-                    entityType="courses"
-                    currentFileKey={form.videoUrl || null}
-                    onUploaded={(key) => setForm((f) => ({ ...f, videoUrl: key }))}
-                    label="فيديو تعريفي أو درس تجريبي (رفع إلى R2)"
-                    accept="video/*"
-                  />
+                {/* Lessons List */}
+                <div className="space-y-2.5">
+                  {form.lessons.map((lesson, idx) => (
+                    <div
+                      key={lesson.id}
+                      className="p-3.5 rounded-2xl border bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs"
+                      style={{ borderColor: 'rgba(127,169,155,0.2)' }}
+                    >
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div
+                          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold"
+                          style={{ background: 'var(--cream)', color: 'var(--sage-dark)' }}
+                        >
+                          {idx + 1}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <h4 className="font-bold text-sm text-[var(--text-dark)] truncate">
+                              {lesson.titleAr}
+                            </h4>
+                            {lesson.duration && (
+                              <span className="text-[11px] text-[var(--text-muted)] bg-stone-100 px-2 py-0.5 rounded-md">
+                                {lesson.duration}
+                              </span>
+                            )}
+                            {lesson.isFreePreview && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                                عينة مجانية 🎁
+                              </span>
+                            )}
+                          </div>
+                          {lesson.titleEn && (
+                            <p className="text-xs text-[var(--text-muted)] truncate">{lesson.titleEn}</p>
+                          )}
+                          {lesson.videoUrl && (
+                            <p className="text-[11px] text-stone-400 truncate max-w-sm mt-0.5">
+                              🎥 {lesson.videoUrl}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions: Reorder, Edit, Delete */}
+                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                        <button
+                          type="button"
+                          disabled={idx === 0}
+                          onClick={() => moveLesson(idx, 'up')}
+                          className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 disabled:opacity-30 transition-colors cursor-pointer"
+                          title="تحريك لأعلى"
+                        >
+                          <ArrowUp size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={idx === form.lessons.length - 1}
+                          onClick={() => moveLesson(idx, 'down')}
+                          className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 disabled:opacity-30 transition-colors cursor-pointer"
+                          title="تحريك لأسفل"
+                        >
+                          <ArrowDown size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEditLesson(idx)}
+                          className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 text-[var(--sage-dark)] transition-colors cursor-pointer"
+                          title="تعديل الدرس"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeLesson(idx)}
+                          className="p-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-600 transition-colors cursor-pointer"
+                          title="حذف الدرس"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {form.lessons.length === 0 && (
+                    <div
+                      className="p-6 rounded-2xl border-2 border-dashed text-center flex flex-col items-center justify-center gap-2"
+                      style={{ borderColor: 'rgba(127,169,155,0.25)', background: 'var(--cream-light)' }}
+                    >
+                      <Video size={28} style={{ color: 'var(--sage)' }} />
+                      <p className="text-xs font-semibold text-[var(--text-dark)]">
+                        لم تُضف دروس فيديو لهذه الدورة بعد
+                      </p>
+                      <p className="text-[11px] text-[var(--text-muted)] max-w-sm">
+                        اضغطي على زر "إضافة درس جديد" لإدراج الدروس، روابط الفيديو (R2 أو يوتيوب/فيميو)، والملفات المرفقة.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={openAddLesson}
+                        className="mt-1 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-xs cursor-pointer"
+                        style={{ background: 'var(--sage-dark)' }}
+                      >
+                        + إضافة أول درس الآن
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* General Course Intro Video (Optional) */}
+                <div className="pt-3 border-t border-stone-100">
+                  <label className="block text-xs font-semibold mb-1.5 text-[var(--text-dark)]">
+                    فيديو الغلاف / الترويجي العام للدورة (اختياري)
+                  </label>
+                  <div className="p-4 rounded-2xl border bg-white" style={{ borderColor: 'rgba(127,169,155,0.2)' }}>
+                    <R2FileUploader
+                      entityId={entityId}
+                      entityType="courses"
+                      currentFileKey={form.videoUrl || null}
+                      onUploaded={(key) => setForm((f) => ({ ...f, videoUrl: key }))}
+                      label="فيديو تعريفي عام بالدورة (رفع إلى R2)"
+                      accept="video/*"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1308,6 +1547,158 @@ export function AdminCourses() {
                 style={{ background: 'var(--cream)', color: 'var(--text-dark)' }}
               >
                 إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lesson Edit / Add Modal */}
+      {showLessonDialog && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div
+            dir="rtl"
+            className="bg-white rounded-3xl shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-stone-200 animate-in fade-in zoom-in-95 duration-200"
+          >
+            {/* Header */}
+            <div className="p-5 border-b border-stone-100 flex items-center justify-between bg-[var(--cream)]/60">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[var(--sage-dark)] text-white flex items-center justify-center">
+                  <Video size={16} />
+                </div>
+                <h3 className="font-black text-base text-[var(--text-dark)]">
+                  {editingLessonIndex !== null ? 'تعديل بيانات الدرس' : 'إضافة درس فيديو جديد'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLessonDialog(false)}
+                className="w-8 h-8 rounded-full bg-white hover:bg-stone-100 text-stone-600 flex items-center justify-center cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 overflow-y-auto space-y-4 flex-1">
+              {/* Title AR + EN */}
+              <FormField
+                label="عنوان الدرس (AR) 🇸🇦 *"
+                placeholder="مثال: المحور الأول: فهم محفزات الغضب لدى الأم"
+                value={lessonForm.titleAr}
+                onChange={(v) => setLessonForm({ ...lessonForm, titleAr: v })}
+              />
+
+              <FormField
+                label="عنوان الدرس بالإنجليزية (EN) 🇬🇧"
+                placeholder="e.g. Lesson 1: Understanding Anger Triggers"
+                value={lessonForm.titleEn || ''}
+                onChange={(v) => setLessonForm({ ...lessonForm, titleEn: v })}
+              />
+
+              {/* Duration & Free Preview Toggle */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                  label="مدة الدرس (تظهر بجانب الدرس)"
+                  placeholder="مثال: 15:30 دقيقة"
+                  value={lessonForm.duration || ''}
+                  onChange={(v) => setLessonForm({ ...lessonForm, duration: v })}
+                />
+
+                <div className="flex flex-col justify-end">
+                  <label className="flex items-center gap-2 p-3 rounded-xl border border-purple-200 bg-purple-50/70 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(lessonForm.isFreePreview)}
+                      onChange={(e) => setLessonForm({ ...lessonForm, isFreePreview: e.target.checked })}
+                      className="rounded accent-[var(--sage-dark)] w-4 h-4 cursor-pointer"
+                    />
+                    <span className="text-xs font-bold text-purple-950">
+                      معاينة مجانية متاحة للجميع 🎁
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Video Source: R2 Upload or Direct Link */}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-[var(--text-dark)]">
+                  مصدر الفيديو (رابط مباشر / يوتيوب / فيميو أو رفع ملف) *
+                </label>
+                <input
+                  type="text"
+                  value={newLessonVideoUrl}
+                  onChange={(e) => {
+                    setNewLessonVideoUrl(e.target.value);
+                    setLessonForm((f) => ({ ...f, videoUrl: e.target.value }));
+                  }}
+                  placeholder="https://www.youtube.com/watch?v=... أو vimeo.com/... أو courses/..."
+                  className="w-full rounded-xl px-3 py-2.5 text-xs outline-none"
+                  style={{ background: 'var(--cream)', border: '1px solid rgba(127,169,155,0.25)', color: 'var(--text-dark)' }}
+                />
+
+                <div className="pt-1">
+                  <R2FileUploader
+                    entityId={entityId}
+                    entityType="courses"
+                    currentFileKey={lessonForm.videoUrl || null}
+                    onUploaded={(key) => {
+                      setNewLessonVideoUrl(key);
+                      setLessonForm((f) => ({ ...f, videoUrl: key }));
+                    }}
+                    label="أو ارفعي ملف الفيديو مباشرة إلى استضافة R2"
+                    accept="video/*"
+                  />
+                </div>
+              </div>
+
+              {/* Description / Notes */}
+              <FormField
+                label="شرح وتوجيهات الدرس (يظهر في تبويب الملاحظات)"
+                placeholder="اكتبي توجيهات عملية، نقاط للتطبيق، أو تلخيص للدرس..."
+                value={lessonForm.descriptionAr || ''}
+                onChange={(v) => setLessonForm({ ...lessonForm, descriptionAr: v })}
+                multiline
+              />
+
+              {/* Attachment */}
+              <div className="space-y-2 pt-2 border-t border-stone-100">
+                <label className="block text-xs font-semibold text-[var(--text-dark)]">
+                  ملف مرفق للتحميل (PDF أو أوراق عمل) - اختياري
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <FormField
+                    label="اسم الملف الظاهر للأم"
+                    placeholder="مثال: ورقة_عمل_جلسة_الغضب.pdf"
+                    value={lessonForm.attachmentName || ''}
+                    onChange={(v) => setLessonForm({ ...lessonForm, attachmentName: v })}
+                  />
+                  <FormField
+                    label="رابط الملف المرفق (URL أو مسار)"
+                    placeholder="https://... أو courses/..."
+                    value={lessonForm.attachmentUrl || ''}
+                    onChange={(v) => setLessonForm({ ...lessonForm, attachmentUrl: v })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-stone-100 flex items-center justify-end gap-3 bg-stone-50">
+              <button
+                type="button"
+                onClick={() => setShowLessonDialog(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-200 transition-colors cursor-pointer"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={saveLesson}
+                className="px-6 py-2 rounded-xl text-xs font-bold text-white shadow-xs transition-all cursor-pointer"
+                style={{ background: 'var(--sage-dark)' }}
+              >
+                حفظ الدرس
               </button>
             </div>
           </div>

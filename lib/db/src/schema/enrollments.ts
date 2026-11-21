@@ -1,4 +1,4 @@
-import { pgTable, integer, timestamp, uuid } from "drizzle-orm/pg-core";
+import { pgTable, integer, timestamp, uuid, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { usersTable } from "./users";
 import { coursesTable } from "./courses";
@@ -14,6 +14,7 @@ export const enrollmentsTable = pgTable("enrollments", {
     .references(() => coursesTable.id, { onDelete: "cascade" }),
   roomId: uuid("room_id").references(() => courseRoomsTable.id, { onDelete: "set null" }),
   progress: integer("progress").default(0),
+  completedLessons: jsonb("completed_lessons").$type<string[]>().default([]),
   enrolledAt: timestamp("enrolled_at").defaultNow().notNull(),
 });
 
