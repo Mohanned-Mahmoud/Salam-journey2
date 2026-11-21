@@ -1,5 +1,6 @@
 export type AdminSection =
   | 'dashboard'
+  | 'orders'
   | 'bookings'
   | 'courses'
   | 'products'
@@ -8,6 +9,28 @@ export type AdminSection =
   | 'ai-knowledge'
   | 'settings'
   | 'funnel-builder';
+
+export interface AdminOrder {
+  id: string;
+  userId: string | null;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string | null;
+  itemType: "product" | "course" | "booking";
+  itemId: string;
+  itemTitle: string;
+  amountUsd: string;
+  amountEgp: string;
+  exchangeRate: string;
+  paymentMethod: string;
+  status: "pending_verification" | "approved" | "rejected" | "cancelled";
+  adminNotes: string | null;
+  approvedAt: string | null;
+  approvedBy: string | null;
+  receiptUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export type FunnelBlockType =
   | 'hero'

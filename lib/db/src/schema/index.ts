@@ -15,3 +15,4 @@ export * from "./translations";
 export * from "./leads";
 export * from "./consultations";
 export * from "./purchased-products";
+export * from "./orders";

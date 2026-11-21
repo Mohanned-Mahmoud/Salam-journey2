@@ -1,0 +1,264 @@
+import { Router } from "express";
+import { db, paymentOrdersTable, siteSettingsTable, purchasedProductsTable, enrollmentsTable, bookingsTable, usersTable } from "@workspace/db";
+import { eq, desc, inArray } from "drizzle-orm";
+import { logger } from "../lib/logger";
+
+const router = Router();
+
+// Cache live exchange rate for 1 hour
+let cachedRate: { rate: number; timestamp: number } | null = null;
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+async function getLiveUsdToEgpRate(): Promise<number> {
+  const now = Date.now();
+  if (cachedRate && now - cachedRate.timestamp < CACHE_TTL_MS) {
+    return cachedRate.rate;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+
+    const res = await fetch("https://open.er-api.com/v6/latest/USD", {
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (res.ok) {
+      const data: any = await res.json();
+      if (data && data.rates && typeof data.rates.EGP === "number" && data.rates.EGP > 0) {
+        const rate = Number(data.rates.EGP.toFixed(2));
+        cachedRate = { rate, timestamp: now };
+        logger.info({ rate }, "Fetched live USD to EGP exchange rate");
+        return rate;
+      }
+    }
+  } catch (err) {
+    logger.warn({ err }, "Could not fetch live exchange rate, checking fallback");
+  }
+
+  // Fallback to database setting or default
+  try {
+    const setting = await db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, "usd_to_egp_rate")).limit(1);
+    if (setting.length > 0 && setting[0].value) {
+      const fallbackRate = parseFloat(setting[0].value);
+      if (!isNaN(fallbackRate) && fallbackRate > 0) {
+        return fallbackRate;
+      }
+    }
+  } catch (err) {
+    logger.warn({ err }, "Failed to read usd_to_egp_rate from database");
+  }
+
+  return 50.0; // Safe default
+}
+
+/**
+ * Public endpoint: Get InstaPay config and live exchange rate
+ */
+router.get("/orders/config", async (_req, res) => {
+  try {
+    const settings = await db.select().from(siteSettingsTable);
+    const settingsMap = new Map(settings.map((s) => [s.key, s.value]));
+
+    const liveRate = await getLiveUsdToEgpRate();
+
+    const config = {
+      instapayUsername: settingsMap.get("instapay_username") || "salamjourney@instapay",
+      instapayPhone: settingsMap.get("instapay_phone") || settingsMap.get("whatsapp_number") || "01015473623",
+      instapayLink: settingsMap.get("instapay_link") || "https://ipn.eg",
+      whatsappNumber: settingsMap.get("whatsapp_number") || "+201015473623",
+      usdToEgpRate: liveRate,
+    };
+
+    res.json(config);
+  } catch (error: any) {
+    logger.error({ error }, "Error fetching orders config");
+    res.status(500).json({ error: error.message || "Failed to load orders config" });
+  }
+});
+
+/**
+ * Public endpoint: Submit an InstaPay order
+ */
+router.post("/orders/instapay", async (req, res): Promise<any> => {
+  try {
+    const {
+      userId,
+      customerName,
+      customerEmail,
+      customerPhone,
+      itemType,
+      itemId,
+      itemTitle,
+      amountUsd,
+    } = req.body;
+
+    if (!customerName || !customerEmail || !itemType || !itemId || !itemTitle || amountUsd === undefined) {
+      return res.status(400).json({ error: "Missing required order information" });
+    }
+
+    const liveRate = await getLiveUsdToEgpRate();
+    const usd = Number(amountUsd);
+    const egp = Math.round(usd * liveRate * 100) / 100;
+
+    // If userId was provided, verify user exists (or resolve by email)
+    let resolvedUserId: string | null = userId || null;
+    if (!resolvedUserId && customerEmail) {
+      const existingUser = await db.select().from(usersTable).where(eq(usersTable.email, customerEmail.toLowerCase().trim())).limit(1);
+      if (existingUser.length > 0) {
+        resolvedUserId = existingUser[0].id;
+      }
+    }
+
+    const [order] = await db
+      .insert(paymentOrdersTable)
+      .values({
+        userId: resolvedUserId,
+        customerName: customerName.trim(),
+        customerEmail: customerEmail.toLowerCase().trim(),
+        customerPhone: customerPhone ? customerPhone.trim() : null,
+        itemType,
+        itemId: String(itemId),
+        itemTitle: itemTitle.trim(),
+        amountUsd: String(usd.toFixed(2)),
+        amountEgp: String(egp.toFixed(2)),
+        exchangeRate: String(liveRate.toFixed(2)),
+        paymentMethod: "instapay",
+        status: "pending_verification",
+      })
+      .returning();
+
+    logger.info({ orderId: order.id, customerEmail, itemTitle }, "InstaPay order created");
+
+    // Fetch site WhatsApp number for pre-filled chat
+    const waSetting = await db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, "whatsapp_number")).limit(1);
+    const rawWaNumber = waSetting[0]?.value || "+201015473623";
+    const cleanWaNumber = rawWaNumber.replace(/[^0-9]/g, "");
+
+    // Prepare WhatsApp message
+    const waMessage = `السلام عليكم ورحمة الله،\nلقد قمت بتحويل مبلغ ${order.amountEgp} ج.م عبر انستا باي لتأكيد طلب الشراء.\n\nتفاصيل الطلب:\n- رقم الطلب: ${order.id.slice(0, 8)}\n- العنصر: ${order.itemTitle}\n- المبلغ: ${order.amountEgp} ج.م ($${order.amountUsd})\n- الاسم: ${order.customerName}\n- البريد: ${order.customerEmail}\n\nمرفق لسيادتكم إثبات التحويل للتأكيد 🌿`;
+
+    const whatsappUrl = `https://wa.me/${cleanWaNumber}?text=${encodeURIComponent(waMessage)}`;
+
+    res.json({
+      success: true,
+      order,
+      whatsappUrl,
+      whatsappMessage: waMessage,
+    });
+  } catch (error: any) {
+    logger.error({ error }, "Error creating InstaPay order");
+    res.status(500).json({ error: error.message || "Failed to create order" });
+  }
+});
+
+/**
+ * Admin endpoint: List orders
+ */
+router.get("/orders", async (req, res): Promise<any> => {
+  try {
+    const { status } = req.query;
+
+    let query = db.select().from(paymentOrdersTable);
+    if (status && typeof status === "string") {
+      query = query.where(eq(paymentOrdersTable.status, status)) as any;
+    }
+
+    const orders = await query.orderBy(desc(paymentOrdersTable.createdAt));
+    res.json(orders);
+  } catch (error: any) {
+    logger.error({ error }, "Error fetching orders list");
+    res.status(500).json({ error: error.message || "Failed to fetch orders" });
+  }
+});
+
+/**
+ * Admin endpoint: Update order status (Approve / Reject)
+ */
+router.patch("/orders/:id/status", async (req, res): Promise<any> => {
+  try {
+    const { id } = req.params;
+    const { status, adminNotes, approvedBy } = req.body;
+
+    if (!["approved", "rejected", "pending_verification", "cancelled"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status value" });
+    }
+
+    const existing = await db.select().from(paymentOrdersTable).where(eq(paymentOrdersTable.id, id)).limit(1);
+    if (existing.length === 0) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    const order = existing[0];
+
+    const updates: any = {
+      status,
+      adminNotes: adminNotes !== undefined ? adminNotes : order.adminNotes,
+      updatedAt: new Date(),
+    };
+
+    if (status === "approved") {
+      updates.approvedAt = new Date();
+      updates.approvedBy = approvedBy || "Admin";
+
+      // Auto-fulfill item
+      let targetUserId = order.userId;
+
+      // If order has no userId, try finding user by email or create an account
+      if (!targetUserId && order.customerEmail) {
+        const found = await db.select().from(usersTable).where(eq(usersTable.email, order.customerEmail.toLowerCase().trim())).limit(1);
+        if (found.length > 0) {
+          targetUserId = found[0].id;
+          updates.userId = targetUserId;
+        }
+      }
+
+      if (targetUserId) {
+        if (order.itemType === "product") {
+          await db
+            .insert(purchasedProductsTable)
+            .values({
+              userId: targetUserId,
+              productId: order.itemId,
+              paymentId: `instapay_${order.id}`,
+            })
+            .onConflictDoNothing();
+          logger.info({ userId: targetUserId, productId: order.itemId }, "Product unlocked for user upon InstaPay approval");
+        } else if (order.itemType === "course") {
+          await db
+            .insert(enrollmentsTable)
+            .values({
+              userId: targetUserId,
+              courseId: order.itemId,
+            })
+            .onConflictDoNothing();
+          logger.info({ userId: targetUserId, courseId: order.itemId }, "User enrolled in course upon InstaPay approval");
+        }
+      } else {
+        logger.warn({ orderId: order.id, email: order.customerEmail }, "Order approved but user ID not found. User needs to register with matching email.");
+      }
+
+      if (order.itemType === "booking") {
+        await db
+          .update(bookingsTable)
+          .set({ status: "confirmed" })
+          .where(eq(bookingsTable.id, order.itemId));
+        logger.info({ bookingId: order.itemId }, "Booking confirmed upon InstaPay approval");
+      }
+    }
+
+    const [updatedOrder] = await db
+      .update(paymentOrdersTable)
+      .set(updates)
+      .where(eq(paymentOrdersTable.id, id))
+      .returning();
+
+    res.json({ success: true, order: updatedOrder });
+  } catch (error: any) {
+    logger.error({ error }, "Error updating order status");
+    res.status(500).json({ error: error.message || "Failed to update order status" });
+  }
+});
+
+export default router;

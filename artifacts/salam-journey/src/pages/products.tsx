@@ -7,6 +7,7 @@ import { useReveal } from "@/lib/use-reveal";
 import { apiJson, resolveMediaUrl } from "@/lib/api";
 import { SoftBlob, SectionDivider } from "@/components/section-divider";
 import { ProductDetailModal, type ProductModalData } from "@/components/product-detail-modal";
+import { PaymentModal, type PayableItem } from "@/components/payment-modal";
 
 type ProductCard = ProductModalData & {
   Icon: React.ComponentType<{ size?: number; className?: string }>;
@@ -24,7 +25,7 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<ProductCard | null>(null);
-  const [buyConfirmProduct, setBuyConfirmProduct] = useState<ProductCard | null>(null);
+  const [paymentItem, setPaymentItem] = useState<PayableItem | null>(null);
 
   const purchasedProductIds = useMemo(() => {
     return new Set(user?.purchasedProducts?.map(p => p.id) || []);
@@ -117,46 +118,13 @@ export default function Products() {
       return;
     }
 
-    setBuyConfirmProduct(p);
-  };
-
-  const confirmPurchase = async () => {
-    if (!buyConfirmProduct || !user) return;
-    const p = buyConfirmProduct;
-    
-    try {
-      setProcessingId(p.id);
-      const data = await apiJson<{ url: string }>("/stripe/create-checkout-session", {
-        method: "POST",
-        body: JSON.stringify({
-          items: [
-            {
-              name: p.title.en || p.title.ar,
-              description: "Digital Product",
-              amount: p.rawPrice,
-              quantity: 1,
-            }
-          ],
-          metadata: {
-            type: "product",
-            productId: p.id,
-            userId: user.id
-          },
-          successUrl: `${window.location.origin}/payment-success`,
-          cancelUrl: `${window.location.origin}/payment-cancel`,
-        })
-      });
-
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    } catch (err) {
-      console.error(err);
-      alert(t(tx("حدث خطأ أثناء معالجة الدفع", "Error processing payment")));
-    } finally {
-      setProcessingId(null);
-      setBuyConfirmProduct(null);
-    }
+    setPaymentItem({
+      id: p.id,
+      type: "product",
+      title: p.title.ar,
+      priceUsd: p.rawPrice,
+      imageUrl: p.imageUrl,
+    });
   };
 
   return (
@@ -302,38 +270,12 @@ export default function Products() {
         isPurchased={selectedProduct ? (selectedProduct.free || purchasedProductIds.has(selectedProduct.id)) : false}
       />
 
-      {/* Purchase Confirmation Modal */}
-      {buyConfirmProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(45,74,69,0.5)" }}>
-          <div className="rounded-3xl p-6 md:p-8 w-full max-w-sm text-center" style={{ background: "var(--white)" }}>
-            <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center mb-4" style={{ background: "var(--sage-muted)", color: "var(--sage-dark)" }}>
-              <buyConfirmProduct.Icon size={24} />
-            </div>
-            <h3 className="text-xl font-bold mb-2">{t(tx("تأكيد الشراء", "Confirm Purchase"))}</h3>
-            <p className="text-sm mb-6" style={{ color: "var(--text-body)" }}>
-              {t(tx(`أنت على وشك شراء "${buyConfirmProduct.title.ar}". سيتم تحويلك إلى صفحة الدفع الآمنة.`, `You are about to purchase "${buyConfirmProduct.title.en}". You will be redirected to the secure payment page.`))}
-            </p>
-            <div className="flex gap-3">
-              <button 
-                type="button" 
-                onClick={confirmPurchase}
-                disabled={processingId === buyConfirmProduct.id}
-                className="flex-1 pill-btn pill-btn-primary py-2.5"
-              >
-                {processingId === buyConfirmProduct.id ? t(tx("جاري...", "Loading...")) : t(tx("متابعة للدفع", "Proceed to Pay"))}
-              </button>
-              <button 
-                type="button" 
-                onClick={() => setBuyConfirmProduct(null)}
-                className="flex-1 pill-btn py-2.5"
-                style={{ background: "var(--cream)", color: "var(--text-dark)" }}
-              >
-                {t(tx("إلغاء", "Cancel"))}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Payment & Checkout Modal (Stripe Card + InstaPay Egypt with Live Exchange Rate) */}
+      <PaymentModal
+        isOpen={Boolean(paymentItem)}
+        onClose={() => setPaymentItem(null)}
+        item={paymentItem}
+      />
     </div>
   );
 }

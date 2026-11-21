@@ -8,6 +8,7 @@ import { apiJson, resolveMediaUrl } from "@/lib/api";
 import { SoftBlob, SectionDivider } from "@/components/section-divider";
 import { EnrollConfirmModal, type CourseSummary } from "@/components/enroll-confirm-modal";
 import { CourseDetailModal, type CourseModalData } from "@/components/course-detail-modal";
+import { PaymentModal, type PayableItem } from "@/components/payment-modal";
 
 type CourseCard = CourseModalData;
 
@@ -27,6 +28,7 @@ export default function Courses() {
   const [, navigate] = useLocation();
   const [filter, setFilter] = useState<FilterId>("all");
   const [enrollFor, setEnrollFor] = useState<CourseSummary | null>(null);
+  const [paymentItem, setPaymentItem] = useState<PayableItem | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<CourseCard | null>(null);
   const [courses, setCourses] = useState<CourseCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,12 +122,23 @@ export default function Courses() {
       navigate("/account?tab=courses");
       return;
     }
-    setEnrollFor({
+    if (c.free) {
+      setEnrollFor({
+        id: c.id,
+        title: c.title,
+        price: c.price,
+        rawPrice: c.rawPrice,
+        free: c.free,
+      });
+      return;
+    }
+    // Paid course: open payment modal with InstaPay (EGP) and Stripe Card options
+    setPaymentItem({
       id: c.id,
-      title: c.title,
-      price: c.price,
-      rawPrice: c.rawPrice,
-      free: c.free,
+      type: "course",
+      title: c.title.ar,
+      priceUsd: c.rawPrice,
+      imageUrl: c.imageUrl,
     });
   };
 
@@ -315,8 +328,15 @@ export default function Courses() {
         }}
       />
 
-      {/* Enrollment & Payment Confirmation Modal */}
+      {/* Enrollment & Payment Confirmation Modal (Free Courses) */}
       <EnrollConfirmModal course={enrollFor} isOpen={!!enrollFor} onClose={() => setEnrollFor(null)} />
+
+      {/* Payment Modal for Paid Courses (InstaPay Egypt + Stripe Card) */}
+      <PaymentModal
+        isOpen={Boolean(paymentItem)}
+        onClose={() => setPaymentItem(null)}
+        item={paymentItem}
+      />
     </div>
   );
 }

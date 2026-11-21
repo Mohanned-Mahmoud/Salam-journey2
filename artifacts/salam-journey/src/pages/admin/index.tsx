@@ -3,6 +3,7 @@ import { Menu } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { AdminSidebar } from './sidebar';
 import { AdminDashboard } from './dashboard';
+import { AdminOrders } from './orders-admin';
 import { AdminBookings } from './bookings';
 import { AdminCourses } from './courses-admin';
 import { AdminProducts } from './products-admin';
@@ -33,6 +34,7 @@ export default function AdminPage() {
 
   const SECTIONS: Record<AdminSection, React.ReactNode> = {
     dashboard: <AdminDashboard />,
+    orders: <AdminOrders />,
     bookings: <AdminBookings />,
     courses: <AdminCourses />,
     products: <AdminProducts />,

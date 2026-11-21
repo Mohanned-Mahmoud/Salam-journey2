@@ -16,6 +16,7 @@ import giveawayRouter from "./giveaway";
 import calWebhookRouter from "./cal-webhook";
 import stripeRouter from "./stripe";
 import uploadRouter from "./upload";
+import ordersRouter from "./orders";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(giveawayRouter);
 router.use(calWebhookRouter);
 router.use(stripeRouter);
 router.use(uploadRouter);
+router.use(ordersRouter);
 
 export default router;

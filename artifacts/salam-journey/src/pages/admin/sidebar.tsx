@@ -1,4 +1,4 @@
-import { Calendar, BookOpen, ShoppingBag, Users, MessageSquare, Settings, LogOut, LayoutDashboard, Brain, Layers } from 'lucide-react';
+import { Calendar, BookOpen, ShoppingBag, Users, MessageSquare, Settings, LogOut, LayoutDashboard, Brain, Layers, Receipt } from 'lucide-react';
 import { useLocation } from "wouter"; // 1. استيراد خطاف التنقل من wouter
 import type { AdminSection } from './types';
 
@@ -10,6 +10,7 @@ type Props = {
 
 const ITEMS: { id: AdminSection; label: string; Icon: React.ComponentType<{ size?: number }> }[] = [
   { id: 'dashboard',       label: 'الإحصائيات',       Icon: LayoutDashboard },
+  { id: 'orders',          label: 'طلبات الشراء والتحويل', Icon: Receipt },
   { id: 'bookings',        label: 'الحجوزات',         Icon: Calendar },
   { id: 'courses',         label: 'الدورات',          Icon: BookOpen },
   { id: 'products',        label: 'المنتجات',         Icon: ShoppingBag },
