@@ -183,10 +183,11 @@ router.put("/admin/orders/config", async (req, res): Promise<any> => {
       updates.push({ key: "instapay_link", value: String(instapayLink) });
     }
     if (usdToEgpRate !== undefined && !isNaN(parseFloat(usdToEgpRate))) {
-      updates.push({ key: "usd_to_egp_rate", value: String(usdToEgpRate) });
-      cachedLiveRate = {
-        rate: parseFloat(usdToEgpRate),
-        fetchedAt: Date.now(),
+      const parsedRate = parseFloat(usdToEgpRate);
+      updates.push({ key: "usd_to_egp_rate", value: String(parsedRate) });
+      cachedRate = {
+        rate: parsedRate,
+        timestamp: Date.now(),
         provider: "تم التعيين يدوياً من الإدارة",
       };
     }
