@@ -9,7 +9,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500
  * GET /storage/*
  * Streams public/uploaded assets from Cloudflare R2
  */
-router.get("/storage/*", async (req, res) => {
+router.get(/^\/storage\/(.*)/, async (req, res) => {
   try {
     const fileKey = (req.params as any)[0] as string;
     if (!fileKey) {
