@@ -18,16 +18,17 @@ Rules:
 5. Format: Return ONLY the translated English text. No introductions, no explanations, no quotes. Preserve any placeholders like {name} exactly as-is.
 6. Length: Match the length and structure of the original text as closely as possible.`;
 
-router.post("/translate", async (req, res) => {
+router.post(["/translate", "/admin/ai/translate"], async (req, res) => {
   try {
-    const { text } = req.body as { text?: string };
+    const body = req.body as { text?: string; sourceText?: string };
+    const rawText = body.text || body.sourceText;
 
-    if (!text || !text.trim()) {
+    if (!rawText || !rawText.trim()) {
       res.status(400).json({ error: "text is required" });
       return;
     }
 
-    const trimmedText = text.trim();
+    const trimmedText = rawText.trim();
     const hash = createHash("sha256").update(trimmedText).digest("hex");
 
     const cached = await db

@@ -270,15 +270,15 @@ export function AdminCourses() {
     if (!sourceText.trim()) return;
     try {
       setTranslating(field);
-      const res = await apiJson<{ translatedText: string }>('/admin/ai/translate', {
+      const res = await apiJson<{ translatedText: string }>('/translate', {
         method: 'POST',
         body: JSON.stringify({ text: sourceText, targetLanguage: 'en' }),
       });
       if (res?.translatedText) {
         setForm((prev) => ({ ...prev, [field]: res.translatedText }));
       }
-    } catch {
-      alert('تعذر استكمال الترجمة التلقائية');
+    } catch (err: any) {
+      alert('تعذر استكمال الترجمة التلقائية: ' + (err.message || 'يرجى التأكد من ربط مفتاح الذكاء الاصطناعي'));
     } finally {
       setTranslating(null);
     }

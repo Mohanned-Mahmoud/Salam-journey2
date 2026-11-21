@@ -697,19 +697,35 @@ export function AdminAiKnowledge() {
             )}
           </div>
 
-          {/* External Free Key Link */}
-          <div className="flex items-center justify-between text-xs pt-1" style={{ color: 'var(--text-muted)' }}>
-            <span>لا تملكين مفتاحاً؟ أو تريدين تجديده مجاناً؟</span>
-            <a
-              href="https://aistudio.google.com/app/apikey"
-              target="_blank"
-              rel="noreferrer"
-              className="font-bold inline-flex items-center gap-1 hover:underline transition-colors"
-              style={{ color: 'var(--sage-dark)' }}
-            >
-              الحصول على مفتاح مجاني من Google AI Studio
-              <ExternalLink size={12} />
-            </a>
+          {/* External Free Key Link & Account Info */}
+          <div className="pt-2 border-t text-xs space-y-2" style={{ borderColor: 'rgba(127,169,155,0.15)', color: 'var(--text-muted)' }}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span className="font-semibold" style={{ color: 'var(--text-dark)' }}>
+                📌 كيف تعرفين أي حساب Google مرتبط به المفتاح الحالي؟
+              </span>
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                rel="noreferrer"
+                className="font-bold inline-flex items-center gap-1 hover:underline transition-colors shrink-0"
+                style={{ color: 'var(--sage-dark)' }}
+              >
+                فتح Google AI Studio للتحقق أو إنشاء مفتاح جديد
+                <ExternalLink size={12} />
+              </a>
+            </div>
+
+            <div className="p-3 rounded-xl leading-relaxed text-[11px] space-y-1.5" style={{ background: 'var(--cream)', color: 'var(--text-body)' }}>
+              <p>
+                • <strong>المصدر الحالي:</strong> {aiStatus?.source === 'database' ? 'محفوظ في قاعدة بيانات لوحة التحكم (تم إدخاله يدوياً).' : 'مسجل في متغيرات بيئة السيرفر (Render Environment - GEMINI_API_KEY).'}
+              </p>
+              <p>
+                • <strong>معرفة الإيميل:</strong> جوجل لا تظهر الإيميل داخل كود المفتاح لأسباب أمنية؛ لمعرفة الحساب، افتحي <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline font-bold text-emerald-800">Google AI Studio</a> بالحساب الذي تريدين التحقق منه وقارني أول 6 رموز وآخر 4 رموز <code>{aiStatus?.maskedKey || 'AIzaSy...'}</code> في جدول المفاتيح.
+              </p>
+              <p>
+                • <strong>لتشغيل الذكاء من إيميل معين:</strong> افتحي <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline font-bold text-emerald-800">Google AI Studio</a> بالإيميل المطلوب، اضغطي على <strong>Create API Key</strong>، ثم انسخي المفتاح وألصقيه في الخانة أعلاه واضغطي <strong>حفظ وفحص الاتصال</strong> وسيعمل الموقع بالكامل بحسابكِ المختار فوراً.
+              </p>
+            </div>
           </div>
         </div>
 
