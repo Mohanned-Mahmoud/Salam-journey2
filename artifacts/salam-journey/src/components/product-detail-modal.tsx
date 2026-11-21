@@ -124,7 +124,7 @@ export function ProductDetailModal({
   return (
     <div
       dir="rtl"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-8"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6"
       role="dialog"
       aria-modal="true"
     >
@@ -138,27 +138,32 @@ export function ProductDetailModal({
       {/* Main Modal Container */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative bg-white rounded-3xl shadow-2xl overflow-hidden z-10 transition-all duration-500 ease-out flex flex-col ${
+        className={`relative bg-white w-full shadow-2xl overflow-hidden z-10 transition-all duration-300 ease-out flex flex-col ${
           isExpanded
-            ? "w-full max-w-5xl lg:max-w-6xl max-h-[92vh] h-[88vh]"
-            : "w-full max-w-md sm:max-w-lg max-h-[90vh]"
+            ? "max-h-[92vh] sm:max-h-[90vh] md:h-[86vh] max-w-full md:max-w-5xl lg:max-w-6xl rounded-t-[28px] sm:rounded-3xl"
+            : "max-h-[90vh] max-w-full sm:max-w-md md:max-w-lg rounded-t-[28px] sm:rounded-3xl"
         }`}
         style={{
-          boxShadow: "0 25px 60px -15px rgba(26, 46, 42, 0.35)",
+          boxShadow: "0 25px 60px -15px rgba(26, 46, 42, 0.4)",
           border: "1px solid rgba(127, 169, 155, 0.2)",
         }}
       >
+        {/* Mobile Swipe Drag Indicator Handle */}
+        <div className="sm:hidden pt-2.5 pb-1 flex justify-center bg-white shrink-0">
+          <div className="w-12 h-1.5 rounded-full bg-stone-300" />
+        </div>
+
         {/* Top Accent Gradient Bar */}
-        <div className="h-1.5 bg-gradient-to-r from-[var(--sage)] via-[var(--sage-dark)] to-[var(--blush)] shrink-0" />
+        <div className="h-1 bg-gradient-to-r from-[var(--sage)] via-[var(--sage-dark)] to-[var(--blush)] shrink-0" />
 
         {/* Floating Close Button */}
         <button
           type="button"
           onClick={onClose}
           aria-label="إغلاق"
-          className="absolute top-4 left-4 z-40 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-[var(--text-dark)] flex items-center justify-center shadow-md transition-all hover:scale-105"
+          className="absolute top-3.5 left-3.5 sm:top-4 sm:left-4 z-40 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/95 hover:bg-white text-[var(--text-dark)] flex items-center justify-center shadow-md transition-all hover:scale-105 border border-black/5"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
 
         {/* ══════════════════════════════════════════════════════════════ */}
@@ -168,7 +173,7 @@ export function ProductDetailModal({
           <div className="flex flex-col flex-1 overflow-y-auto">
             {/* Visual Cover / Image Header */}
             <div
-              className="h-56 relative shrink-0 overflow-hidden flex items-center justify-center"
+              className="h-48 sm:h-56 relative shrink-0 overflow-hidden flex items-center justify-center"
               style={{ background: product.gradient || "linear-gradient(135deg, var(--sage-light), var(--sage-muted))" }}
             >
               {hasImages && currentImage ? (
@@ -179,53 +184,55 @@ export function ProductDetailModal({
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center text-[var(--sage-dark)]">
-                  <div className="w-20 h-20 rounded-3xl bg-white/85 shadow-sm flex items-center justify-center mb-2">
-                    {product.Icon ? <product.Icon size={36} /> : <ShoppingBag size={36} />}
+                  <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-3xl bg-white/85 shadow-sm flex items-center justify-center mb-2">
+                    {product.Icon ? <product.Icon size={34} /> : <ShoppingBag size={34} />}
                   </div>
                 </div>
               )}
 
-              {/* Badge Tag */}
+              {/* Badge Tag (Placed safely with clear visibility) */}
               {product.badge?.ar && (
-                <span className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold bg-white/95 text-[var(--sage-dark)] shadow-sm">
+                <span className="absolute top-3.5 right-3.5 px-3 py-1 rounded-full text-xs font-bold bg-white/95 text-[var(--sage-dark)] shadow-sm border border-[rgba(127,169,155,0.2)]">
                   {product.badge.ar}
                 </span>
               )}
 
               {/* Quick Image Count Pill */}
               {displayImages.length > 1 && (
-                <span className="absolute bottom-3 left-4 px-2.5 py-1 rounded-full text-[11px] font-bold bg-black/50 text-white backdrop-blur-xs">
+                <span className="absolute bottom-3 left-3.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-black/60 text-white backdrop-blur-xs">
                   📷 {displayImages.length} صور
                 </span>
               )}
             </div>
 
             {/* Content Body */}
-            <div className="p-6 sm:p-7 flex-1 flex flex-col">
-              <div className="flex items-center justify-between gap-3 mb-2.5">
-                <span className="text-xs font-bold px-3 py-1 rounded-full bg-[var(--cream)] text-[var(--sage-dark)] border border-[rgba(127,169,155,0.2)]">
-                  {product.free ? "إصدار مجاني" : "منتج رقمي"}
-                </span>
-                <span className="text-xl font-extrabold text-[var(--sage-dark)]">
-                  {product.price.ar}
-                </span>
+            <div className="p-5 sm:p-7 flex-1 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-[var(--cream)] text-[var(--sage-dark)] border border-[rgba(127,169,155,0.2)]">
+                    {product.free ? "إصدار مجاني" : "منتج رقمي"}
+                  </span>
+                  <span className="text-xl font-extrabold text-[var(--sage-dark)]">
+                    {product.price.ar}
+                  </span>
+                </div>
+
+                <h2 className="text-xl sm:text-2xl font-extrabold text-[var(--text-dark)] mb-2.5 leading-snug">
+                  {product.title.ar}
+                </h2>
+
+                <p className="text-xs sm:text-sm text-[var(--text-body)] leading-relaxed mb-6 whitespace-pre-wrap">
+                  {product.desc.ar}
+                </p>
               </div>
 
-              <h2 className="text-2xl font-extrabold text-[var(--text-dark)] mb-3 leading-snug">
-                {product.title.ar}
-              </h2>
-
-              <p className="text-sm text-[var(--text-body)] leading-relaxed mb-6 whitespace-pre-wrap flex-1">
-                {product.desc.ar}
-              </p>
-
-              {/* Action Buttons: شراء + عرض التفاصيل */}
-              <div className="flex flex-col sm:flex-row items-center gap-3 pt-4 border-t border-[rgba(127,169,155,0.18)]">
-                {/* Secondary Button: عرض التفاصيل (المطلوب بالتحديد) */}
+              {/* Action Buttons: عرض التفاصيل + شراء */}
+              <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3 pt-4 border-t border-[rgba(127,169,155,0.18)]">
+                {/* Secondary Button: عرض التفاصيل */}
                 <button
                   type="button"
                   onClick={() => setIsExpanded(true)}
-                  className="w-full sm:flex-1 py-3 px-5 rounded-2xl border-2 border-[var(--sage)] bg-[var(--cream)]/60 hover:bg-[var(--cream)] text-[var(--text-dark)] font-extrabold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99]"
+                  className="w-full sm:flex-1 py-3 px-4 rounded-2xl border-2 border-[var(--sage)] bg-[var(--cream)]/60 hover:bg-[var(--cream)] text-[var(--text-dark)] font-extrabold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99]"
                 >
                   <Sparkles className="w-4 h-4 text-amber-600" />
                   <span>عرض التفاصيل</span>
@@ -236,7 +243,7 @@ export function ProductDetailModal({
                   type="button"
                   disabled={isProcessing}
                   onClick={() => onBuy(product)}
-                  className="w-full sm:flex-1 py-3 px-5 rounded-2xl bg-[var(--sage-dark)] hover:bg-[var(--text-dark)] text-white font-extrabold text-sm flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-[0.99] disabled:opacity-50"
+                  className="w-full sm:flex-1 py-3 px-4 rounded-2xl bg-[var(--sage-dark)] hover:bg-[var(--text-dark)] text-white font-extrabold text-sm flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-[0.99] disabled:opacity-50"
                 >
                   {isProcessing ? (
                     <span>جاري التحويل...</span>
@@ -257,54 +264,60 @@ export function ProductDetailModal({
           </div>
         ) : (
           /* ══════════════════════════════════════════════════════════════ */
-          /* MODE 2: EXPANDED SPLIT VIEW (الصورة يمين والتفاصيل شمال)      */
+          /* MODE 2: EXPANDED VIEW (معالجة الموبايل والشاشة المقسمة للاب)   */
           /* ══════════════════════════════════════════════════════════════ */
-          <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+          <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative">
             {/* ──────────────────────────────────────────────────────────── */}
             {/* RIGHT SIDE (الجزء اليمين): معرض الصور الموسع                 */}
             {/* ──────────────────────────────────────────────────────────── */}
-            <div className="w-full md:w-1/2 relative bg-[#F8F5EE] flex flex-col justify-between overflow-hidden p-4 md:p-6 shrink-0 border-b md:border-b-0">
-              {/* Smoky / Misty Atmospheric Fade along the divider */}
+            <div className="w-full md:w-1/2 relative bg-[#FBF9F5] flex flex-col justify-between p-3.5 sm:p-5 md:p-6 shrink-0 border-b md:border-b-0 border-[rgba(127,169,155,0.18)]">
+              {/* 
+                SMOKY / MISTY ATMOSPHERIC TRANSITION:
+                Only placed along the INNER divider between the Image Column and the Details Column!
+                In RTL, the left edge of the right column meets the details column.
+                Therefore it is strictly placed at `left-0` with NO overlay on the right side!
+              */}
               <div
-                className="hidden md:block absolute top-0 bottom-0 start-0 w-24 pointer-events-none z-20"
+                className="hidden md:block absolute top-0 bottom-0 left-0 w-16 pointer-events-none z-20"
                 style={{
                   background:
-                    "linear-gradient(to right, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.82) 30%, rgba(255, 255, 255, 0.25) 70%, transparent 100%)",
-                  filter: "blur(3px)",
+                    "linear-gradient(to left, transparent 0%, rgba(255, 255, 255, 0.5) 45%, rgba(255, 255, 255, 0.95) 85%, #FFFFFF 100%)",
+                  backdropFilter: "blur(2px)",
                 }}
               />
+
+              {/* Mobile Soft Misty Divider at the bottom of the image container */}
               <div
-                className="hidden md:block absolute top-0 bottom-0 start-0 w-12 pointer-events-none z-20"
+                className="md:hidden absolute bottom-0 inset-x-0 h-8 pointer-events-none z-20"
                 style={{
-                  background:
-                    "radial-gradient(ellipse at left, rgba(255, 255, 255, 0.95) 0%, rgba(250, 245, 232, 0.5) 60%, transparent 100%)",
+                  background: "linear-gradient(to bottom, transparent 0%, rgba(255, 255, 255, 0.8) 60%, #FFFFFF 100%)",
                 }}
               />
 
               {/* Main Expanded Image View */}
-              <div className="relative flex-1 rounded-2xl overflow-hidden bg-white/70 border border-[rgba(127,169,155,0.2)] shadow-inner flex items-center justify-center min-h-[280px] md:min-h-[420px] group">
+              <div className="relative rounded-2xl overflow-hidden bg-white border border-[rgba(127,169,155,0.2)] shadow-xs flex items-center justify-center min-h-[220px] sm:min-h-[280px] md:min-h-[380px] md:flex-1 group">
                 {hasImages && currentImage ? (
                   <img
                     key={currentImage}
                     src={currentImage}
                     alt={product.title.ar}
-                    className="w-full h-full object-contain max-h-[500px] p-2 transition-all duration-700 ease-out group-hover:scale-105 animate-in fade-in zoom-in-95"
+                    className="w-full h-full object-contain max-h-[240px] sm:max-h-[320px] md:max-h-[440px] p-2 transition-all duration-500 ease-out animate-in fade-in zoom-in-95"
                   />
                 ) : (
                   <div
-                    className="w-full h-full flex flex-col items-center justify-center p-8 text-center"
+                    className="w-full h-full flex flex-col items-center justify-center p-6 text-center"
                     style={{ background: product.gradient || "linear-gradient(135deg, var(--sage-light), var(--cream))" }}
                   >
-                    <div className="w-24 h-24 rounded-3xl bg-white/90 shadow-md flex items-center justify-center mb-3">
-                      {product.Icon ? <product.Icon size={44} /> : <ShoppingBag size={44} />}
+                    <div className="w-20 h-20 rounded-3xl bg-white/90 shadow-md flex items-center justify-center mb-2">
+                      {product.Icon ? <product.Icon size={40} /> : <ShoppingBag size={40} />}
                     </div>
-                    <span className="font-extrabold text-lg text-[var(--text-dark)]">{product.title.ar}</span>
+                    <span className="font-extrabold text-base text-[var(--text-dark)]">{product.title.ar}</span>
                   </div>
                 )}
 
-                {/* Badge Overlay */}
+                {/* Badge Overlay: 100% Clear & Unobstructed at top right */}
                 {product.badge?.ar && (
-                  <span className="absolute top-3.5 right-3.5 px-3 py-1 rounded-full text-xs font-bold bg-white/95 text-[var(--sage-dark)] shadow-sm z-10 border border-[rgba(127,169,155,0.25)]">
+                  <span className="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold bg-white text-[var(--sage-dark)] shadow-sm z-30 border border-[rgba(127,169,155,0.25)]">
                     {product.badge.ar}
                   </span>
                 )}
@@ -316,22 +329,22 @@ export function ProductDetailModal({
                       type="button"
                       onClick={prevImage}
                       aria-label="الصورة السابقة"
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-[var(--text-dark)] shadow-md flex items-center justify-center transition-all hover:scale-110 z-20"
+                      className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/90 hover:bg-white text-[var(--text-dark)] shadow-md flex items-center justify-center transition-all hover:scale-105 z-20 border border-black/5"
                     >
-                      <ChevronRight className="w-5 h-5" />
+                      <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
 
                     <button
                       type="button"
                       onClick={nextImage}
                       aria-label="الصورة التالية"
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-[var(--text-dark)] shadow-md flex items-center justify-center transition-all hover:scale-110 z-20"
+                      className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/90 hover:bg-white text-[var(--text-dark)] shadow-md flex items-center justify-center transition-all hover:scale-105 z-20 border border-black/5"
                     >
-                      <ChevronLeft className="w-5 h-5" />
+                      <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
 
                     {/* Counter Pill */}
-                    <div className="absolute bottom-3 left-3 px-3 py-1 rounded-full bg-black/60 text-white text-xs font-medium backdrop-blur-xs z-10">
+                    <div className="absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-3 px-2.5 py-0.5 sm:py-1 rounded-full bg-black/60 text-white text-[11px] font-medium backdrop-blur-xs z-10">
                       {selectedImageIndex + 1} / {displayImages.length}
                     </div>
                   </>
@@ -340,16 +353,16 @@ export function ProductDetailModal({
 
               {/* Thumbnails Gallery Strip */}
               {displayImages.length > 1 && (
-                <div className="mt-3 flex items-center gap-2.5 overflow-x-auto pb-1 pt-0.5 px-1 scrollbar-thin">
+                <div className="mt-2.5 sm:mt-3 flex items-center gap-2 overflow-x-auto pb-1 px-0.5 scrollbar-thin">
                   {displayImages.map((img, idx) => (
                     <button
                       key={idx}
                       type="button"
                       onClick={() => setSelectedImageIndex(idx)}
-                      className={`relative w-14 h-14 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
+                      className={`relative w-11 h-11 sm:w-13 sm:h-13 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
                         selectedImageIndex === idx
-                          ? "border-[var(--sage-dark)] ring-2 ring-[var(--sage)]/30 scale-105"
-                          : "border-gray-200 opacity-60 hover:opacity-100 hover:border-gray-400"
+                          ? "border-[var(--sage-dark)] ring-2 ring-[var(--sage)]/40 scale-105"
+                          : "border-stone-200 opacity-60 hover:opacity-100"
                       }`}
                     >
                       <img src={img} alt={`صورة ${idx + 1}`} className="w-full h-full object-cover" />
@@ -362,97 +375,97 @@ export function ProductDetailModal({
             {/* ──────────────────────────────────────────────────────────── */}
             {/* LEFT SIDE (الجزء الشمال): التفاصيل الموسعة الكاملة             */}
             {/* ──────────────────────────────────────────────────────────── */}
-            <div className="w-full md:w-1/2 flex flex-col justify-between overflow-y-auto p-6 md:p-8 bg-white relative z-10">
-              <div className="space-y-6">
+            <div className="w-full md:w-1/2 flex flex-col justify-between md:overflow-y-auto p-4 sm:p-6 md:p-8 bg-white relative z-10 pb-24 md:pb-8">
+              <div className="space-y-4 sm:space-y-6">
                 {/* Header: Title + Price + Category */}
                 <div>
                   <div className="flex items-center justify-between gap-3 mb-2">
                     <span className="text-xs font-bold px-3 py-1 rounded-full bg-[var(--cream)] text-[var(--sage-dark)] border border-[rgba(127,169,155,0.2)]">
                       {product.type === "printable" ? "مطبوعات وأوراق عمل" : product.type === "guide" ? "دليل إرشادي" : "ملف رقمي (PDF)"}
                     </span>
-                    <span className="text-2xl font-black text-[var(--sage-dark)]">
+                    <span className="text-xl sm:text-2xl font-black text-[var(--sage-dark)]">
                       {product.price.ar}
                     </span>
                   </div>
 
-                  <h1 className="text-2xl sm:text-3xl font-black text-[var(--text-dark)] leading-snug">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-[var(--text-dark)] leading-snug">
                     {product.title.ar}
                   </h1>
                 </div>
 
                 {/* Extended Description */}
-                <div className="p-4 rounded-2xl bg-[var(--cream)]/50 border border-[rgba(127,169,155,0.18)]">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--sage-dark)] mb-2">
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-[var(--cream)]/50 border border-[rgba(127,169,155,0.18)]">
+                  <h3 className="text-xs font-bold text-[var(--sage-dark)] mb-1.5">
                     نبذة عن هذا المنتج:
                   </h3>
-                  <p className="text-sm text-[var(--text-body)] leading-relaxed whitespace-pre-line">
+                  <p className="text-xs sm:text-sm text-[var(--text-body)] leading-relaxed whitespace-pre-line">
                     {extendedDesc}
                   </p>
                 </div>
 
                 {/* Features & Inclusions List */}
                 <div>
-                  <h3 className="text-sm font-extrabold text-[var(--text-dark)] mb-3 flex items-center gap-2">
+                  <h3 className="text-xs sm:text-sm font-extrabold text-[var(--text-dark)] mb-2.5 flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-amber-600" />
                     <span>ماذا يتضمن هذا المنتج وكيف يفيدك؟</span>
                   </h3>
-                  <ul className="space-y-2.5">
+                  <ul className="space-y-2 sm:space-y-2.5">
                     {featuresList.map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-[var(--text-body)]">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <span className="leading-normal">{item}</span>
+                      <li key={idx} className="flex items-start gap-2 text-xs sm:text-sm text-[var(--text-body)]">
+                        <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <span className="leading-relaxed">{item}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
 
                 {/* Specs Micro-Cards */}
-                <div className="grid grid-cols-3 gap-2.5 pt-2">
-                  <div className="p-3 rounded-2xl bg-[var(--cream)]/40 border border-[rgba(127,169,155,0.15)] text-center">
-                    <FileText className="w-4 h-4 text-[var(--sage-dark)] mx-auto mb-1" />
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  <div className="p-2 sm:p-3 rounded-2xl bg-[var(--cream)]/40 border border-[rgba(127,169,155,0.15)] text-center">
+                    <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[var(--sage-dark)] mx-auto mb-1" />
                     <span className="block text-[10px] text-[var(--text-muted)]">الصيغة</span>
-                    <span className="block text-xs font-bold text-[var(--text-dark)]">PDF عالي الدقة</span>
+                    <span className="block text-[11px] sm:text-xs font-bold text-[var(--text-dark)]">PDF عالي الدقة</span>
                   </div>
 
-                  <div className="p-3 rounded-2xl bg-[var(--cream)]/40 border border-[rgba(127,169,155,0.15)] text-center">
-                    <Zap className="w-4 h-4 text-amber-600 mx-auto mb-1" />
+                  <div className="p-2 sm:p-3 rounded-2xl bg-[var(--cream)]/40 border border-[rgba(127,169,155,0.15)] text-center">
+                    <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 mx-auto mb-1" />
                     <span className="block text-[10px] text-[var(--text-muted)]">التسليم</span>
-                    <span className="block text-xs font-bold text-[var(--text-dark)]">فوري ومباشر</span>
+                    <span className="block text-[11px] sm:text-xs font-bold text-[var(--text-dark)]">فوري ومباشر</span>
                   </div>
 
-                  <div className="p-3 rounded-2xl bg-[var(--cream)]/40 border border-[rgba(127,169,155,0.15)] text-center">
-                    <Smartphone className="w-4 h-4 text-[var(--sage-dark)] mx-auto mb-1" />
+                  <div className="p-2 sm:p-3 rounded-2xl bg-[var(--cream)]/40 border border-[rgba(127,169,155,0.15)] text-center">
+                    <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[var(--sage-dark)] mx-auto mb-1" />
                     <span className="block text-[10px] text-[var(--text-muted)]">التوافق</span>
-                    <span className="block text-xs font-bold text-[var(--text-dark)]">الهاتف والطباعة</span>
+                    <span className="block text-[11px] sm:text-xs font-bold text-[var(--text-dark)]">الهاتف والطباعة</span>
                   </div>
                 </div>
 
                 {/* Safe & Secure Guarantee Note */}
-                <div className="flex items-center gap-2 text-xs text-[#718079] p-2.5 rounded-xl bg-emerald-50/60 border border-emerald-200/60">
+                <div className="flex items-center gap-2 text-[11px] sm:text-xs text-[#718079] p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/60">
                   <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
                   <span>دفع آمن ومشفّر بالكامل مع تحميل مباشر فوري للملفات.</span>
                 </div>
               </div>
 
-              {/* Bottom Sticky Action Bar */}
-              <div className="pt-6 mt-6 border-t border-[rgba(127,169,155,0.18)] flex items-center gap-3">
-                {/* Collapse back to Quick View button */}
+              {/* 
+                DESKTOP BOTTOM ACTION BAR
+              */}
+              <div className="hidden md:flex pt-5 mt-6 border-t border-[rgba(127,169,155,0.18)] items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setIsExpanded(false)}
                   title="العودة للعرض السريع"
-                  className="py-3.5 px-4 rounded-2xl border border-[rgba(127,169,155,0.3)] bg-[var(--cream)] hover:bg-white text-[var(--text-dark)] text-xs font-bold flex items-center gap-1.5 transition-colors"
+                  className="py-3 px-4 rounded-2xl border border-[rgba(127,169,155,0.3)] bg-[var(--cream)] hover:bg-white text-[var(--text-dark)] text-xs font-bold flex items-center gap-1.5 transition-colors"
                 >
                   <Minimize2 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">تصغير</span>
+                  <span>تصغير</span>
                 </button>
 
-                {/* Main Buy CTA */}
                 <button
                   type="button"
                   disabled={isProcessing}
                   onClick={() => onBuy(product)}
-                  className="flex-1 py-4 px-6 rounded-2xl bg-[var(--sage-dark)] hover:bg-[var(--text-dark)] text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-[0.99] disabled:opacity-50"
+                  className="flex-1 py-3.5 px-6 rounded-2xl bg-[var(--sage-dark)] hover:bg-[var(--text-dark)] text-white font-black text-sm sm:text-base flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg active:scale-[0.99] disabled:opacity-50"
                 >
                   {isProcessing ? (
                     <span>جاري التحويل...</span>
@@ -465,6 +478,48 @@ export function ProductDetailModal({
                     <>
                       <span>شراء الآن ({product.price.ar})</span>
                       <ExternalLink className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* 
+              MOBILE STICKY BOTTOM ACTION BAR (فائق العملية والراحة على الموبايل)
+              Always pinned to the bottom of the screen while user scrolls through images & details!
+            */}
+            <div className="md:hidden fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-[rgba(127,169,155,0.2)] p-3 px-4 shadow-[0_-8px_20px_rgba(0,0,0,0.08)] z-40 flex items-center justify-between gap-3">
+              <div className="flex flex-col">
+                <span className="text-[10px] text-[var(--text-muted)] font-medium">السعر المطلوب</span>
+                <span className="text-base font-black text-[var(--sage-dark)] leading-tight">{product.price.ar}</span>
+              </div>
+
+              <div className="flex items-center gap-2 flex-1 max-w-xs">
+                <button
+                  type="button"
+                  onClick={() => setIsExpanded(false)}
+                  className="py-2.5 px-3 rounded-xl border border-[rgba(127,169,155,0.3)] bg-[var(--cream)] text-[var(--text-dark)] text-xs font-bold flex items-center gap-1"
+                >
+                  <Minimize2 className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isProcessing}
+                  onClick={() => onBuy(product)}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-[var(--sage-dark)] active:bg-[var(--text-dark)] text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md disabled:opacity-50"
+                >
+                  {isProcessing ? (
+                    <span>جاري...</span>
+                  ) : isPurchased || product.free ? (
+                    <>
+                      <span>فتح / تنزيل</span>
+                      <Download className="w-3.5 h-3.5" />
+                    </>
+                  ) : (
+                    <>
+                      <span>شراء الآن</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
                     </>
                   )}
                 </button>
