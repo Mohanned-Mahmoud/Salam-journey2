@@ -143,11 +143,6 @@ export default function ComingSoonPage() {
           >
             قـريـبـاً
           </h2>
-          <div className="flex items-center justify-center gap-3 mt-3">
-            <span className="h-[2px] w-12 sm:w-16 rounded-full bg-gradient-to-r from-transparent via-[var(--sage)] to-transparent" />
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
-            <span className="h-[2px] w-12 sm:w-16 rounded-full bg-gradient-to-r from-transparent via-[var(--sage)] to-transparent" />
-          </div>
         </div>
 
         {/* Master Headline */}
