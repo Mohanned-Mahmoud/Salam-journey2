@@ -130,9 +130,9 @@ export default function ComingSoonPage() {
       {/* ── Main Hero & Content ── */}
       <main className="relative z-10 max-w-4xl mx-auto px-6 py-8 md:py-12 flex flex-col items-center text-center">
         {/* Grand Typography for "قريباً" */}
-        <div className="relative mb-4 md:mb-6 select-none animate-fade-in">
+        <div className="relative mb-4 md:mb-6 select-none animate-fade-in overflow-visible">
           <h2
-            className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tight leading-none"
+            className="inline-block text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-normal leading-[1.25] pt-2 pb-6 px-4 overflow-visible"
             style={{
               fontFamily: "var(--font-heading)",
               background: "linear-gradient(135deg, var(--text-dark) 0%, #355A53 45%, var(--sage-dark) 75%, #C97A63 100%)",
