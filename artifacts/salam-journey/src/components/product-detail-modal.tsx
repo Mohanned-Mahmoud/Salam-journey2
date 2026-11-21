@@ -63,7 +63,9 @@ export function ProductDetailModal({
   // Reset state when opening a new product
   useEffect(() => {
     if (isOpen) {
-      setIsExpanded(initialExpanded);
+      // On mobile screens (< 768px), open directly in the complete rich view for effortless mobile UX
+      const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+      setIsExpanded(isMobile ? true : initialExpanded);
       setSelectedImageIndex(0);
       setTouchStart(null);
       setTouchEnd(null);
@@ -132,7 +134,6 @@ export function ProductDetailModal({
   const handleTouchEnd = () => {
     if (!touchStart || !touchEnd) return;
     const distance = touchStart - touchEnd;
-    // In RTL: swiping finger to the left (distance > 0) navigates to NEXT image
     if (distance > minSwipeDistance) {
       nextImage();
     } else if (distance < -minSwipeDistance) {
@@ -180,8 +181,8 @@ export function ProductDetailModal({
         onClick={(e) => e.stopPropagation()}
         className={`relative bg-white w-full shadow-2xl overflow-hidden z-10 transition-all duration-300 ease-out flex flex-col ${
           isExpanded
-            ? "h-[94vh] sm:h-[90vh] md:h-[86vh] max-w-full md:max-w-5xl lg:max-w-6xl rounded-t-[32px] sm:rounded-3xl"
-            : "max-h-[90vh] max-w-full sm:max-w-md md:max-w-lg rounded-t-[32px] sm:rounded-3xl"
+            ? "h-[88dvh] max-h-[88dvh] sm:h-[90vh] md:h-[86vh] max-w-full md:max-w-5xl lg:max-w-6xl rounded-t-[28px] sm:rounded-3xl"
+            : "max-h-[88dvh] max-w-full sm:max-w-md md:max-w-lg rounded-t-[28px] sm:rounded-3xl"
         }`}
         style={{
           boxShadow: "0 25px 60px -15px rgba(26, 46, 42, 0.4)",
@@ -192,7 +193,7 @@ export function ProductDetailModal({
         <div className="h-1 bg-gradient-to-r from-[var(--sage)] via-[var(--sage-dark)] to-[var(--blush)] shrink-0" />
 
         {/* ══════════════════════════════════════════════════════════════ */}
-        {/* MODE 1: COMPACT QUICK VIEW (قبل الضغط على عرض التفاصيل)       */}
+        {/* MODE 1: COMPACT QUICK VIEW (للكمبيوتر فقط قبل التوسيع)        */}
         {/* ══════════════════════════════════════════════════════════════ */}
         {!isExpanded ? (
           <div className="flex flex-col flex-1 overflow-y-auto">
@@ -528,17 +529,17 @@ export function ProductDetailModal({
             </div>
 
             {/* ──────────────────────────────────────────────────────────── */}
-            {/* MOBILE VIEW (< 768px): تجربة أصلية فائقة السلاسة على الهواتف   */}
+            {/* MOBILE VIEW (< 768px): تجربة شيت أصلية متكاملة وفائقة السلاسة */}
             {/* ──────────────────────────────────────────────────────────── */}
             <div className="md:hidden flex flex-col w-full h-full bg-white relative">
               {/* Native Header Bar */}
-              <div className="sticky top-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-b border-[rgba(127,169,155,0.15)] px-4 py-2.5 flex items-center justify-between shrink-0">
+              <div className="shrink-0 bg-white/95 backdrop-blur-md border-b border-[rgba(127,169,155,0.15)] px-4 py-2.5 flex items-center justify-between">
                 <span className="text-xs font-bold px-3 py-1 rounded-full bg-[var(--cream)] text-[var(--sage-dark)] border border-[rgba(127,169,155,0.2)]">
                   {getProductTypeLabel()}
                 </span>
 
                 {/* Drag Handle in center */}
-                <div className="w-10 h-1 rounded-full bg-stone-300 mx-auto" />
+                <div className="w-10 h-1.5 rounded-full bg-stone-300" />
 
                 {/* Close Button */}
                 <button
@@ -555,8 +556,7 @@ export function ProductDetailModal({
               <div className="flex-1 overflow-y-auto overscroll-contain">
                 {/* Mobile Hero Image Carousel with Touch Swipe */}
                 <div
-                  className="relative w-full bg-[#FAF8F5] border-b border-[rgba(127,169,155,0.15)] flex items-center justify-center overflow-hidden touch-pan-y"
-                  style={{ minHeight: "260px", maxHeight: "320px" }}
+                  className="relative w-full h-64 bg-[#FAF8F5] border-b border-[rgba(127,169,155,0.12)] flex items-center justify-center overflow-hidden touch-pan-y"
                   onTouchStart={handleTouchStart}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
@@ -566,11 +566,11 @@ export function ProductDetailModal({
                       key={currentImage}
                       src={currentImage}
                       alt={product.title.ar}
-                      className="w-full h-full max-h-[300px] object-contain p-4 select-none transition-all duration-300 animate-in fade-in"
+                      className="w-full h-full max-h-60 object-contain p-3 select-none transition-all duration-300 animate-in fade-in"
                     />
                   ) : (
                     <div
-                      className="w-full h-64 flex flex-col items-center justify-center p-6 text-center"
+                      className="w-full h-full flex flex-col items-center justify-center p-6 text-center"
                       style={{
                         background:
                           product.gradient ||
@@ -642,7 +642,7 @@ export function ProductDetailModal({
                 )}
 
                 {/* Mobile Content Details */}
-                <div className="p-4 sm:p-5 space-y-4 pb-28">
+                <div className="p-4 sm:p-5 space-y-4 pb-6">
                   {/* Title & Price */}
                   <div>
                     <div className="flex items-start justify-between gap-3 mb-1.5">
@@ -733,8 +733,8 @@ export function ProductDetailModal({
                 </div>
               </div>
 
-              {/* Mobile Sticky Bottom Action Bar (Rock-solid & Touch-friendly) */}
-              <div className="sticky bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-[rgba(127,169,155,0.2)] p-3 px-4 shadow-[0_-8px_20px_rgba(0,0,0,0.08)] z-40 flex items-center justify-between gap-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              {/* Mobile Bottom Action Bar (Shrink-0: Always in view, never cut off) */}
+              <div className="shrink-0 bg-white/95 backdrop-blur-md border-t border-[rgba(127,169,155,0.2)] p-3 px-4 shadow-[0_-8px_20px_rgba(0,0,0,0.06)] flex items-center justify-between gap-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                 <div className="flex flex-col">
                   <span className="text-[10px] text-[var(--text-muted)] font-medium">السعر المطلوب</span>
                   <span className="text-base font-black text-[var(--sage-dark)] leading-tight">
