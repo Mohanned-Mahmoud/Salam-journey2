@@ -42,6 +42,22 @@ function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [displayMode, setDisplayMode] = useState<'full_website' | 'funnel_page' | 'salam_journey' | 'coming_soon' | null>(null);
 
+  // Check if testing mode is active (via /test route or session flag)
+  const isDirectTest = location === "/test" || location.startsWith("/test");
+  const [isTestSession, setIsTestSession] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.sessionStorage.getItem("salam_test_mode") === "1";
+  });
+
+  useEffect(() => {
+    if (isDirectTest && !isTestSession) {
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem("salam_test_mode", "1");
+        setIsTestSession(true);
+      }
+    }
+  }, [isDirectTest, isTestSession]);
+
   const isUserAdmin = isAuthenticated && (user as any)?.role === "admin";
   const isAdminRoute = location === "/admin" || location.startsWith("/admin/");
 
@@ -119,7 +135,7 @@ function Router() {
     );
   }
 
-  if (displayMode === "coming_soon") {
+  if (displayMode === "coming_soon" && !isDirectTest && !isTestSession) {
     return (
       <Switch>
         <Route path="/" component={ComingSoonPage} />
@@ -191,6 +207,7 @@ function Router() {
       <main className="flex-1">
         <Switch>
           <Route path="/" component={Home} />
+          <Route path="/test" component={Home} />
           <Route path="/courses" component={Courses} />
           <Route path="/sessions" component={Sessions} />
           <Route path="/products" component={Products} />
@@ -219,6 +236,35 @@ function Router() {
       </main>
       <Footer />
       <WhatsAppButton />
+
+      {/* Floating Pill when Test Mode is Active */}
+      {(isDirectTest || isTestSession) && (
+        <div
+          dir="rtl"
+          className="fixed bottom-5 left-5 z-50 flex items-center gap-2.5 px-3.5 py-2 rounded-2xl shadow-lg border text-xs font-bold animate-fade-in"
+          style={{
+            background: "rgba(45, 74, 69, 0.95)",
+            color: "var(--cream)",
+            borderColor: "rgba(127, 169, 155, 0.4)",
+            backdropFilter: "blur(8px)",
+          }}
+        >
+          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+          <span>الموقع التجريبي (/test)</span>
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                window.sessionStorage.removeItem("salam_test_mode");
+                window.location.href = "/";
+              }
+            }}
+            className="mr-1 px-2 py-0.5 rounded-lg bg-white/15 hover:bg-white/25 text-[11px] transition-colors"
+          >
+            خروج
+          </button>
+        </div>
+      )}
     </div>
   );
 }

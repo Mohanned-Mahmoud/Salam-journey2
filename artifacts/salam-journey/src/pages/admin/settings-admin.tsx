@@ -380,16 +380,29 @@ export function AdminSettings() {
             {modeSaving && <Loader2 size={14} className="animate-spin text-gray-500" />}
           </div>
 
-          <a
-            href="/coming-soon"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl text-[var(--sage-dark)] hover:text-white hover:bg-[var(--sage-dark)] transition-colors border border-[rgba(127,169,155,0.3)] bg-white shadow-xs"
-          >
-            <Sparkles size={13} className="text-amber-500" />
-            <span>معاينة صفحة قريباً في نافذة جديدة</span>
-            <ExternalLink size={13} />
-          </a>
+          <div className="flex items-center gap-2 flex-wrap">
+            <a
+              href="/test"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl text-emerald-800 hover:text-white hover:bg-emerald-700 transition-colors border border-emerald-300 bg-emerald-50 shadow-xs"
+            >
+              <Globe size={13} className="text-emerald-600" />
+              <span>تجربة الموقع العادي (/test)</span>
+              <ExternalLink size={13} />
+            </a>
+
+            <a
+              href="/coming-soon"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl text-[var(--sage-dark)] hover:text-white hover:bg-[var(--sage-dark)] transition-colors border border-[rgba(127,169,155,0.3)] bg-white shadow-xs"
+            >
+              <Sparkles size={13} className="text-amber-500" />
+              <span>معاينة صفحة قريباً</span>
+              <ExternalLink size={13} />
+            </a>
+          </div>
         </div>
       </div>
 
