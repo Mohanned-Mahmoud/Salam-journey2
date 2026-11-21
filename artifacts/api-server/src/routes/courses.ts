@@ -1,23 +1,101 @@
 import { Router, type IRouter } from "express";
-import { db, coursesTable, courseRoomsTable, coachesTable, insertCourseSchema } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, coursesTable, courseRoomsTable, coachesTable, insertCourseSchema, usersTable, enrollmentsTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 
 const router: IRouter = Router();
 
-// Get all courses
-router.get("/courses", async (_req, res) => {
+// Helper to check if a user has authorized access to a course (admin, enrolled, or free course)
+async function isUserAuthorizedForCourse(userId: string | undefined, courseId: string, course: any): Promise<boolean> {
+  if (course.category === "free" || Number(course.price || 0) === 0) {
+    return true;
+  }
+  if (!userId) return false;
+
   try {
+    // Check if admin
+    const user = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (user.length > 0 && user[0].role === "admin") {
+      return true;
+    }
+
+    // Check if enrolled
+    const enrollment = await db
+      .select({ id: enrollmentsTable.id })
+      .from(enrollmentsTable)
+      .where(and(eq(enrollmentsTable.userId, userId), eq(enrollmentsTable.courseId, courseId)))
+      .limit(1);
+
+    return enrollment.length > 0;
+  } catch (err) {
+    console.error("Authorization check error:", err);
+    return false;
+  }
+}
+
+// Redact / sanitize video URLs and attachments for locked content (Anti-Inspect & Anti-Theft)
+function sanitizeCourse(course: any, isAuthorized: boolean) {
+  if (isAuthorized) {
+    return { ...course, isUserEnrolled: true };
+  }
+
+  const rawLessons = Array.isArray(course.lessons) ? course.lessons : [];
+  const sanitizedLessons = rawLessons.map((lesson: any) => {
+    if (lesson.isFreePreview) {
+      return { ...lesson, isLocked: false };
+    }
+    return {
+      ...lesson,
+      videoUrl: "", // Physically strip video URL so it cannot be inspected in DevTools
+      attachmentUrl: "", // Physically strip private attachment
+      isLocked: true,
+    };
+  });
+
+  return {
+    ...course,
+    videoUrl: "", // Strip main course video URL
+    lessons: sanitizedLessons,
+    isUserEnrolled: false,
+  };
+}
+
+// Get all courses (Public catalog: private videos are completely sanitized so Inspect cannot see them)
+router.get("/courses", async (req, res) => {
+  try {
+    const userId = (req as any).userId || (req.headers["x-user-id"] as string);
     const courses = await db.select().from(coursesTable);
-    res.json(courses);
+
+    // If admin, return full courses
+    let isAdmin = false;
+    if (userId) {
+      const u = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+      isAdmin = u.length > 0 && u[0].role === "admin";
+    }
+
+    if (isAdmin) {
+      return res.json(courses.map((c) => ({ ...c, isUserEnrolled: true })));
+    }
+
+    // Sanitize paid courses
+    const sanitized = courses.map((c) => {
+      if (c.category === "free" || Number(c.price || 0) === 0) {
+        return { ...c, isUserEnrolled: true };
+      }
+      return sanitizeCourse(c, false);
+    });
+
+    return res.json(sanitized);
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch courses" });
+    return res.status(500).json({ error: "Failed to fetch courses" });
   }
 });
 
-// Get course by ID with rooms
+// Get course by ID with rooms (Strict Paywall: only enrolled students receive private video streams)
 router.get("/courses/:id", async (req, res) => {
   try {
     const id = req.params.id as string;
+    const userId = (req as any).userId || (req.headers["x-user-id"] as string);
+
     const course = await db
       .select()
       .from(coursesTable)
@@ -33,7 +111,10 @@ router.get("/courses/:id", async (req, res) => {
       .from(courseRoomsTable)
       .where(eq(courseRoomsTable.courseId, id));
 
-    return res.json({ ...course[0], rooms });
+    const isAuthorized = await isUserAuthorizedForCourse(userId, id, course[0]);
+    const safeCourse = sanitizeCourse(course[0], isAuthorized);
+
+    return res.json({ ...safeCourse, rooms });
   } catch (error) {
     return res.status(500).json({ error: "Failed to fetch course" });
   }
@@ -243,29 +324,65 @@ router.post("/courses/:id/upload-url", async (req, res) => {
   }
 });
 
-// Generate presigned view/download URL
+// Generate presigned view/streaming URL (Protected by Paywall & Anti-Theft)
 router.post("/courses/:id/download-url", async (req, res) => {
   try {
     const { fileKey } = req.body;
     if (!fileKey) {
       return res.status(400).json({ error: "fileKey is required" });
     }
+
+    const userId = (req as any).userId || (req.headers["x-user-id"] as string);
+
     // Check if the file belongs to the course's folder OR matches videoUrl / lesson media
     const courseInfo = await db
-      .select({ videoUrl: coursesTable.videoUrl, lessons: coursesTable.lessons })
+      .select({
+        id: coursesTable.id,
+        videoUrl: coursesTable.videoUrl,
+        lessons: coursesTable.lessons,
+        category: coursesTable.category,
+        price: coursesTable.price,
+      })
       .from(coursesTable)
       .where(eq(coursesTable.id, req.params.id))
       .limit(1);
 
-    const isVideoUrl = courseInfo.length > 0 && courseInfo[0].videoUrl === fileKey;
-    const isLessonFile = courseInfo.length > 0 && Array.isArray(courseInfo[0].lessons) && courseInfo[0].lessons.some(
-      (l) => l.videoUrl === fileKey || l.attachmentUrl === fileKey
-    );
-    if (!fileKey.startsWith(`courses/${req.params.id}/`) && !isVideoUrl && !isLessonFile && !fileKey.startsWith("courses/")) {
-       return res.status(403).json({ error: "Unauthorized access to this file" });
+    if (!courseInfo.length) {
+      return res.status(404).json({ error: "Course not found" });
     }
 
-    const downloadUrl = await getCourseFileUrl(fileKey);
+    const course = courseInfo[0];
+    const isVideoUrl = course.videoUrl === fileKey;
+    const isLessonFile =
+      Array.isArray(course.lessons) &&
+      course.lessons.some((l) => l.videoUrl === fileKey || l.attachmentUrl === fileKey);
+
+    if (
+      !fileKey.startsWith(`courses/${req.params.id}/`) &&
+      !isVideoUrl &&
+      !isLessonFile &&
+      !fileKey.startsWith("courses/")
+    ) {
+      return res.status(403).json({ error: "Unauthorized access to this file" });
+    }
+
+    // Check if it's a free preview lesson
+    const isFreePreview =
+      Array.isArray(course.lessons) &&
+      course.lessons.some(
+        (l) => (l.videoUrl === fileKey || l.attachmentUrl === fileKey) && l.isFreePreview
+      );
+
+    // Check authorization: free preview, or enrolled student, or admin
+    const authorized = isFreePreview || (await isUserAuthorizedForCourse(userId, req.params.id, course));
+    if (!authorized) {
+      return res.status(403).json({
+        error: "هذا المحتوى محمي. يرجى الاشتراك في الدورة أولاً للوصول إلى هذا الفيديو أو الملف.",
+      });
+    }
+
+    // Short-lived 15 minutes inline URL (Anti-download)
+    const downloadUrl = await getCourseFileUrl(fileKey, 900, true);
     return res.json({ downloadUrl });
   } catch (error) {
     console.error("Failed to generate download URL:", error);

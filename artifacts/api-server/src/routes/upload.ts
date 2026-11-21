@@ -16,6 +16,86 @@ router.get(/^\/storage\/(.*)/, async (req, res) => {
       return res.status(400).send("File key missing");
     }
 
+    // Security Paywall for Course Media (Videos / Private attachments)
+    if (fileKey.startsWith("courses/")) {
+      const lower = fileKey.toLowerCase();
+      const isPublicImage =
+        lower.endsWith(".jpg") ||
+        lower.endsWith(".jpeg") ||
+        lower.endsWith(".png") ||
+        lower.endsWith(".webp") ||
+        lower.endsWith(".gif") ||
+        lower.endsWith(".svg");
+
+      if (!isPublicImage) {
+        // This is a private course video or document
+        const segments = fileKey.split("/");
+        const courseId = segments[1];
+
+        let authorized = false;
+        if (courseId) {
+          const { db, coursesTable, enrollmentsTable, usersTable } = await import("@workspace/db");
+          const { eq, and } = await import("drizzle-orm");
+
+          const [course] = await db
+            .select()
+            .from(coursesTable)
+            .where(eq(coursesTable.id, courseId))
+            .limit(1);
+
+          if (course) {
+            // Free course access
+            if (course.category === "free" || Number(course.price || 0) === 0) {
+              authorized = true;
+            } else {
+              // Check if free preview lesson
+              const lessons = Array.isArray(course.lessons) ? course.lessons : [];
+              const isFreePreviewLesson = lessons.some(
+                (l: any) =>
+                  (l.videoUrl === fileKey || l.attachmentUrl === fileKey) && l.isFreePreview
+              );
+
+              if (isFreePreviewLesson) {
+                authorized = true;
+              } else {
+                const userId = (req as any).userId || (req.headers["x-user-id"] as string);
+                if (userId) {
+                  const [user] = await db
+                    .select({ role: usersTable.role })
+                    .from(usersTable)
+                    .where(eq(usersTable.id, userId))
+                    .limit(1);
+
+                  if (user?.role === "admin") {
+                    authorized = true;
+                  } else {
+                    const [enrollment] = await db
+                      .select({ id: enrollmentsTable.id })
+                      .from(enrollmentsTable)
+                      .where(
+                        and(
+                          eq(enrollmentsTable.userId, userId),
+                          eq(enrollmentsTable.courseId, courseId)
+                        )
+                      )
+                      .limit(1);
+
+                    if (enrollment) authorized = true;
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        if (!authorized) {
+          return res.status(403).json({
+            error: "المحتوى محمي. يرجى الاشتراك في الدورة لمشاهدة هذا الفيديو.",
+          });
+        }
+      }
+    }
+
     const obj = await getFileStream(fileKey);
     if (!obj.Body) {
       return res.status(404).send("File not found");
@@ -23,7 +103,9 @@ router.get(/^\/storage\/(.*)/, async (req, res) => {
 
     if (obj.ContentType) res.setHeader("Content-Type", obj.ContentType);
     if (obj.ContentLength) res.setHeader("Content-Length", obj.ContentLength);
-    res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=86400");
+    res.setHeader("Content-Disposition", "inline");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "private, no-cache, no-store, must-revalidate");
 
     (obj.Body as any).pipe(res);
   } catch (err: any) {

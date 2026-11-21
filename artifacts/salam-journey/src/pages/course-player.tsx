@@ -92,6 +92,52 @@ export default function CoursePlayer() {
   const [signedVideoUrl, setSignedVideoUrl] = useState<string | null>(null);
   const [loadingSignedUrl, setLoadingSignedUrl] = useState(false);
 
+  // Anti-Piracy Dynamic Watermark: shifts positions across screen every 20s
+  const [watermarkPosIndex, setWatermarkPosIndex] = useState(0);
+  const watermarkPositions = [
+    { top: "12%", right: "8%" },
+    { bottom: "16%", left: "8%" },
+    { top: "18%", left: "10%" },
+    { bottom: "18%", right: "10%" },
+    { top: "45%", left: "30%" },
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setWatermarkPosIndex((prev) => (prev + 1) % watermarkPositions.length);
+    }, 20000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Anti-Inspect Keyboard Guard: blocks F12, Ctrl+Shift+I/J/C, Ctrl+U, Ctrl+S
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Block F12 (DevTools)
+      if (e.key === "F12" || e.keyCode === 123) {
+        e.preventDefault();
+        return false;
+      }
+      // Block Ctrl+Shift+I / J / C (DevTools Inspect)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && ["I", "i", "J", "j", "C", "c"].includes(e.key)) {
+        e.preventDefault();
+        return false;
+      }
+      // Block Ctrl+U (View Page Source)
+      if ((e.ctrlKey || e.metaKey) && ["U", "u"].includes(e.key)) {
+        e.preventDefault();
+        return false;
+      }
+      // Block Ctrl+S (Save Page or Media)
+      if ((e.ctrlKey || e.metaKey) && ["S", "s"].includes(e.key)) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   // Check enrollment
   const isEnrolled = useMemo(() => {
     if (!course) return false;
@@ -499,13 +545,42 @@ export default function CoursePlayer() {
       <div className="container mx-auto px-4 lg:px-8 py-5 sm:py-7 flex-1 flex flex-col lg:flex-row gap-6 lg:gap-8">
         {/* LEFT / CENTER COLUMN: VIDEO PLAYER + LESSON DETAILS */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Modern 16:9 Cinema Container */}
+          {/* Modern 16:9 Cinema Container (Hardened with Anti-Inspect & Anti-Download) */}
           <div
-            className="relative w-full aspect-video rounded-3xl overflow-hidden shadow-2xl bg-black border border-stone-800 flex items-center justify-center group"
+            onContextMenu={(e) => {
+              e.preventDefault();
+              return false;
+            }}
+            onDragStart={(e) => {
+              e.preventDefault();
+              return false;
+            }}
+            className="relative w-full aspect-video rounded-3xl overflow-hidden shadow-2xl bg-black border border-stone-800 flex items-center justify-center group select-none"
             style={{
               boxShadow: "0 20px 50px -10px rgba(26, 46, 42, 0.35)",
             }}
           >
+            {/* Dynamic Forensic Watermark Overlay (Anti-Leak & Screen Recording deterrence) */}
+            {isLessonUnlocked && (
+              <div
+                className="absolute z-30 pointer-events-none select-none transition-all duration-1000 ease-in-out px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-2xs border border-white/10 flex flex-col items-center"
+                style={{
+                  ...watermarkPositions[watermarkPosIndex],
+                  opacity: 0.38,
+                }}
+              >
+                <div className="flex items-center gap-1.5 text-[10px] text-white font-mono tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  <span>{user?.name || user?.email || "جلسة موثقة"}</span>
+                  <span>•</span>
+                  <span>{user?.phone || user?.email || "منصة رحلة سلام"}</span>
+                </div>
+                <div className="text-[8px] text-white/70 font-sans mt-0.5">
+                  محتوى خاص ومحمي بحقوق النشر © رحلة سلام
+                </div>
+              </div>
+            )}
+
             {isLessonUnlocked ? (
               /* UNLOCKED: VIDEO PLAYING */
               resolvedVideo.isEmbed && resolvedVideo.embedUrl ? (
@@ -513,7 +588,7 @@ export default function CoursePlayer() {
                   key={resolvedVideo.embedUrl}
                   src={resolvedVideo.embedUrl}
                   title={activeLesson?.titleAr || course.titleAr}
-                  className="w-full h-full border-0"
+                  className="w-full h-full border-0 select-none"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 />
@@ -523,8 +598,13 @@ export default function CoursePlayer() {
                   src={signedVideoUrl}
                   controls
                   playsInline
-                  controlsList="nodownload"
-                  className="w-full h-full object-contain bg-black"
+                  controlsList="nodownload noremoteplayback"
+                  disablePictureInPicture
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    return false;
+                  }}
+                  className="w-full h-full object-contain bg-black select-none pointer-events-auto"
                 />
               ) : loadingSignedUrl ? (
                 <div className="flex flex-col items-center justify-center text-white/80 p-6 text-center">

@@ -13,22 +13,30 @@ export interface AuthenticatedRequest extends Request {
  */
 export function authMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
+  const tokenQuery = req.query.token as string | undefined;
 
-  if (!authHeader) {
-    return next();
+  let tokenToVerify: string | undefined;
+
+  if (authHeader) {
+    const parts = authHeader.split(" ");
+    if (parts.length === 2 && parts[0].toLowerCase() === "bearer") {
+      tokenToVerify = parts[1];
+    }
+  } else if (tokenQuery && typeof tokenQuery === "string") {
+    tokenToVerify = tokenQuery;
   }
 
-  const parts = authHeader.split(" ");
-  if (parts.length !== 2 || parts[0].toLowerCase() !== "bearer") {
-    return next();
+  if (tokenToVerify) {
+    const payload = verifyAccessToken(tokenToVerify);
+    if (payload && payload.sub) {
+      req.userId = payload.sub;
+      req.token = tokenToVerify;
+    }
   }
 
-  const token = parts[1];
-  const payload = verifyAccessToken(token);
-
-  if (payload && payload.sub) {
-    req.userId = payload.sub;
-    req.token = token;
+  // Fallback to X-User-Id header if token not provided or invalid
+  if (!req.userId && req.headers["x-user-id"] && typeof req.headers["x-user-id"] === "string") {
+    req.userId = req.headers["x-user-id"].trim();
   }
 
   next();

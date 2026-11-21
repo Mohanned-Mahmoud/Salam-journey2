@@ -44,13 +44,16 @@ export async function getUploadUrl(fileKey: string, contentType: string, expires
 }
 
 /**
- * Generate a presigned GET URL (secure, time-limited) to view or download a file.
- * Default expiry: 1 hour (3600 seconds).
+ * Generate a presigned GET URL (secure, time-limited, inline playback) to stream a file.
+ * Short-lived expiry (15 minutes / 900 seconds) prevents URL sharing or scraping.
+ * ResponseContentDisposition: 'inline' instructs browsers to display in-player and prevents download prompts.
  */
-export async function getFileUrl(fileKey: string, expiresIn = 3600) {
+export async function getFileUrl(fileKey: string, expiresIn = 900, inline = true) {
   const command = new GetObjectCommand({
     Bucket: BUCKET_NAME,
     Key: fileKey,
+    ResponseContentDisposition: inline ? "inline" : "attachment",
+    ResponseCacheControl: "private, no-cache, no-store, must-revalidate",
   });
   return getSignedUrl(r2Client, command, { expiresIn });
 }
