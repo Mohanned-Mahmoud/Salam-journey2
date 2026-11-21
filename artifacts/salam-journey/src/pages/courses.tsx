@@ -1,26 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { Clock, Users, BookOpen, Check } from "lucide-react";
+import { Clock, Users, BookOpen, Check, Sparkles } from "lucide-react";
 import { useLanguage, tx, type Bilingual } from "@/lib/i18n";
 import { useReveal } from "@/lib/use-reveal";
 import { useAuth } from "@/hooks/use-auth";
-import { apiJson } from "@/lib/api";
+import { apiJson, resolveMediaUrl } from "@/lib/api";
 import { SoftBlob, SectionDivider } from "@/components/section-divider";
 import { EnrollConfirmModal, type CourseSummary } from "@/components/enroll-confirm-modal";
+import { CourseDetailModal, type CourseModalData } from "@/components/course-detail-modal";
 
-type CourseCard = {
-  id: string;
-  title: Bilingual;
-  desc: Bilingual;
-  category: "course" | "workshop" | "free";
-  duration: Bilingual;
-  students: string;
-  price: Bilingual;
-  rawPrice: number;
-  badge?: Bilingual;
-  gradient: string;
-  imageUrl?: string;
-};
+type CourseCard = CourseModalData;
 
 const FILTERS = [
   { id: "all" as const, label: tx("الكل", "All") },
@@ -38,6 +27,7 @@ export default function Courses() {
   const [, navigate] = useLocation();
   const [filter, setFilter] = useState<FilterId>("all");
   const [enrollFor, setEnrollFor] = useState<CourseSummary | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<CourseCard | null>(null);
   const [courses, setCourses] = useState<CourseCard[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -53,13 +43,21 @@ export default function Courses() {
           titleEn: string;
           descAr: string | null;
           descEn: string | null;
-          category: CourseCard["category"];
+          detailsAr?: string | null;
+          detailsEn?: string | null;
+          featuresAr?: string[] | null;
+          featuresEn?: string[] | null;
+          badgeAr?: string | null;
+          badgeEn?: string | null;
+          category: CourseModalData["category"];
           duration: number | string | null;
           students: string | null;
           price: string | number | null;
           imageUrl: string | null;
+          images?: string[] | null;
           status: string | null;
           gradient: string | null;
+          videoUrl?: string | null;
         }>>("/courses");
 
         if (cancelled) return;
@@ -67,22 +65,35 @@ export default function Courses() {
         setCourses(
           data
             .filter((course) => course.status !== "hidden")
-            .map((course) => ({
-              id: course.id,
-              title: tx(course.titleAr, course.titleEn),
-              desc: tx(course.descAr ?? "", course.descEn ?? course.descAr ?? ""),
-              category: course.category,
-              duration: tx(
-                formatCourseDuration(course.category, course.duration, "ar"),
-                formatCourseDuration(course.category, course.duration, "en"),
-              ),
-              students: course.students ?? "—",
-              price: tx(formatCoursePrice(course.price, "ar"), formatCoursePrice(course.price, "en")),
-              rawPrice: Number(course.price ?? 0),
-              badge: course.category === "free" ? tx("مجاني", "Free") : undefined,
-              gradient: course.gradient ?? getCourseGradient(course.category),
-              imageUrl: course.imageUrl ?? undefined,
-            })),
+            .map((course) => {
+              const rawImages = Array.isArray(course.images) && course.images.length > 0
+                ? course.images
+                : (course.imageUrl ? [course.imageUrl] : []);
+
+              return {
+                id: course.id,
+                title: tx(course.titleAr, course.titleEn),
+                desc: tx(course.descAr ?? "", course.descEn ?? course.descAr ?? ""),
+                details: tx(course.detailsAr ?? course.descAr ?? "", course.detailsEn ?? course.descEn ?? course.descAr ?? ""),
+                category: course.category,
+                duration: tx(
+                  formatCourseDuration(course.category, course.duration, "ar"),
+                  formatCourseDuration(course.category, course.duration, "en"),
+                ),
+                students: course.students ?? "—",
+                price: tx(formatCoursePrice(course.price, "ar"), formatCoursePrice(course.price, "en")),
+                rawPrice: Number(course.price ?? 0),
+                free: course.category === "free" || String(course.price ?? "0") === "0",
+                badge: course.badgeAr
+                  ? tx(course.badgeAr, course.badgeEn ?? course.badgeAr)
+                  : (course.category === "free" ? tx("مجاني", "Free") : null),
+                gradient: course.gradient ?? getCourseGradient(course.category),
+                imageUrl: course.imageUrl ?? (rawImages[0] || null),
+                images: rawImages,
+                features: Array.isArray(course.featuresAr) ? course.featuresAr : [],
+                videoUrl: course.videoUrl ?? null,
+              };
+            }),
         );
       } catch {
         if (!cancelled) setCourses([]);
@@ -98,45 +109,56 @@ export default function Courses() {
   }, []);
 
   const visible = useMemo(() => courses.filter((c) => filter === "all" || c.category === filter), [courses, filter]);
-  const enrolledIds = new Set(user?.enrolledCourses.map((c) => c.id) ?? []);
+
+  const enrolledIds = useMemo(() => {
+    return new Set(user?.enrolledCourses?.map((c) => c.id) || []);
+  }, [user]);
+
+  const handleEnrollAction = (c: CourseModalData) => {
+    const enrolled = enrolledIds.has(c.id);
+    if (enrolled) {
+      navigate("/account?tab=courses");
+      return;
+    }
+    setEnrollFor({
+      id: c.id,
+      title: c.title,
+      price: c.price,
+      rawPrice: c.rawPrice,
+      free: c.free,
+    });
+  };
 
   return (
-    <div ref={ref} key={lang} className="lang-fade">
-      <section className="relative overflow-hidden" style={{ background: "var(--cream)" }}>
-        <SoftBlob
-          color="var(--sage-light)"
-          className="absolute -top-20 -start-16 w-[380px] h-[380px] opacity-40 animate-drift pointer-events-none"
-        />
-        <div className="relative container mx-auto px-5 md:px-8 pt-20 md:pt-28 pb-12">
-          <div className="text-center max-w-2xl mx-auto reveal">
-            <p
-              className="uppercase tracking-[0.18em] text-xs font-semibold mb-3"
-              style={{ color: "var(--sage-dark)" }}
-            >
-              {t(tx("دورات وورش", "Courses & workshops"))}
-            </p>
-            <h1 className="text-4xl md:text-6xl leading-[1.1] mb-5">
-              {t(tx("برامج تربوية لأمّ متمكّنة", "Programs for an empowered mother"))}
-            </h1>
-            <p className="text-lg leading-relaxed" style={{ color: "var(--text-body)" }}>
-              {t(
-                tx(
-                  "اختاري ما يناسب رحلتك من بين دوراتنا، ورشنا الحيّة، ومحتوانا المجاني.",
-                  "Pick what fits your journey from our courses, live workshops, and free resources.",
-                ),
-              )}
-            </p>
-          </div>
+    <div ref={ref} className="min-h-screen">
+      {/* Hero Section */}
+      <section className="relative overflow-hidden pt-32 pb-20 md:pt-40 md:pb-28">
+        <div className="absolute inset-0 bg-gradient-radial from-[var(--cream)] via-transparent to-transparent opacity-70 pointer-events-none" />
+        <div className="relative container mx-auto px-5 md:px-8 text-center max-w-3xl">
+          <span className="badge-soft mb-4 inline-block reveal">
+            {t(tx("رحلة التعلّم والنمو", "Learning & Growth Journey"))}
+          </span>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl mb-6 reveal" data-reveal-delay="100">
+            {t(tx("دورات وورش عمل للأم الواعية", "Courses & Workshops for the Mindful Mother"))}
+          </h1>
+          <p className="text-lg md:text-xl text-[var(--text-body)] leading-relaxed reveal" data-reveal-delay="200">
+            {t(
+              tx(
+                "محتوى علمي وتربوي متدرج ومبسّط، مبني على أسس نفسية واقعية، ليرافقك في كل خطوة من رحلة أمومتك.",
+                "Gradual, accessible parenting and educational content grounded in psychological principles, accompanying you at every step of your motherhood journey.",
+              ),
+            )}
+          </p>
         </div>
-        <SectionDivider color="var(--cream-dark)" />
+        <SectionDivider color="var(--blush-light)" />
       </section>
 
-      <section style={{ background: "var(--cream-dark)" }}>
-        <div className="container mx-auto px-5 md:px-8 py-16 md:py-24">
-          <div
-            className="reveal flex flex-wrap justify-center gap-2 p-2 rounded-full mx-auto w-fit mb-12"
-            style={{ background: "var(--white)", border: "1px solid rgba(127,169,155,0.25)" }}
-          >
+      {/* Courses Grid Section */}
+      <section style={{ background: "var(--blush-light)" }} className="relative">
+        <div className="absolute inset-0 dot-grid opacity-40 pointer-events-none" aria-hidden />
+        <div className="relative container mx-auto px-5 md:px-8 py-16 md:py-24">
+          {/* Filters */}
+          <div className="flex items-center justify-center gap-2 md:gap-3 mb-12 flex-wrap">
             {FILTERS.map((f) => {
               const active = filter === f.id;
               return (
@@ -144,10 +166,11 @@ export default function Courses() {
                   key={f.id}
                   type="button"
                   onClick={() => setFilter(f.id)}
-                  className="px-5 py-2 rounded-full text-sm font-semibold transition-all"
+                  className="px-5 py-2.5 rounded-full text-sm font-semibold transition-all cursor-pointer"
                   style={{
-                    background: active ? "var(--sage-dark)" : "transparent",
+                    background: active ? "var(--sage-dark)" : "var(--white)",
                     color: active ? "white" : "var(--text-body)",
+                    boxShadow: active ? "0 4px 12px rgba(45,74,69,0.15)" : "none",
                   }}
                 >
                   {t(f.label)}
@@ -165,61 +188,106 @@ export default function Courses() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
             {visible.map((c, i) => {
               const enrolled = enrolledIds.has(c.id);
-              const handleClick = () => {
-                if (enrolled) {
-                  navigate("/account?tab=courses");
-                  return;
-                }
-                setEnrollFor({ id: c.id, title: c.title, price: c.price, rawPrice: c.rawPrice, free: c.category === "free" });
-              };
 
               return (
-                <article key={c.id} className="glass-card overflow-hidden flex flex-col reveal" data-reveal-delay={i * 80} style={{ background: "var(--white)" }}>
-                  <div className="h-44 relative overflow-hidden">
+                <article
+                  key={c.id}
+                  className="glass-card overflow-hidden flex flex-col reveal"
+                  data-reveal-delay={i * 80}
+                  style={{ background: "var(--white)" }}
+                >
+                  {/* Card Visual Header (Clickable to open modal) */}
+                  <div
+                    className="h-44 relative overflow-hidden cursor-pointer group bg-[var(--cream)]"
+                    onClick={() => setSelectedCourse(c)}
+                  >
                     {c.imageUrl ? (
-                      <img src={c.imageUrl} alt={t(c.title)} className="w-full h-full object-cover" />
+                      <img
+                        src={resolveMediaUrl(c.imageUrl)}
+                        alt={t(c.title)}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
                     ) : (
                       <div className="w-full h-full" style={{ background: c.gradient }} />
                     )}
-                    <SoftBlob color="rgba(255,255,255,0.18)" className="absolute -top-10 -end-10 w-[200px] h-[200px] animate-float pointer-events-none" />
+                    <SoftBlob
+                      color="rgba(255,255,255,0.18)"
+                      className="absolute -top-10 -end-10 w-[200px] h-[200px] animate-float pointer-events-none"
+                    />
                     <div className="absolute bottom-4 start-4 flex items-center gap-2">
-                      <span className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.85)", color: "var(--sage-dark)" }}>
+                      <span
+                        className="w-10 h-10 rounded-full flex items-center justify-center shadow-xs"
+                        style={{ background: "rgba(255,255,255,0.85)", color: "var(--sage-dark)" }}
+                      >
                         <BookOpen size={18} />
                       </span>
                     </div>
+
                     {enrolled ? (
-                      <span className="absolute top-4 end-4 px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1" style={{ background: "var(--sage-dark)", color: "white" }}>
+                      <span
+                        className="absolute top-4 end-4 px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1 shadow-xs"
+                        style={{ background: "var(--sage-dark)", color: "white" }}
+                      >
                         <Check size={12} />
                         {t(tx("مسجّلة", "Enrolled"))}
                       </span>
                     ) : c.badge ? (
-                      <span className="absolute top-4 end-4 px-3 py-1 rounded-full text-xs font-semibold" style={{ background: "var(--white)", color: "var(--sage-dark)" }}>
+                      <span
+                        className="absolute top-4 end-4 px-3 py-1 rounded-full text-xs font-bold shadow-xs"
+                        style={{ background: "var(--white)", color: "var(--sage-dark)" }}
+                      >
                         {t(c.badge)}
                       </span>
                     ) : null}
                   </div>
+
+                  {/* Card Body */}
                   <div className="p-6 flex flex-col flex-1">
-                    <h3 className="text-xl mb-2">{t(c.title)}</h3>
+                    <h3
+                      className="text-xl mb-2 cursor-pointer hover:underline"
+                      onClick={() => setSelectedCourse(c)}
+                    >
+                      {t(c.title)}
+                    </h3>
                     <p className="text-sm leading-relaxed mb-5 flex-1" style={{ color: "var(--text-body)" }}>
                       {t(c.desc)}
                     </p>
                     <div className="flex items-center justify-between gap-3 text-sm mb-5" style={{ color: "var(--text-muted)" }}>
-                      <span className="inline-flex items-center gap-1.5">
-                        <Clock size={14} /> {t(c.duration)}
+                      <span className="inline-flex items-center gap-1.5 font-medium">
+                        <Clock size={14} className="text-[var(--sage-dark)]" /> {t(c.duration)}
                       </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <Users size={14} /> {c.students}
+                      <span className="inline-flex items-center gap-1.5 font-medium">
+                        <Users size={14} className="text-[var(--sage-dark)]" /> {c.students}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between gap-3">
+
+                    <div className="flex items-center justify-between gap-3 pt-2 border-t border-[rgba(127,169,155,0.12)]">
                       <span className="font-bold text-lg" style={{ color: "var(--sage-dark)" }}>
                         {t(c.price)}
                       </span>
-                      <button type="button" onClick={handleClick} className="pill-btn pill-btn-primary text-sm py-2 px-5">
-                        {enrolled
-                          ? t(tx("استمري", "Continue"))
-                          : t(c.category === "free" ? tx("ابدئي مجاناً", "Start free") : tx("اشتركي الآن", "Enroll now"))}
-                      </button>
+
+                      <div className="flex items-center gap-2">
+                        {/* Secondary View Details Button */}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCourse(c)}
+                          className="py-2 px-3 rounded-xl border border-[rgba(127,169,155,0.3)] bg-[var(--cream)] hover:bg-white text-xs font-bold text-[var(--text-dark)] flex items-center gap-1 transition-colors"
+                        >
+                          <Sparkles size={13} className="text-amber-600" />
+                          <span>تفاصيل</span>
+                        </button>
+
+                        {/* Main CTA */}
+                        <button
+                          type="button"
+                          onClick={() => handleEnrollAction(c)}
+                          className="pill-btn pill-btn-primary text-sm py-2 px-4"
+                        >
+                          {enrolled
+                            ? t(tx("استمري", "Continue"))
+                            : t(c.free ? tx("ابدئي مجاناً", "Start free") : tx("اشتركي", "Enroll"))}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </article>
@@ -235,12 +303,25 @@ export default function Courses() {
         </div>
       </section>
 
+      {/* Interactive Rich Course Detail Modal (Split View on Laptop, Bottom Sheet on Mobile, No Smoky Blur) */}
+      <CourseDetailModal
+        isOpen={Boolean(selectedCourse)}
+        onClose={() => setSelectedCourse(null)}
+        course={selectedCourse}
+        isEnrolled={selectedCourse ? enrolledIds.has(selectedCourse.id) : false}
+        onEnroll={(courseData) => {
+          setSelectedCourse(null);
+          handleEnrollAction(courseData);
+        }}
+      />
+
+      {/* Enrollment & Payment Confirmation Modal */}
       <EnrollConfirmModal course={enrollFor} isOpen={!!enrollFor} onClose={() => setEnrollFor(null)} />
     </div>
   );
 }
 
-function formatCourseDuration(category: CourseCard["category"], duration: number | string | null, lang: "ar" | "en") {
+function formatCourseDuration(category: CourseModalData["category"], duration: number | string | null, lang: "ar" | "en") {
   if (category === "free") return "PDF";
   const value = typeof duration === "number" ? duration : Number(duration ?? 0);
   if (lang === "en") {
@@ -257,7 +338,7 @@ function formatCoursePrice(price: string | number | null, lang: "ar" | "en") {
   return `$${value}`;
 }
 
-function getCourseGradient(category: CourseCard["category"]) {
+function getCourseGradient(category: CourseModalData["category"]) {
   if (category === "course") return "linear-gradient(135deg, var(--sage-dark), var(--sage))";
   if (category === "workshop") return "linear-gradient(135deg, var(--blush), var(--blush-light))";
   return "linear-gradient(135deg, var(--sage-light), var(--sage-muted))";

@@ -42,7 +42,7 @@ router.get("/courses/:id", async (req, res) => {
 // Create course
 router.post("/courses", async (req, res) => {
   try {
-    const body = req.body as Record<string, unknown>;
+    const body = { ...(req.body as Record<string, unknown>) };
     const coachId = typeof body.coachId === "string" && body.coachId.trim()
       ? body.coachId.trim()
       : (await db.select({ id: coachesTable.id }).from(coachesTable).limit(1))[0]?.id;
@@ -64,6 +64,10 @@ router.post("/courses", async (req, res) => {
       return res.status(400).json({ error: "No coach available" });
     }
 
+    if (typeof body.price === "number") body.price = String(body.price);
+    if (body.price === "" || body.price === undefined) body.price = "0";
+    if (typeof body.duration === "string") body.duration = Number(body.duration) || 0;
+
     const validated = insertCourseSchema.parse({
       ...body,
       coachId: resolvedCoachId,
@@ -75,7 +79,8 @@ router.post("/courses", async (req, res) => {
 
     return res.status(201).json(course[0]);
   } catch (error) {
-    return res.status(400).json({ error: "Invalid course data" });
+    console.error("Failed to create course:", error);
+    return res.status(400).json({ error: "Invalid course data", details: String(error) });
   }
 });
 
@@ -83,7 +88,12 @@ router.post("/courses", async (req, res) => {
 router.put("/courses/:id", async (req, res) => {
   try {
     const id = req.params.id as string;
-    const validated = insertCourseSchema.partial().parse(req.body);
+    const body = { ...(req.body as Record<string, unknown>) };
+    if (typeof body.price === "number") body.price = String(body.price);
+    if (body.price === "") body.price = "0";
+    if (typeof body.duration === "string") body.duration = Number(body.duration) || 0;
+
+    const validated = insertCourseSchema.partial().parse(body);
     const course = await db
       .update(coursesTable)
       .set(validated)
@@ -95,7 +105,8 @@ router.put("/courses/:id", async (req, res) => {
     }
     return res.json(course[0]);
   } catch (error) {
-    return res.status(400).json({ error: "Invalid course data" });
+    console.error("Failed to update course:", error);
+    return res.status(400).json({ error: "Invalid course data", details: String(error) });
   }
 });
 

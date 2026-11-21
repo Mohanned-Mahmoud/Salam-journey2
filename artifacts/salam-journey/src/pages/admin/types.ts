@@ -61,6 +61,8 @@ export type AdminCourse = {
   titleEn: string;
   descAr: string | null;
   descEn: string | null;
+  detailsAr?: string | null;
+  detailsEn?: string | null;
   category: 'course' | 'workshop' | 'free';
   price: string | number;
   duration: number | null;
@@ -68,6 +70,11 @@ export type AdminCourse = {
   gradient: string | null;
   students: string | null;
   imageUrl?: string | null;
+  images?: string[];
+  featuresAr?: string[];
+  featuresEn?: string[];
+  badgeAr?: string | null;
+  badgeEn?: string | null;
   videoUrl?: string | null;
   createdAt?: string;
 };
