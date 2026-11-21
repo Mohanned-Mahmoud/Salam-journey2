@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import {
   ArrowRight,
@@ -7,6 +7,11 @@ import {
   Circle,
   Lock,
   Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Maximize,
+  Minimize,
   FileText,
   Download,
   Share2,
@@ -92,9 +97,32 @@ export default function CoursePlayer() {
   const [signedVideoUrl, setSignedVideoUrl] = useState<string | null>(null);
   const [loadingSignedUrl, setLoadingSignedUrl] = useState(false);
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
+  const playerContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Anti-Inspect Keyboard Guard: blocks F12, Ctrl+Shift+I/J/C, Ctrl+U, Ctrl+S
+  // Custom Video Player Controls State
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Anti-Inspect & Anti-Download Hardened Capture-Phase Guard:
+  // Intercepts right-click (contextmenu) at document & window level BEFORE browser creates context menu
   useEffect(() => {
+    const handleContextMenuCapture = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      return false;
+    };
+
+    window.addEventListener("contextmenu", handleContextMenuCapture, true);
+    document.addEventListener("contextmenu", handleContextMenuCapture, true);
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // Block F12 (DevTools)
       if (e.key === "F12" || e.keyCode === 123) {
@@ -118,9 +146,109 @@ export default function CoursePlayer() {
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
+
+    const onFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+
+    return () => {
+      window.removeEventListener("contextmenu", handleContextMenuCapture, true);
+      document.removeEventListener("contextmenu", handleContextMenuCapture, true);
+      window.removeEventListener("keydown", handleKeyDown, true);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+    };
   }, []);
+
+  // Player control handlers
+  const handleTogglePlay = () => {
+    const v = videoElementRef.current;
+    if (!v) return;
+    if (v.paused) {
+      v.play().catch(() => {});
+      setIsPlaying(true);
+    } else {
+      v.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    const v = videoElementRef.current;
+    if (v) {
+      setCurrentTime(v.currentTime);
+      if (v.duration && !isNaN(v.duration)) {
+        setDuration(v.duration);
+      }
+    }
+  };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const target = Number(e.target.value);
+    const v = videoElementRef.current;
+    if (v) {
+      v.currentTime = target;
+      setCurrentTime(target);
+    }
+  };
+
+  const handleToggleMute = () => {
+    const v = videoElementRef.current;
+    if (!v) return;
+    const nextMuted = !v.muted;
+    v.muted = nextMuted;
+    setIsMuted(nextMuted);
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nextVol = Number(e.target.value);
+    const v = videoElementRef.current;
+    if (v) {
+      v.volume = nextVol;
+      v.muted = nextVol === 0;
+      setVolume(nextVol);
+      setIsMuted(nextVol === 0);
+    }
+  };
+
+  const handleCycleSpeed = () => {
+    const speeds = [1, 1.25, 1.5, 1.75, 2];
+    const currentIndex = speeds.indexOf(playbackRate);
+    const nextSpeed = speeds[(currentIndex + 1) % speeds.length];
+    const v = videoElementRef.current;
+    if (v) {
+      v.playbackRate = nextSpeed;
+      setPlaybackRate(nextSpeed);
+    }
+  };
+
+  const handleToggleFullscreen = () => {
+    const container = playerContainerRef.current;
+    if (!container) return;
+    if (!document.fullscreenElement) {
+      container.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen?.().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  };
+
+  const handleMouseMove = () => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    if (isPlaying) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3500);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    if (isNaN(seconds) || seconds < 0) return "00:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
 
   // Check enrollment
   const isEnrolled = useMemo(() => {
@@ -579,36 +707,138 @@ export default function CoursePlayer() {
                   allowFullScreen
                 />
               ) : signedVideoUrl ? (
-                <div className="relative w-full h-full flex items-center justify-center">
+                <div
+                  ref={playerContainerRef}
+                  onMouseMove={handleMouseMove}
+                  onMouseLeave={() => isPlaying && setShowControls(false)}
+                  className="relative w-full h-full flex items-center justify-center overflow-hidden bg-black group/player select-none"
+                >
                   <video
                     ref={videoElementRef}
                     key={signedVideoUrl}
                     src={signedVideoUrl}
-                    controls
                     playsInline
-                    controlsList="nodownload noremoteplayback"
                     disablePictureInPicture
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      return false;
-                    }}
-                    className="w-full h-full object-contain bg-black select-none pointer-events-auto"
+                    onTimeUpdate={handleTimeUpdate}
+                    onLoadedMetadata={handleTimeUpdate}
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    onEnded={() => setIsPlaying(false)}
+                    className="w-full h-full object-contain bg-black select-none pointer-events-none"
                   />
-                  {/* Transparent Security Shield: intercepts inspect clicks & contextmenu */}
+
+                  {/* Transparent Full-Surface Shield: captures all clicks, blocks context menu, toggles play/pause */}
                   <div
-                    className="absolute inset-x-0 top-0 bottom-16 z-10 cursor-pointer"
+                    className="absolute inset-0 z-10 cursor-pointer select-none"
                     onContextMenu={(e) => {
                       e.preventDefault();
+                      e.stopPropagation();
                       return false;
                     }}
-                    onClick={() => {
-                      const v = videoElementRef.current;
-                      if (v) {
-                        if (v.paused) v.play();
-                        else v.pause();
-                      }
-                    }}
+                    onClick={handleTogglePlay}
+                    onDoubleClick={handleToggleFullscreen}
                   />
+
+                  {/* Big Center Play Button when paused */}
+                  {!isPlaying && (
+                    <div
+                      onClick={handleTogglePlay}
+                      className="absolute z-20 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[var(--sage-dark)]/90 hover:bg-[var(--sage-dark)] text-white backdrop-blur-md flex items-center justify-center shadow-2xl cursor-pointer hover:scale-105 active:scale-95 transition-all"
+                    >
+                      <Play className="w-8 h-8 sm:w-9 sm:h-9 fill-white translate-x-0.5" />
+                    </div>
+                  )}
+
+                  {/* Sleek Custom Control Bar (No native Chrome controls, no Save Video As) */}
+                  <div
+                    className={`absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/95 via-black/70 to-transparent px-4 py-3 sm:px-6 sm:py-4 flex flex-col gap-2 transition-opacity duration-300 ${
+                      showControls ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+                    }`}
+                  >
+                    {/* Scrubber track */}
+                    <div className="relative w-full flex items-center">
+                      <input
+                        type="range"
+                        min={0}
+                        max={duration || 100}
+                        step={0.1}
+                        value={currentTime}
+                        onChange={handleSeek}
+                        className="w-full h-1.5 sm:h-2 bg-white/25 rounded-lg appearance-none cursor-pointer accent-emerald-400 hover:accent-emerald-300 transition-all"
+                      />
+                    </div>
+
+                    {/* Controls Row */}
+                    <div className="flex items-center justify-between text-white text-xs sm:text-sm">
+                      {/* Left: Play/Pause, Volume, Time */}
+                      <div className="flex items-center gap-2.5 sm:gap-4">
+                        <button
+                          type="button"
+                          onClick={handleTogglePlay}
+                          className="p-1 hover:bg-white/15 rounded-lg transition-colors cursor-pointer"
+                          title={isPlaying ? "إيقاف مؤقت" : "تشغيل"}
+                        >
+                          {isPlaying ? (
+                            <Pause className="w-5 h-5 fill-white" />
+                          ) : (
+                            <Play className="w-5 h-5 fill-white" />
+                          )}
+                        </button>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={handleToggleMute}
+                            className="p-1 hover:bg-white/15 rounded-lg transition-colors cursor-pointer"
+                          >
+                            {isMuted || volume === 0 ? (
+                              <VolumeX className="w-4 h-4 text-red-400" />
+                            ) : (
+                              <Volume2 className="w-4 h-4 text-white" />
+                            )}
+                          </button>
+                          <input
+                            type="range"
+                            min={0}
+                            max={1}
+                            step={0.05}
+                            value={isMuted ? 0 : volume}
+                            onChange={handleVolumeChange}
+                            className="w-14 sm:w-20 h-1 bg-white/25 rounded-lg appearance-none cursor-pointer accent-emerald-400 hidden sm:block"
+                          />
+                        </div>
+
+                        <div className="text-[11px] sm:text-xs font-mono text-white/90 select-none">
+                          {formatTime(currentTime)} / {formatTime(duration)}
+                        </div>
+                      </div>
+
+                      {/* Right: Playback Speed, Fullscreen */}
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <button
+                          type="button"
+                          onClick={handleCycleSpeed}
+                          className="px-2 py-0.5 rounded-md bg-white/15 hover:bg-white/25 text-[11px] font-bold font-mono transition-colors cursor-pointer"
+                          title="سرعة التشغيل"
+                        >
+                          {playbackRate}x
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleToggleFullscreen}
+                          className="p-1 hover:bg-white/15 rounded-lg transition-colors cursor-pointer"
+                          title={isFullscreen ? "تصغير الشاشة" : "ملء الشاشة"}
+                        >
+                          {isFullscreen ? (
+                            <Minimize className="w-4 h-4" />
+                          ) : (
+                            <Maximize className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : loadingSignedUrl ? (
                 <div className="flex flex-col items-center justify-center text-white/80 p-6 text-center">
