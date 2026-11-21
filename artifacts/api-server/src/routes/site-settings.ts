@@ -43,20 +43,35 @@ async function isAdminAuthenticated(req: Request, res: Response, next: NextFunct
   }
 }
 
+const SENSITIVE_KEYS = new Set([
+  "gemini_api_key",
+  "jwt_secret",
+  "stripe_secret",
+  "stripe_webhook_secret",
+  "r2_secret_access_key",
+]);
+
 router.get("/site-settings/:key", async (req, res) => {
   try {
-    const key = req.params.key as string;
+    const key = (req.params.key as string || "").trim().toLowerCase();
+
+    // Security check: Never leak API keys, secrets, or tokens via the public endpoint
+    if (SENSITIVE_KEYS.has(key) || key.includes("secret") || key.includes("api_key") || key.includes("password")) {
+      res.status(403).json({ error: "Access denied to protected setting" });
+      return;
+    }
+
     const [row] = await db
       .select()
       .from(siteSettingsTable)
-      .where(eq(siteSettingsTable.key, key))
+      .where(eq(siteSettingsTable.key, req.params.key as string))
       .limit(1);
     if (!row) {
       const defaults: Record<string, string> = {
         display_mode: "full_website",
         whatsapp_number: "+201015473623",
       };
-      res.json({ key, value: defaults[key] ?? "" });
+      res.json({ key: req.params.key, value: defaults[req.params.key as string] ?? "" });
       return;
     }
     res.json({ key: row.key, value: row.value });

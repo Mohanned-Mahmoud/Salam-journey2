@@ -1,7 +1,15 @@
 import { Router } from "express";
-import { db, aiKnowledgeTable } from "@workspace/db";
+import { db, aiKnowledgeTable, siteSettingsTable } from "@workspace/db";
 import { createEmbedding } from "../lib/embeddings";
-import { sql } from "drizzle-orm"; // تم إضافة sql لعمل استعلام الـ Vector
+import { sql, eq } from "drizzle-orm";
+import { requireAdmin } from "../lib/auth-middleware";
+import {
+  getGeminiApiKey,
+  getGeminiApiKeySource,
+  maskApiKey,
+  testGeminiApiKey,
+  invalidateGeminiApiKeyCache,
+} from "../lib/gemini";
 
 const router = Router();
 
@@ -74,9 +82,9 @@ router.post("/ai/chat", async (req, res) => {
       return;
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = await getGeminiApiKey();
     if (!apiKey) {
-      res.status(500).json({ error: "Gemini API key is missing" });
+      res.status(503).json({ error: "المساعد الذكي غير متصل حالياً (لم يتم حفظ مفتاح Gemini API في لوحة التحكم)." });
       return;
     }
 
@@ -145,12 +153,11 @@ ${fullKnowledge}`;
       }));
 
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-goog-api-key": apiKey,
         },
         body: JSON.stringify({
           contents: geminiContents,
@@ -258,6 +265,123 @@ router.delete("/ai/knowledge/:id", async (req, res) => {
     res.json({ ok: true });
   } catch {
     res.status(500).json({ error: "Failed to delete knowledge entry" });
+  }
+});
+
+// =========================================================================
+// 🔒 ADMIN AI CONFIGURATION & CONNECTION MONITORING ENDPOINTS
+// =========================================================================
+
+/**
+ * GET /api/admin/ai/status
+ * Returns current configuration status and masked key for the admin.
+ * Protected: Admin only. Plaintext key is NEVER sent.
+ */
+router.get("/admin/ai/status", requireAdmin, async (_req, res) => {
+  try {
+    const apiKey = await getGeminiApiKey();
+    const source = await getGeminiApiKeySource();
+    const hasKey = Boolean(apiKey && apiKey.length > 0);
+
+    res.json({
+      configured: hasKey,
+      maskedKey: hasKey ? maskApiKey(apiKey) : "",
+      source,
+      provider: "Google Gemini",
+      model: "gemini-1.5-flash",
+      services: {
+        chat: hasKey,
+        translation: hasKey,
+        ragEmbeddings: hasKey,
+      },
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: "تعذر قراءة حالة الذكاء الاصطناعي: " + (err.message || String(err)) });
+  }
+});
+
+/**
+ * PUT /api/admin/ai/api-key
+ * Securely updates or removes the Gemini API key in site_settings table.
+ * Protected: Admin only.
+ */
+router.put("/admin/ai/api-key", requireAdmin, async (req, res) => {
+  try {
+    const { apiKey } = req.body as { apiKey?: string };
+    const trimmedKey = (apiKey || "").trim();
+
+    if (!trimmedKey) {
+      // Admin wants to clear the database-stored key
+      await db.delete(siteSettingsTable).where(eq(siteSettingsTable.key, "gemini_api_key"));
+      invalidateGeminiApiKeyCache();
+
+      const remainingKey = await getGeminiApiKey();
+      const hasKey = Boolean(remainingKey && remainingKey.length > 0);
+
+      res.json({
+        success: true,
+        message: "تم حذف المفتاح من قاعدة البيانات بنجاح.",
+        configured: hasKey,
+        maskedKey: hasKey ? maskApiKey(remainingKey) : "",
+        source: hasKey ? "env" : "none",
+      });
+      return;
+    }
+
+    // Save or update in database
+    await db
+      .insert(siteSettingsTable)
+      .values({
+        key: "gemini_api_key",
+        value: trimmedKey,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: siteSettingsTable.key,
+        set: {
+          value: trimmedKey,
+          updatedAt: new Date(),
+        },
+      });
+
+    invalidateGeminiApiKeyCache();
+
+    // Immediately test the newly saved key so the admin knows right away if it works
+    const testResult = await testGeminiApiKey(trimmedKey);
+
+    res.json({
+      success: true,
+      message: testResult.success
+        ? "تم حفظ المفتاح والتحقق من الاتصال بنجاح!"
+        : "تم حفظ المفتاح، لكن ظهر تنبيه أثناء فحص الاتصال.",
+      configured: true,
+      maskedKey: maskApiKey(trimmedKey),
+      source: "database",
+      testResult,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: "فشل حفظ مفتاح الـ API: " + (err.message || String(err)) });
+  }
+});
+
+/**
+ * POST /api/admin/ai/test-connection
+ * Tests connection to Google Gemini API.
+ * Can test either an unsaved prospective key (from req.body.apiKey) or the currently active key.
+ * Protected: Admin only.
+ */
+router.post("/admin/ai/test-connection", requireAdmin, async (req, res) => {
+  try {
+    const { apiKey } = req.body as { apiKey?: string };
+    const result = await testGeminiApiKey(apiKey);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      latencyMs: 0,
+      message: "خطأ داخلي أثناء اختبار الاتصال: " + (err.message || String(err)),
+      model: "gemini-1.5-flash",
+    });
   }
 });
 

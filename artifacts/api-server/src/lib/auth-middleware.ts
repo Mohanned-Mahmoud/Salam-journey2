@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyAccessToken } from "./jwt";
+import { db, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 export interface AuthenticatedRequest extends Request {
   userId?: string;
@@ -54,3 +56,46 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
 
   next();
 }
+
+/**
+ * Middleware to require admin authentication.
+ * Checks whether current user exists and has role: 'admin'.
+ */
+export async function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : (req.query?.token as string);
+    const userIdHeader = (req.headers["x-user-id"] as string)?.trim();
+
+    let userId = req.userId;
+
+    if (!userId && token) {
+      const payload = verifyAccessToken(token);
+      if (payload && payload.sub) {
+        userId = payload.sub;
+      }
+    }
+
+    if (!userId && userIdHeader) {
+      userId = userIdHeader;
+    }
+
+    if (!userId) {
+      res.status(401).json({ error: "يرجى تسجيل الدخول أولاً للوصول للوحة التحكم" });
+      return;
+    }
+
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+
+    if (!user || (user as any).role !== "admin") {
+      res.status(403).json({ error: "عذراً، هذه الصلاحية للمسؤولين فقط" });
+      return;
+    }
+
+    req.userId = userId;
+    next();
+  } catch (err: any) {
+    res.status(401).json({ error: "فشل التحقق من الجلسة" });
+  }
+}
+
